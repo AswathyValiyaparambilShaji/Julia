@@ -1,0 +1,12 @@
+
+
+base_path = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/"
+base_path2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/SM/"
+
+
+xn_start = 1
+xn_end   = 1
+yn_start = 1
+yn_end   = 1
+
+
