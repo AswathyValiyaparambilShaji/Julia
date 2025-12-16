@@ -46,6 +46,7 @@ bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
 
 
 # Now parallelize over ALL 42 tiles
+mkpath(joinpath(base2, "Conv"))
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -83,57 +84,46 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             raw_data = reinterpret(Float64, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
         end
-
-        fw = open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
-            # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
-            # Read the raw bytes
-            raw_bytes = read(io, nbytes)
-            # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
-            reshaped_data = reshape(raw_data, nx, ny, nz, nt)
-        end
-
-        # --- Bandpass filter (time is last dim) ---
         fr = bandpassfilter(rho, T1, T2, delt,N,nt)
-            # --- Pressure & perturbations ---
+        
+        UDA = dropdims(sum(fu.*  DRFfull, dims=3)./ depth;dims=3)
+        VDA = dropdims(sum(fv.*  DRFfull, dims=3)./ depth;dims=3);
+        # --- Pressure & perturbations ---
         pres  = g .* cumsum(fr .* DRFfull, dims=3)
         pfz   = cat(zeros(nx, ny, 1, nt), pres; dims=3)
         pc_3d = 0.5 .* (pfz[:, :, 1:end-1, :] .+ pfz[:, :, 2:end, :])
         pa    = sum(pc_3d .* DRFfull, dims=3) ./ depth
-        pp_3d = pc_3d .- pa
+        pp_3d = pc_3d .- pa;
 
-        mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
-        pp_3d[repeat(mask4D, 1, 1, 1, size(pp_3d, 4))] .= 0
+        dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"),   (nx, ny))
+        dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"),   (nx, ny));
 
-        ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
-        up_3d  = fu .- ucA_3d
-        up_3d[repeat(mask4D, 1, 1, 1, size(up_3d, 4))] .= 0
 
-        vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
-        vp_3d  = fv .- vcA_3d
-        vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0
+        H = depth;
+        # ---- Bottom level of pc_3d: p_b (nx, ny, nt)
+        pb = pp_3d[:, :, end, :];
 
-        wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw .- wcA_3d
-        wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0
+        dHdx = zeros(nx-2, ny)
+        dHdx[:, :] .= (H[3:nx, :] .- H[1:nx-2, :]) ./ (dx[2:nx-1, :] .+ dx[1:nx-2, :])
 
-        # --- Fluxes (time-mean then vertical integrate) ---
-        xflx_3d = up_3d .* pp_3d
-        yflx_3d = vp_3d .* pp_3d
-        zflx_3d = wp_3d .* pp_3d
+        dHdy = zeros(nx, ny-2)
+        dHdy[:, :] .= (H[:, 3:ny] .- H[:, 1:ny-2]) ./ (dy[:, 1:ny-2] .+ dy[:, 2:ny-1])
 
-        xfm_3d = mean(xflx_3d, dims=4)
-        yfm_3d = mean(yflx_3d, dims=4)
-        zfm_3d = mean(zflx_3d, dims=4)
+        # Match shapes by expanding dHdx/dHdy across time (3rd dim)
+        W1 = .-(UDA[2:end-1, :, :] .* dHdx)   
+        W2 = .-(VDA[:, 2:end-1, :] .* dHdy) 
 
-        xfdm_3d = sum(xfm_3d .* DRFfull, dims=3)        # (nx,ny,1,1)
-        yfdm_3d = sum(yfm_3d .* DRFfull, dims=3)
-        zfdm_3d = sum(zfm_3d .* DRFfull, dims=3)
+        # ---- Common interior region aligned to (nx-1, ny-1, nt)
+        w1c = W1[:, 2:end-1, :]    
+        w2c = W2[2:end-1, :, :]     
+        w   = w1c .+ w2c            
 
-        hfdm_3d = sqrt.(xfdm_3d.^2 .+ yfdm_3d.^2)       # (nx,ny,1,1)
-        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, xfm_3d); end
-        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, yfm_3d); end
-        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, zfm_3d); end    
+        # ---- Multiply by p_b interior and average over time
+        c  = pb[2:end-1, 2:end-1, :] .* w         
+        ca = dropdims(mean(c; dims=3); dims=3)     
+
+        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+
+        open(joinpath(base2, "Conv", "Conv_$suffix2.bin"), "w") do io; write(io, ca); end
     end
 end
