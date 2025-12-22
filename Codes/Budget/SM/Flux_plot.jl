@@ -129,7 +129,7 @@ ax1  = Axis(fig1[1, 1],
     ylabel = "Latitude [°]",
 )
 
-ax1.limits[] = ((minimum(LON), maximum(LON)), (minimum(LAT), maximum(LAT)))
+ax1.limits[] = (193.0,194.2,24.0, 25.4)
 
 hm1 = CairoMakie.heatmap!(ax1, LON, LAT, F;
     interpolate = false,
@@ -149,7 +149,7 @@ for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
     end
 end
 
-if !isempty(vec)
+#=if !isempty(vec)
     # scale arrows to look nice relative to degrees grid
     maxmag = maximum(norm, vec)
     cell_x = (maximum(LON) - minimum(LON)) / NX
@@ -159,6 +159,7 @@ if !isempty(vec)
 
     arrows!(ax1, pos, scale .* vec; color=:black, shaftwidth=1.5f0, tipwidth=8f0, tiplength=8f0)
 end
+=#
 
 Colorbar(fig1[1, 2], hm1, label = "Flux (kW/m)")
 save(joinpath(FIGDIR, "Flux_with_quiver_NIW2_v3.png"), fig1)

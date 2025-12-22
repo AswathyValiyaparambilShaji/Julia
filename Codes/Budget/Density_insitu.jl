@@ -40,7 +40,8 @@ g = 9.8
 mkpath(joinpath(base,"Density"))
 
 # Create output directories if they don't exist
-
+za = zeros(Float64, nx,ny,nz)
+rho = zeros(Float64, nx, ny, nz, nt)
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
 
@@ -86,18 +87,17 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         p = copy(z)  
         
         za = -0.5 .* (zz[:, :, 1:end-1] .+ zz[:, :, 2:end])
-        rho = zeros(Float64, nx, ny, nz, nt)
+        #rho = zeros(Float64, nx, ny, nz, nt)
         for t in 1:nt
         
             S_t = Salt[:, :, :, t]
             T_t = Theta[:, :, :, t]
             
-            rho1 = densjmd95(S_t, T_t, za)
+            rho1 = densjmd95(S_t, T_t,-za)
             
             rho[:, :, :, t] = rho1
         end
         
-
 
         # --- Save file ---
         outfile = joinpath(base,"Density", "rho_in_$suffix.bin")
@@ -111,4 +111,5 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 println("\nAll tiles processed successfully!")
+
 
