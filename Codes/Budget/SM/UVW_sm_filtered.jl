@@ -6,9 +6,8 @@ using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path"]
+mkpath(joinpath(base,"SM_I"))
 base2 = cfg["base_path2"]
-
-mkpath(joinpath(base,"SM"))
 mkpath(joinpath(base2, "UVW_F"))
 
 # --- Domain & grid ---
