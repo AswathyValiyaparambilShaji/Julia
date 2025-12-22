@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, Plots, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 #using CairoMakie, SparseArrays
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
@@ -55,7 +55,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
     
         # --- Read fields ---
-        rho = read_bin(joinpath(base, "rho/rho_$suffix.bin"), (nx, ny, nz, nt));    rho[isnan.(rho)] .= 0
+        rho = read_bin(joinpath(base, "Density/rho_in_$suffix.bin"), (nx, ny, nz, nt));    rho[isnan.(rho)] .= 0
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
         DRFfull = hFacC .* DRF3d

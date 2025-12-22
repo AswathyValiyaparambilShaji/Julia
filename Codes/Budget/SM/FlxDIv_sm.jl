@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, Plots, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf,  FilePathsBase, LinearAlgebra, TOML
 #using CairoMakie, SparseArrays
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))

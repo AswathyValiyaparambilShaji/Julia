@@ -1,8 +1,8 @@
 
 
 base_path = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/"
-base_path2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/SM/"
-
+base_path2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/SM_I/"
+fig_base  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/Figures/"
 
 xn_start = 1
 xn_end   = 1
