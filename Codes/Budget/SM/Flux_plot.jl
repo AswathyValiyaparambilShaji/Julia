@@ -93,6 +93,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         tfy[xs+1:xe-1, ys+1:ye-1] .= fyY[xsf:xef,ysf:yef]
     end
 end
+println(tfx[1:tx,10])
 # ABSOLUTE FLUX of MITgcm data for BOX56
 fm = sqrt.(tfx.^2 + tfy.^2)
 
