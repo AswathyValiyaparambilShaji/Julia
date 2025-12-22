@@ -32,6 +32,12 @@ nt = div(Tts, dto)
 timesteps_per_3days = 72  # 3 timesteps = 72 hours
 nt_avg = div(nt, timesteps_per_3days)  
 
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+g = 9.8
+
 # reference density
 rho0 = 999.8
 
