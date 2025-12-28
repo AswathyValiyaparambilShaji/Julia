@@ -111,5 +111,3 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 println("\nAll tiles processed successfully!")
-
-

@@ -101,7 +101,7 @@ fm = sqrt.(tfx.^2 + tfy.^2)
 using CairoMakie
 # --- Config ---
 FIGDIR        = cfg["fig_base"]
-HEAT_CBAR_MAX = 0.30        # kW/m
+HEAT_CBAR_MAX = 15      # kW/m
 QUIVER_STEP   = 20          # grid stride for arrows
 ARROW_SCALEUP = 5.0
 DO_TRANSPOSE  = false       # set true if your image appears rotated/flipped
@@ -150,7 +150,7 @@ for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
     end
 end
 
-#=if !isempty(vec)
+if !isempty(vec)
     # scale arrows to look nice relative to degrees grid
     maxmag = maximum(norm, vec)
     cell_x = (maximum(LON) - minimum(LON)) / NX
@@ -160,9 +160,8 @@ end
 
     arrows!(ax1, pos, scale .* vec; color=:black, shaftwidth=1.5f0, tipwidth=8f0, tiplength=8f0)
 end
-=#
 
 Colorbar(fig1[1, 2], hm1, label = "Flux (kW/m)")
-save(joinpath(FIGDIR, "Flux_with_quiver_NIW2_v3.png"), fig1)
+save(joinpath(FIGDIR, "Flux_with_quiver_SM_v1.png"), fig1)
 
 display(fig1)

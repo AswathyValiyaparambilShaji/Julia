@@ -47,20 +47,26 @@ bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
 
 # Now parallelize over ALL 42 tiles
 
-HFLUX = zeros(NX, NY)
+for xn in cfg["xn_start"]:cfg["xn_end"]
+    for yn in cfg["yn_start"]:cfg["yn_end"]
 
-#for xn in cfg["xn_start"]:cfg["xn_end"]
-    #for yn in cfg["yn_start"]:cfg["yn_end"]
-xn = 1
-yn = 1
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
     
         # --- Read fields ---
-        rho = read_bin(joinpath(base, "Density/rho_in_$suffix.bin"), (nx, ny, nz, nt));    rho[isnan.(rho)] .= 0
+        #rho = read_bin(joinpath(base, "Density/rho_in_$suffix.bin"), (nx, ny, nz, nt))    # rho[isnan.(rho)] .= 0
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
+        rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
+            # Calculate the number of bytes needed
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            # Read the raw bytes
+            raw_bytes = read(io, nbytes)
+            # Reinterpret as Float64 array and reshape
+            raw_data = reinterpret(Float64, raw_bytes)
+            reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
+        end)
         DRFfull = hFacC .* DRF3d
         z = cumsum(DRFfull, dims=3)
         zz= cat(zeros(nx, ny, 1),z; dims=3)
@@ -71,32 +77,32 @@ yn = 1
         
         fu = Float64.(open(joinpath(base,"SM", "UVW_F", "fu_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float32)
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float32, raw_bytes)
+            raw_data = reinterpret(Float64, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
         end)
 
 
         fv = Float64.(open(joinpath(base, "SM", "UVW_F", "fv_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float32)
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float32, raw_bytes)
+            raw_data = reinterpret(Float64, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
         end)
 
         fw = Float64.(open(joinpath(base,"SM", "UVW_F", "fw_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float32)
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float32, raw_bytes)
+            raw_data = reinterpret(Float64, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
         end)
 
@@ -118,7 +124,7 @@ yn = 1
 
         vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
         vp_3d  = fv .- vcA_3d
-        vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0
+        vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0 
 
         wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
         wp_3d  = fw .- wcA_3d
@@ -137,62 +143,12 @@ yn = 1
         yfdm_3d = sum(yfm_3d .* DRFfull, dims=3)
         zfdm_3d = sum(zfm_3d .* DRFfull, dims=3)
 
-        println(xfm_3d[1:nx,1:ny,:])
-
         hfdm_3d = sqrt.(xfdm_3d.^2 .+ yfdm_3d.^2)       # (nx,ny,1,1)
         
-
-       #= Calculate tile positions in global grid
-       xs = (xn - 1) * tx + 1
-       xe = xs + tx + (2 * buf) - 1
-       ys = (yn - 1) * ty + 1
-       ye = ys + ty + (2 * buf) - 1
-       
-       # Store horizontal flux (remove buffer zones)
-       HFLUX[xs+2:xe-2, ys+2:ye-2] .= hfdm_3d[2:end-1, 2:end-1, 1, 1]
-        =#
-        #open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, xfm_3d); end
-        #open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, yfm_3d); end
-        #open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, zfm_3d); end    
+        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, xfm_3d); end
+        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, yfm_3d); end
+        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, zfm_3d); end    
     println("Completed tile: $suffix")
     
-    #end
-#end
-
-
-# --- Select a point (i, j) ---
-i = 25  # x-index
-j = 25  # y-index
-t = 1   # time index
-
-# --- Extract profiles at this point ---
-#rho_profile = rho_insitu[i, j, :, t]
-z_profile = za[i, j, :]
-
-#= Plot horizontal flux
-fig = Figure(resolution=(800, 600))
-
-
-ax1 = Axis(fig[1, 1], 
-           title="Depth-Integrated Horizontal Flux (W/m²)", 
-           xlabel="Longitude[°]", 
-           ylabel="Latitude[°]")
-
-
-hm = CairoMakie.heatmap!(ax1, lon, lat, HFLUX'; 
-                         interpolate=false, 
-                         colorrange=(0, 0.1), 
-                         colormap=:viridis)
-
-
-Colorbar(fig[1, 2], hm, label="W/m²")
-
-
-display(fig)
-
-
-fgpathj = "/home3/avaliyap/Documents/julia/"
-fgname = "horizontal_flux.png"
-save(joinpath(fgpathj, fgname), fig)
-
-=#
+    end
+end
