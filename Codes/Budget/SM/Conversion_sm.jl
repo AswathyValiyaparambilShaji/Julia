@@ -56,7 +56,16 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
     
         # --- Read fields ---
-        rho = read_bin(joinpath(base, "rho/rho_$suffix.bin"), (nx, ny, nz, nt));    rho[isnan.(rho)] .= 0
+        rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
+            # Calculate the number of bytes needed
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            # Read the raw bytes
+            raw_bytes = read(io, nbytes)
+            # Reinterpret as Float64 array and reshape
+            raw_data = reinterpret(Float64, raw_bytes)
+            reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
+        end)
+        
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
         DRFfull = hFacC .* DRF3d
@@ -64,7 +73,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth = sum(DRFfull, dims=3)
         DRFfull[hFacC .== 0] .= 0.0
 
-        fu = open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+        fu = open(joinpath(base,"SM_I", "UVW_F", "fu_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
             nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
@@ -75,7 +84,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end
 
 
-        fv = open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+        fv = open(joinpath(base,"SM_I", "UVW_F", "fv_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
             nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
