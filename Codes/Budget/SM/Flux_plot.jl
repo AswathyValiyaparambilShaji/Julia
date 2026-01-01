@@ -130,7 +130,7 @@ ax1  = Axis(fig1[1, 1],
     ylabel = "Latitude [°]",
 )
 
-ax1.limits[] = (193.0,194.2,24.0, 25.4)
+#ax1.limits[] = (193.0,194.2,24.0, 25.4)
 
 hm1 = CairoMakie.heatmap!(ax1, LON, LAT, F;
     interpolate = false,
