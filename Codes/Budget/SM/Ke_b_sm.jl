@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, Plots, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 #using CairoMakie, SparseArrays
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
@@ -54,7 +54,16 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
     
         # --- Read fields ---
-        rho = read_bin(joinpath(base, "rho/rho_$suffix.bin"), (nx, ny, nz, nt));    rho[isnan.(rho)] .= 0
+        rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
+            # Calculate the number of bytes needed
+            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            # Read the raw bytes
+            raw_bytes = read(io, nbytes)
+            # Reinterpret as Float64 array and reshape
+            raw_data = reinterpret(Float64, raw_bytes)
+            reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
+        end)
+        
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
         DRFfull = hFacC .* DRF3d

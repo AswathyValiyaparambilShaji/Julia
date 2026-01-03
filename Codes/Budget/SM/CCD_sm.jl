@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, Plots, FilePathsBase, LinearAlgebra, TOML, CairoMakie
+using DSP, MAT, Statistics, Printf,  FilePathsBase, LinearAlgebra, TOML, CairoMakie
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
@@ -66,10 +66,11 @@ Conv = zeros(NX, NY)
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
 
-
+        #println(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"))
         # Read flux divergence field
-        fxD = open(joinpath(base2, "FDiv", "FDiv_$(suffix)2.bin"), "r") do io
+        fxD = open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float64)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float64, raw_bytes)
@@ -78,7 +79,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read conversion field
-        C = open(joinpath(base2, "Conv", "Conv_$(suffix)2.bin"), "r") do io
+        C = open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float64)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float64, raw_bytes)
@@ -108,19 +109,22 @@ fig = Figure(resolution=(1200, 400))
 
 # Subplot 1: Conversion
 ax1 = Axis(fig[1, 1], title="Conversion  (W/m²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
-ax1.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax1.limits[] = (193.0,194.2,24.0, 25.4)
+#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
 # Subplot 2: Flux Divergence
 ax2 = Axis(fig[1, 2], title="∇.F (W/m²) ", xlabel="Longitude[°]")
-ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax2.limits[] = (193.0,194.2,24.0, 25.4)
+#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
 # Subplot 3: Dissipation
 ax3 = Axis(fig[1, 3], title="Dissipation (W/m²) ", xlabel="Longitude[°]")
-ax3.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax3.limits[] = (193.0,194.2,24.0, 25.4)
+#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
@@ -130,9 +134,8 @@ display(fig)
 
 
 # Save figure
-fgpathj = "/home3/avaliyap/Documents/julia/"
-fgname = "CDDFull_sm_insitu.png"
-save(joinpath(fgpathj, fgname), fig)
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "CCDFull_SM_I_v1.png"), fig)
 
 
 
