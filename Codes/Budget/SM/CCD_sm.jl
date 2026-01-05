@@ -109,22 +109,19 @@ fig = Figure(resolution=(1200, 400))
 
 # Subplot 1: Conversion
 ax1 = Axis(fig[1, 1], title="Conversion  (W/m²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
-ax1.limits[] = (193.0,194.2,24.0, 25.4)
-#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax1.limits[] =((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat))) #(193.0,194.2,24.0, 25.4)
 hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
 # Subplot 2: Flux Divergence
 ax2 = Axis(fig[1, 2], title="∇.F (W/m²) ", xlabel="Longitude[°]")
-ax2.limits[] = (193.0,194.2,24.0, 25.4)
-#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat))) #(193.0,194.2,24.0, 25.4)
 hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
 # Subplot 3: Dissipation
 ax3 = Axis(fig[1, 3], title="Dissipation (W/m²) ", xlabel="Longitude[°]")
-ax3.limits[] = (193.0,194.2,24.0, 25.4)
-#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+ax3.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat))) #(193.0,194.2,24.0, 25.4)
 hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
 
 
