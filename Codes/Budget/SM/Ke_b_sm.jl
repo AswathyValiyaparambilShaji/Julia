@@ -40,6 +40,11 @@ g = 9.8
 
 #reference density
 rho0 = 999.8
+# --- Filter (915 day band, 1 step sampling here) ---
+T1, T2, delt, N = 9.0, 15.0, 1.0, 4
+fcutlow, fcuthigh = 1 / T2, 1 / T1
+fnq = 1 / delt
+bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
 
 
 # Now parallelize over ALL 42 tiles
