@@ -71,7 +71,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth = sum(DRFfull, dims=3)
         DRFfull[hFacC .== 0] .= 0.0
 
-        fu = open(joinpath(base, "UVW_F", "fu_$suffix.bin"), "r") do io
+        fu = open(joinpath(base, "SM","UVW_F", "fu_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
             nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
@@ -82,7 +82,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end
 
 
-        fv = open(joinpath(base, "UVW_F", "fv_$suffix.bin"), "r") do io
+        fv = open(joinpath(base,"SM", "UVW_F", "fv_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
             nbytes = nx * ny * nz *nt * sizeof(Float64)
             # Read the raw bytes
