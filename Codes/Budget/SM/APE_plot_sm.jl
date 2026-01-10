@@ -258,9 +258,9 @@ fig = Figure(size=(1400, 500))
 ax1 = Axis(fig[1, 1],
           title="Depth-Integrated Time-Averaged APE",
           xlabel="Longitude [°]",
-          ylabel="Latitude [°]",
-          ax2.limits[] = (193.0,194.2,24.0, 25.4)#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
+          ylabel="Latitude [°]",        
           )
+ax1.limits[] = (193.0,194.2,24.0, 25.4)#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 
 hm1 = CairoMakie.heatmap!(ax1, lon, lat, APE_full;
@@ -293,8 +293,8 @@ ax2 = Axis(fig[1, 3],
           title="APE Anomaly Ratio (vs neighbors)",
           xlabel="Longitude [°]",
           ylabel="Latitude [°]",
-          ax2.limits[] = (193.0,194.2,24.0, 25.4)#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
           )
+ax2.limits[] = (193.0,194.2,24.0, 25.4)#((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 
 
