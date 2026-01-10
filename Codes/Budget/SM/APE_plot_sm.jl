@@ -65,7 +65,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        DRFfull[hFacC .== 0] .= 0
 
 
-       APE = open(joinpath(base2, "APE_no_reg", "APE_t_sm_$suffix.bin"), "r") do io
+       APE = open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz * nt * sizeof(Float64)
            reshape(reinterpret(Float64, read(io, nbytes)),
                    nx, ny, nz, nt)
@@ -286,7 +286,7 @@ if !isempty(low_anomalies)
     low_lats = [lat[x[2]] for x in low_anomalies[1:min(20, end)]]
     scatter!(ax1, low_lons, low_lats, color=:white, marker='○', markersize=8)
 end
-
+ 
 
 # Plot 2: Anomaly ratio map
 ax2 = Axis(fig[1, 3],
