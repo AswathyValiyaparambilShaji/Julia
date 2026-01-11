@@ -50,7 +50,7 @@ rho0 = 999.8
 
 
 # --- Output directories ---
-mkpath(joinpath(base2, "APE_no_reg"))
+mkpath(joinpath(base2, "APE"))
 mkpath(joinpath(base2, "pe"))
 
 
