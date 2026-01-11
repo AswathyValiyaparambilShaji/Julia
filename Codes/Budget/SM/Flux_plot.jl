@@ -49,25 +49,25 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
-        fx = open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "r") do io
+        fx = Float64.(open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz * sizeof(Float64)
+            nbytes = nx * ny * nz * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz)
-        end
+        end)
 
-        fy = open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "r") do io
+        fy = Float64.(open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz * sizeof(Float64)
+            nbytes = nx * ny * nz * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz)
-        end
+        end)
 
         # --- DRFfull and Flux Calculations ---
         DRFfull = hFacC .* DRF3d

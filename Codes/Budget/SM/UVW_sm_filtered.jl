@@ -74,14 +74,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
             open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "w") do io
-                write(io, fu)
+                write(io, Float32.(fu))
             end
             open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "w") do io
-                write(io, fv)
+                write(io, Float32.(fv))
             end
                 
             open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "w") do io
-                write(io, fw)
+                write(io, Float32.(fw))
             end
 
             println("Completed tile: $suffix")

@@ -54,15 +54,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     DRFfull[hFacC .== 0] .= 0.0
 
 
-    ke_t = open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+    ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz * nt * sizeof(Float64)
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
-        end
+        end)
 
 
         #=fv = open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io

@@ -58,13 +58,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        println("Processing tile: $suffix")
       
        # --- Read fields ---
-       Salt = open(joinpath(base,"3day_mean", "Salt", "salt_3day_$suffix.bin"), "r") do io
+       Salt = Float64.(open(joinpath(base,"3day_mean", "Salt", "salt_3day_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz *nt_avg * sizeof(Float32)
            raw_bytes = read(io, nbytes)
            raw_data = reinterpret(Float32, raw_bytes)
            reshaped_data = reshape(raw_data, nx, ny, nz, nt_avg)
            convert(Array{Float64,4}, reshaped_data)
-       end
+       end)
 
 
        Theta = open(joinpath(base,"3day_mean", "Theta", "theta_3day_$suffix.bin"), "r") do io
@@ -157,7 +157,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        # --- Save file ---
        outfile = joinpath(base,"3day_mean", "N2", "N2_3day_$suffix.bin")
        open(outfile, "w") do io
-           write(io, N2)
+           write(io, Float32.(N2))
        end
       
        println("Completed tile: $suffix")

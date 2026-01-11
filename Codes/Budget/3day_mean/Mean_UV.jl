@@ -92,10 +92,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         salt_file = joinpath(base, "3day_mean","Salt/salt_3day_$suffix.bin")
         theta_file = joinpath(base,"3day_mean", "Theta/theta_3day_$suffix.bin")
        
-        write(ucc_file, ucc_3day)
-        write(vcc_file, vcc_3day)
-        write(salt_file, salt_3day)
-        write(theta_file, theta_3day)
+        write(ucc_file, Float32.(ucc_3day))
+        write(vcc_file, Float32.(vcc_3day))
+        write(salt_file, Float32.(salt_3day))
+        write(theta_file, Float32.(theta_3day))
 
 
         # Clear memory

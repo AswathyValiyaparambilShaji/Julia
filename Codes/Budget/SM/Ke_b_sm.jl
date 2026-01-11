@@ -76,26 +76,26 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth = sum(DRFfull, dims=3)
         DRFfull[hFacC .== 0] .= 0.0
 
-        fu = open(joinpath(base, "SM","UVW_F", "fu_$suffix.bin"), "r") do io
+        fu = Float64.(open(joinpath(base2,"UVW_F", "fu_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
-        end
+        end)
 
 
-        fv = open(joinpath(base,"SM", "UVW_F", "fv_$suffix.bin"), "r") do io
+        fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
-        end
+        end)
 
     # --- Bandpass filter (time is last dim) ---
     fr = bandpassfilter(rho, T1, T2, delt,N,nt)
@@ -113,11 +113,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         
 
         open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "w") do io
-            write(io, ke)
+            write(io, Float32.(ke))
         end#
 
         open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "w") do io
-            write(io, b)
+            write(io, Float32.(b))
         end
         
         println("Completed tile: $suffix")

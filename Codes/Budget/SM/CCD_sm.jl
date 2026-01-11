@@ -70,21 +70,21 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         #println(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"))
         # Read flux divergence field
-        fxD = open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float64)
+        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx-2, ny-2)
-        end
+        end)
 
 
         # Read conversion field
-        C = open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float64)
+        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx-2, ny-2)
-        end
+        end)
         
         # Calculate dissipation
         dispn = C .- fxD

@@ -67,10 +67,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
        # --- Read N2 (3-day averaged) ---
-       N2_phase = open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
-           raw = read(io, nx * ny * nz * nt_avg * sizeof(Float64))
-           reshape(reinterpret(Float64, raw), nx, ny, nz, nt_avg)
-       end
+       N2_phase = Float64.(open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
+           raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
+           reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
+       end)
 
 
        # --- Adjust N2 to interfaces ---
@@ -100,10 +100,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
        # --- Read buoyancy ---
-       b = open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-           raw = read(io, nx * ny * nz * nt * sizeof(Float64))
-           reshape(reinterpret(Float64, raw), nx, ny, nz, nt)
-       end
+       b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
+           raw = read(io, nx * ny * nz * nt * sizeof(Float32))
+           reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+       end)
 
 
        # ==================================================
@@ -145,12 +145,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # --- Save ---
        open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "w") do io
-           write(io, APE)
+           write(io, Float32.(APE))
        end
 
 
        open(joinpath(base2, "pe", "pe_t_sm_$suffix.bin"), "w") do io
-           write(io, pe)
+           write(io, Float32.(pe))
        end
 
 

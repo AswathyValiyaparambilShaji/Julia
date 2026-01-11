@@ -75,34 +75,34 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth = sum(DRFfull, dims=3)
         DRFfull[hFacC .== 0] .= 0.0
         
-        fu = Float64.(open(joinpath(base,"SM", "UVW_F", "fu_$suffix.bin"), "r") do io
+        fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny,nz ,nt)
         end)
 
 
-        fv = Float64.(open(joinpath(base, "SM", "UVW_F", "fv_$suffix.bin"), "r") do io
+        fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
         end)
 
-        fw = Float64.(open(joinpath(base,"SM", "UVW_F", "fw_$suffix.bin"), "r") do io
+        fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
             # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float64)
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
             # Read the raw bytes
             raw_bytes = read(io, nbytes)
             # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshaped_data = reshape(raw_data, nx, ny, nz, nt)
         end)
 
@@ -145,9 +145,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         hfdm_3d = sqrt.(xfdm_3d.^2 .+ yfdm_3d.^2)       # (nx,ny,1,1)
         
-        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, xfm_3d); end
-        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, yfm_3d); end
-        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, zfm_3d); end    
+        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, Float32.(xfm_3d)) end
+        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, Float32.(yfm_3d)); end
+        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, Float32.(zfm_3d)); end    
     println("Completed tile: $suffix")
     
     end
