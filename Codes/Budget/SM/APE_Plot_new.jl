@@ -133,7 +133,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, APE_full;
                         interpolate=false,
                         colormap=:jet,
-                        colorrange=(0, 5000))
+                        colorrange=(0, 8000))
 
 
 Colorbar(fig[1, 2], hm, label="APE [J/m²]")
