@@ -67,13 +67,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        end)
 
 
-       Theta = open(joinpath(base,"3day_mean", "Theta", "theta_3day_$suffix.bin"), "r") do io
+       Theta = Float64.(open(joinpath(base,"3day_mean", "Theta", "theta_3day_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz *nt_avg * sizeof(Float32)
            raw_bytes = read(io, nbytes)
            raw_data = reinterpret(Float32, raw_bytes)
            reshaped_data = reshape(raw_data, nx, ny, nz, nt_avg)
            convert(Array{Float64,4}, reshaped_data)
-       end
+       end)
        
        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
       
