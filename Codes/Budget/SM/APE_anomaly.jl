@@ -1,4 +1,5 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using Impute
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
@@ -6,12 +7,20 @@ using .FluxUtils: read_bin, bandpassfilter
 
 
 config_file = get(ENV, "JULIA_CONFIG",
-                 joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+                joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 
 
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
+
+
+# --- Domain & grid ---
+NX, NY = 288, 468
+minlat, maxlat = 24.0, 31.91
+minlon, maxlon = 193.0, 199.0
+lat = range(minlat, maxlat, length=NY)
+lon = range(minlon, maxlon, length=NX)
 
 
 # --- Tile & time ---
@@ -32,162 +41,156 @@ ts      = 72      # 3-day window
 nt_avg = div(nt, ts)
 
 
-"""
-Compute local anomaly: how much does this point differ from its neighbors?
-Returns the ratio: (value - median_of_neighbors) / median_of_neighbors
-"""
-function compute_local_anomaly(data::Array{Float64, 3}, i::Int, j::Int, k::Int)
-    neighbors = Float64[]
-    
-    # Get 3x3 neighborhood (excluding center)
-    for di in -1:1, dj in -1:1
-        if di == 0 && dj == 0
-            continue  # skip center point
-        end
-        
-        ni, nj = i + di, j + dj
-        
-        # Check bounds
-        if 1 <= ni <= size(data, 1) && 1 <= nj <= size(data, 2)
-            val = data[ni, nj, k]
-            if isfinite(val)
-                push!(neighbors, val)
-            end
-        end
-    end
-    
-    if length(neighbors) < 3  # need at least 3 neighbors
-        return NaN
-    end
-    
-    center_val = data[i, j, k]
-    neighbor_median = median(neighbors)
-    
-    if abs(neighbor_median) < 1e-10  # avoid division by tiny numbers
-        return NaN
-    end
-    
-    anomaly = (center_val - neighbor_median) / abs(neighbor_median)
-    return anomaly
-end
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+
+
+rho0 = 999.8
+
+
+# --- Output directories ---
+mkpath(joinpath(base2, "APE"))
+mkpath(joinpath(base2, "pe"))
 
 
 # ==========================================================
-# =================== ANALYZE ANOMALIES ====================
+# ====================== MAIN LOOP =========================
 # ==========================================================
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
-   for yn in cfg["yn_start"]:cfg["yn_end"]
+  for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
-       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-       
-       println("\n" * "="^60)
-       println("Analyzing tile: $suffix")
-       println("="^60)
+      suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-       # --- Read APE ---
-       APE = open(joinpath(base2, "APE_no_reg", "APE_t_sm_$suffix.bin"), "r") do io
-           raw = read(io, nx * ny * nz * nt * sizeof(Float64))
-           reshape(reinterpret(Float64, raw), nx, ny, nz, nt)
-       end
-       
-       # --- Read N2 ---
-       N2_phase = open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
-           raw = read(io, nx * ny * nz * nt_avg * sizeof(Float64))
-           reshape(reinterpret(Float64, raw), nx, ny, nz, nt_avg)
-       end
-       
-       # --- Read b ---
-       b = open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-           raw = read(io, nx * ny * nz * nt * sizeof(Float64))
-           reshape(reinterpret(Float64, raw), nx, ny, nz, nt)
-       end
-       
-       # --- Read hFacC ---
-       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+      # --- Read N2 (3-day averaged) ---
+      N2_phase = Float64.(open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
+          raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
+          reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
+      end)
 
 
-       # Analyze a snapshot (let's use t=1 as example)
-       t = 1
-       APE_snap = APE[:, :, :, t]
-       b_snap = b[:, :, :, t]
-       N2_snap = N2_phase[:, :, :, 1]  # corresponding 3-day mean
-       
-       # Store anomalies
-       high_anomalies = []  # (i, j, k, APE_value, anomaly_ratio, N2, b)
-       low_anomalies = []
-       
-       # Scan through the domain
-       for k in 1:nz
-           for i in 2:nx-1  # avoid edges
-               for j in 2:ny-1
-                   
-                   if hFacC[i, j, k] == 0 || !isfinite(APE_snap[i, j, k])
-                       continue
-                   end
-                   
-                   anomaly = compute_local_anomaly(APE_snap, i, j, k)
-                   
-                   if !isfinite(anomaly)
-                       continue
-                   end
-                   
-                   # Find high anomalies (point much higher than neighbors)
-                   if anomaly > 5.0  # 5x higher than median of neighbors
-                       push!(high_anomalies, (i, j, k, APE_snap[i,j,k], anomaly, 
-                                             N2_snap[i,j,k], b_snap[i,j,k]))
-                   end
-                   
-                   # Find low anomalies (point much lower than neighbors)
-                   if anomaly < -0.8  # 80% lower than median of neighbors
-                       push!(low_anomalies, (i, j, k, APE_snap[i,j,k], anomaly,
-                                            N2_snap[i,j,k], b_snap[i,j,k]))
-                   end
-               end
-           end
-       end
-       
-       # Sort by anomaly magnitude
-       sort!(high_anomalies, by = x -> x[5], rev=true)
-       sort!(low_anomalies, by = x -> x[5])
-       
-       # Report findings
-       println("\n🔴 HIGH APE ANOMALIES (top 20):")
-       println("   i    j    k        APE          Anomaly      N²            b")
-       println("-"^75)
-       for (idx, (i, j, k, ape, anom, n2, b_val)) in enumerate(high_anomalies[1:min(20, end)])
-           @printf("%4d %4d %4d  %12.3e  %8.2fx  %12.3e  %12.3e\n", 
-                   i, j, k, ape, anom, n2, b_val)
-       end
-       
-       println("\n🔵 LOW APE ANOMALIES (top 20):")
-       println("   i    j    k        APE          Anomaly      N²            b")
-       println("-"^75)
-       for (idx, (i, j, k, ape, anom, n2, b_val)) in enumerate(low_anomalies[1:min(20, end)])
-           @printf("%4d %4d %4d  %12.3e  %8.2fx  %12.3e  %12.3e\n", 
-                   i, j, k, ape, anom, n2, b_val)
-       end
-       
-       println("\n📊 SUMMARY:")
-       println("   Total high anomalies (>5x neighbors): ", length(high_anomalies))
-       println("   Total low anomalies (<-0.8x neighbors): ", length(low_anomalies))
-       
-       # Check what's causing the high anomalies
-       if !isempty(high_anomalies)
-           n2_values = [x[6] for x in high_anomalies[1:min(100, end)]]
-           b_values = [x[7] for x in high_anomalies[1:min(100, end)]]
-           println("\n   In top 100 high anomalies:")
-           println("      N² range: ", extrema(n2_values))
-           println("      b range: ", extrema(b_values))
-           println("      Negative N² count: ", sum(n2_values .< 0))
-           println("      Very small N² (|N²| < 1e-5) count: ", sum(abs.(n2_values) .< 1e-5))
-       end
-       
-       println("\nCompleted analysis for tile: $suffix")
-   end
+      # --- Adjust N2 to interfaces ---
+      N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
+      N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+      N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+      N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+
+      # --- Average to cell centers ---
+      N2_center = zeros(Float64, nx, ny, nz, nt_avg)
+      for k in 1:nz
+          N2_center[:, :, k, :] .=
+              0.5 .* (N2_adjusted[:, :, k, :] .+
+                      N2_adjusted[:, :, k+1, :])
+      end
+
+
+      # ==========================================================
+      # ======== FILTER OUT ANOMALOUSLY LOW N2 VALUES ============
+      # ==========================================================
+      
+      # Calculate standard deviation of N2 (excluding NaN and inf)
+      valid_N2 = filter(isfinite, N2_center)
+      N2_std = std(valid_N2)
+      N2_threshold = 3.0 * N2_std
+      
+      println("Tile $suffix:")
+      println("  N2 std: $N2_std")
+      println("  N2 threshold (3*std): $N2_threshold")
+      
+      # Count values that will be filtered
+      n_filtered = sum(N2_center .< N2_threshold)
+      n_total = length(N2_center)
+      println("  Filtering $(n_filtered) values out of $(n_total) ($(round(100*n_filtered/n_total, digits=2))%)")
+      
+      # Replace low N2 values with NaN
+      N2_center[N2_center .< N2_threshold] .= NaN
+      
+      # Use Impute to replace NaN with nearest neighbor values
+      # Process each time step separately
+      for t in 1:nt_avg
+          # Reshape to 2D matrix (spatial points × depth levels)
+          n2_slice = reshape(N2_center[:, :, :, t], nx*ny, nz)
+          
+          # Impute missing values using k-nearest neighbors
+          n2_imputed = Impute.knn(n2_slice; k=5)
+          
+          # Reshape back
+          N2_center[:, :, :, t] = reshape(n2_imputed, nx, ny, nz)
+      end
+      
+      println("  After filtering - N2 range: ", extrema(filter(isfinite, N2_center)))
+
+
+      # --- Read hFacC ---
+      hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"),
+                       (nx, ny, nz))
+
+
+      # --- Thickness ---
+      DRFfull = hFacC .* DRF3d
+      DRFfull[hFacC .== 0] .= 0.0
+
+
+      # --- Read buoyancy ---
+      b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
+          raw = read(io, nx * ny * nz * nt * sizeof(Float32))
+          reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+      end)
+
+
+      # ==================================================
+      # ======== COMPUTE APE WITH FILTERED N2 ============
+      # ==================================================
+     
+      APE = fill(NaN, nx, ny, nz, nt)
+
+
+      for t in 1:nt_avg
+          n2_val = N2_center[:, :, :, t]
+        
+          tstart = (t - 1) * ts + 1
+          tend   = (t - 1) * ts + ts
+        
+          for tt in tstart:tend
+              b_tt = b[:, :, :, tt]
+            
+              # APE = 0.5 * rho0 * (b^2 / N2)
+              APE[:, :, :, tt] = 0.5 .* rho0 .* (b_tt.^2 ./ n2_val)
+          end
+      end
+
+
+      println("  APE range: ", extrema(filter(isfinite, APE)))
+      println("  APE has ", sum(isfinite.(APE)), " finite values")
+      println("  APE has ", sum(isinf.(APE)), " infinite values")
+      println("  APE has ", sum(isnan.(APE)), " NaN values")
+
+
+      # --- PE (unchanged) ---
+      pe = 0.5 .* b.^2
+
+
+      # --- Save ---
+      open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "w") do io
+          write(io, Float32.(APE))
+      end
+
+
+      open(joinpath(base2, "pe", "pe_t_sm_$suffix.bin"), "w") do io
+          write(io, Float32.(pe))
+      end
+
+
+      println("Completed tile: $suffix\n")
+  end
 end
+
+
 
 
