@@ -129,7 +129,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        end
 
 
-       # Print some diagnostics
+       #= Print some diagnostics
        println("Tile $suffix:")
        println("  N2 range: ", extrema(filter(isfinite, N2_center)))
        println("  b range: ", extrema(filter(isfinite, b)))
@@ -137,6 +137,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        println("  APE has ", sum(isfinite.(APE)), " finite values")
        println("  APE has ", sum(isinf.(APE)), " infinite values")
        println("  APE has ", sum(isnan.(APE)), " NaN values")
+       =#
 
 
        # --- PE (unchanged) ---
