@@ -142,5 +142,9 @@ Colorbar(fig[1, 2], hm, label="APE [J/m²]")
 display(fig)
 
 
+# Save figure
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "APE_sm_v1.png"), fig)
+
 
 
