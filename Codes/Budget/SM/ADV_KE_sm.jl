@@ -145,7 +145,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         
         # Save time-averaged flux
         open(joinpath(output_dir, "u_ke_mean_$suffix.bin"), "w") do io
-            write(io, u_ke_mean)
+            write(io, Float32.(u_ke_mean))
         end
         
         #= Save full time series
