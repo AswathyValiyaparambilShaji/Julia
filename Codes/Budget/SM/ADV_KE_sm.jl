@@ -1,14 +1,16 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra
 
 
-include("/home3/avaliyap/Documents/julia/FluxUtils.jl")
+include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 
 
-# ===================================================================
-# CONFIGURATION
-# ===================================================================
+config_file = get(ENV, "JULIA_CONFIG",
+               joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+cfg = TOML.parsefile(config_file)
 
+base  = cfg["base_path"]
+base2 = cfg["base_path2"]
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -32,31 +34,26 @@ ts = 72  # CRITICAL FIX: Was undefined, needed for t_avg calculation
 nt_avg = div(nt, ts)
 
 
-# --- Physical constants ---
-thk = matread("/nobackup/avaliyap/Box56/hFacC/thk90.mat")["thk90"]
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.8
-rho0 = 999.8  # Reference density (kg/m³)
 
 
-# --- Base paths ---
-base = "/nobackup/avaliyap/Box56/"
-base2 = "/nobackup/avaliyap/Box56/SM/"
-base3 = "/nobackup/avaliyap/Box56/3day_avg/"
+rho0 = 999.8
 
 
-# ===================================================================
-# MAIN PROCESSING LOOP
-# ===================================================================
-
+# --- Output directories ---
+mkpath(joinpath(base2, "ADV_KE"))
 
 println("Starting KE flux calculation for 42 tiles...")
 
+for xn in cfg["xn_start"]:cfg["xn_end"]
+    for yn in cfg["yn_start"]:cfg["yn_end"]
 
-for xn in 1:6
-    for yn in 1:7
+
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+
         println("\n--- Processing tile: $suffix ---")
         
         # --- Read grid metrics ---
@@ -65,14 +62,14 @@ for xn in 1:6
         dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         
         # --- Read velocity fields (3-day averaged) ---
-        U = Float64.(open(joinpath(base3, "U", "ucc_3day_$suffix.bin"), "r") do io
+        U = Float64.(open(joinpath(base,"3day_mean","U", "ucc_3day_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx, ny, nz, nt_avg)
         end)
         
-        V = Float64.(open(joinpath(base3, "V", "vcc_3day_$suffix.bin"), "r") do io
+        V = Float64.(open(joinpath(base, "3day_mean","V", "vcc_3day_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -80,12 +77,12 @@ for xn in 1:6
         end)
         
         # --- Read kinetic energy (full temporal resolution) ---
-        ke_t = open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float64)
+        ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
             raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx, ny, nz, nt)
-        end
+        end)
         
         # --- Calculate cell thicknesses ---
         DRFfull = hFacC .* DRF3d
@@ -130,8 +127,8 @@ for xn in 1:6
             temp2 = v_avg .* ke_y_t
             
             # Handle infinities and NaNs
-            temp1[.!isfinite.(temp1)] .= 0.0
-            temp2[.!isfinite.(temp2)] .= 0.0
+            # temp1[.!isfinite.(temp1)] .= 0.0
+            # temp2[.!isfinite.(temp2)] .= 0.0
             
             # Depth integrate: ∫(U·∇KE) dz
             U_KE[:, :, t] = dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
@@ -151,16 +148,15 @@ for xn in 1:6
             write(io, u_ke_mean)
         end
         
-        # Save full time series
+        #= Save full time series
         open(joinpath(output_dir, "u_ke_timeseries_$suffix.bin"), "w") do io
             write(io, U_KE)
-        end
+        end=#
         
         println("Completed tile: $suffix")
         println("Output saved to $output_dir")
     end
 end
-
 
 println("\n=== All 42 tiles processed successfully ===")
 
