@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
