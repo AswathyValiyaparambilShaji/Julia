@@ -128,7 +128,7 @@ ax = Axis(fig[1, 1],
          title="Depth-Integrated Time-Averaged APE",
          xlabel="Longitude [°]",
          ylabel="Latitude [°]")
-ax.limits[] = (193.0,194.2,24.0, 25.4)
+#ax.limits[] = (193.0,194.2,24.0, 25.4)
 
 hm = CairoMakie.heatmap!(ax, lon, lat, APE_full;
                         interpolate=false,
