@@ -1,9 +1,9 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
-using CairoMakie
+using CairoMakie, SparseArrays
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, bandpassfilter
+using .FluxUtils: read_bin
 
 
 config_file = get(ENV, "JULIA_CONFIG",
@@ -15,7 +15,6 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-# --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
@@ -23,7 +22,6 @@ lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
 
-# --- Tile & time ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
@@ -35,35 +33,21 @@ dt  = 25
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
-
-
-ts      = 72      # 3-day window
+ts  = 72
 nt_avg = div(nt, ts)
 
 
-# --- Thickness & constants ---
 thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
-rho0 = 999.8
+APE_full = fill(NaN, NX, NY)
 
 
 # ==========================================================
-# ========== DIAGNOSTIC: FIND PROBLEMATIC N2 VALUES ========
+# ============ BUILD DEPTH-INTEGRATED APE MAP ==============
 # ==========================================================
-
-
-println("="^70)
-println("DIAGNOSTIC: Finding N2 values causing extreme APE")
-println("="^70)
-
-
-all_N2_values = Float64[]
-all_b_values = Float64[]
-all_APE_values = Float64[]
-extreme_cases = []  # Store (N2, b, APE, location info)
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -71,215 +55,292 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-      println("\nProcessing tile $suffix...")
 
 
-      # --- Read N2 (3-day averaged) ---
-      N2_phase = Float64.(open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
-          raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
-          reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
-      end)
-
-
-      # --- Adjust N2 to interfaces ---
-      N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-      N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
-      N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
-      N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
-
-
-      # --- Average to cell centers ---
-      N2_center = zeros(Float64, nx, ny, nz, nt_avg)
-      for k in 1:nz
-          N2_center[:, :, k, :] .=
-              0.5 .* (N2_adjusted[:, :, k, :] .+
-                      N2_adjusted[:, :, k+1, :])
-      end
-
-
-      # --- Read hFacC ---
       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"),
                        (nx, ny, nz))
 
 
-      # --- Read buoyancy ---
-      b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-          raw = read(io, nx * ny * nz * nt * sizeof(Float32))
-          reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+      DRFfull = DRF3d .* hFacC
+      DRFfull[hFacC .== 0] .= 0
+
+
+      APE = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+          nbytes = nx * ny * nz * nt * sizeof(Float32)
+          reshape(reinterpret(Float32, read(io, nbytes)),
+                  nx, ny, nz, nt)
       end)
 
 
-      # --- Compute APE and collect data ---
-      for t in 1:nt_avg
-          n2_val = N2_center[:, :, :, t]
-        
-          tstart = (t - 1) * ts + 1
-          tend   = (t - 1) * ts + ts
-        
-          for tt in tstart:tend
-              b_tt = b[:, :, :, tt]
-              ape_tt = 0.5 .* rho0 .* (b_tt.^2 ./ n2_val)
-              
-              # Collect all finite values
-              for i in 1:nx, j in 1:ny, k in 1:nz
-                  if isfinite(n2_val[i,j,k]) && isfinite(b_tt[i,j,k]) && isfinite(ape_tt[i,j,k])
-                      push!(all_N2_values, n2_val[i,j,k])
-                      push!(all_b_values, b_tt[i,j,k])
-                      push!(all_APE_values, ape_tt[i,j,k])
-                      
-                      # Flag extreme APE values
-                      if ape_tt[i,j,k] > 1e6  # Adjust threshold as needed
-                          # Calculate global position
-                          global_i = (xn - 1) * tx + i - buf
-                          global_j = (yn - 1) * ty + j - buf
-                          
-                          if 1 <= global_i <= NX && 1 <= global_j <= NY
-                              push!(extreme_cases, (
-                                  N2=n2_val[i,j,k],
-                                  b=b_tt[i,j,k],
-                                  APE=ape_tt[i,j,k],
-                                  tile=suffix,
-                                  i=i, j=j, k=k,
-                                  lon=lon[global_i],
-                                  lat=lat[global_j],
-                                  depth=k
-                              ))
-                          end
-                      end
-                  end
-              end
+      # Time average ignoring NaN
+      APE_clean = replace(APE, NaN => 0.0)
+      APE_sum = sum(APE_clean, dims=4)
+      APE_count = sum(.!isnan.(APE), dims=4)
+
+
+      aped = zeros(Float64, nx, ny, nz)
+      for i in 1:nx, j in 1:ny, k in 1:nz
+          if APE_count[i,j,k,1] > 0
+              aped[i,j,k] = APE_sum[i,j,k,1] / APE_count[i,j,k,1]
+          else
+              aped[i,j,k] = NaN
           end
       end
+
+
+      # Depth integrate
+      ape = zeros(Float64, nx, ny)
+      for i in 1:nx, j in 1:ny
+          weighted = aped[i,j,:] .* DRF3d[i,j,:]
+          ape[i,j] = sum(weighted[.!isnan.(weighted)])
+      end
+
+
+      xs = (xn - 1) * tx + 1
+      xe = xs + tx - 1
+      ys = (yn - 1) * ty + 1
+      ye = ys + ty - 1
+
+
+      ape_interior = ape[buf+1:nx-buf, buf+1:ny-buf]
+
+
+      APE_full[xs:xe, ys:ye] .= ape_interior
+
+
+      println("Completed tile $suffix")
   end
 end
 
 
+println("\nAPE_full range: $(minimum(skipmissing(APE_full))) to $(maximum(skipmissing(APE_full)))")
+
+
 # ==========================================================
-# =================== ANALYSIS & REPORTING =================
+# ============ DETECT OUTLIERS USING LOCAL STATISTICS =====
+# ==========================================================
+
+
+"""
+Compute local statistics for outlier detection
+"""
+function compute_local_stats(data::Matrix{Float64}, i::Int, j::Int, radius::Int=3)
+    neighbors = Float64[]
+    
+    # Get neighborhood (excluding center)
+    for di in -radius:radius, dj in -radius:radius
+        if di == 0 && dj == 0
+            continue
+        end
+        
+        ni, nj = i + di, j + dj
+        
+        if 1 <= ni <= size(data, 1) && 1 <= nj <= size(data, 2)
+            val = data[ni, nj]
+            if isfinite(val)
+                push!(neighbors, val)
+            end
+        end
+    end
+    
+    if length(neighbors) < 5
+        return NaN, NaN, NaN, NaN
+    end
+    
+    center_val = data[i, j]
+    neighbor_median = median(neighbors)
+    neighbor_mean = mean(neighbors)
+    neighbor_std = std(neighbors)
+    
+    # Z-score relative to neighbors
+    z_score = (center_val - neighbor_mean) / (neighbor_std + 1e-10)
+    
+    # Ratio relative to median
+    ratio = center_val / (neighbor_median + 1e-10)
+    
+    return z_score, ratio, neighbor_mean, neighbor_median
+end
+
+
+# ==========================================================
+# ============ FIND OUTLIER POINTS =========================
 # ==========================================================
 
 
 println("\n" * "="^70)
-println("ANALYSIS RESULTS")
+println("DETECTING OUTLIER POINTS")
 println("="^70)
 
 
-# Overall statistics
-println("\nOverall Statistics:")
-println("  Total data points: ", length(all_N2_values))
-println("  N2 range: ", extrema(all_N2_values))
-println("  b range: ", extrema(all_b_values))
-println("  APE range: ", extrema(all_APE_values))
+outliers = []  # Store (i, j, APE_value, z_score, ratio, type)
 
 
-# N2 percentiles
-n2_percentiles = [0.1, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.9]
-println("\nN2 Percentiles:")
-for p in n2_percentiles
-    val = quantile(all_N2_values, p/100)
-    println(@sprintf("  %5.1f%%: %.6e", p, val))
-end
+# Define outlier criteria
+Z_THRESHOLD_HIGH = 5.0    # Points much higher than neighbors
+Z_THRESHOLD_LOW = -5.0    # Points much lower than neighbors
+RATIO_THRESHOLD_HIGH = 3.0  # Points 3x higher than neighbors
+RATIO_THRESHOLD_LOW = 0.3   # Points 1/3 of neighbors
 
 
-# Find correlation between low N2 and high APE
-println("\nAPE statistics for different N2 ranges:")
-n2_thresholds = [1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3]
-for thresh in n2_thresholds
-    mask = all_N2_values .< thresh
-    if sum(mask) > 0
-        ape_subset = all_APE_values[mask]
-        println(@sprintf("  N2 < %.0e: %d points, APE mean=%.2e, max=%.2e", 
-                thresh, sum(mask), mean(ape_subset), maximum(ape_subset)))
+for i in 5:NX-4
+    for j in 5:NY-4
+        
+        if !isfinite(APE_full[i, j])
+            continue
+        end
+        
+        z_score, ratio, neighbor_mean, neighbor_median = compute_local_stats(APE_full, i, j, 3)
+        
+        if !isfinite(z_score)
+            continue
+        end
+        
+        # Detect high outliers
+        if z_score > Z_THRESHOLD_HIGH || ratio > RATIO_THRESHOLD_HIGH
+            push!(outliers, (i=i, j=j, lon=lon[i], lat=lat[j], 
+                           APE=APE_full[i,j], z_score=z_score, ratio=ratio,
+                           neighbor_median=neighbor_median, type="HIGH"))
+        end
+        
+        # Detect low outliers (anomalously low points)
+        if z_score < Z_THRESHOLD_LOW || ratio < RATIO_THRESHOLD_LOW
+            push!(outliers, (i=i, j=j, lon=lon[i], lat=lat[j],
+                           APE=APE_full[i,j], z_score=z_score, ratio=ratio,
+                           neighbor_median=neighbor_median, type="LOW"))
+        end
     end
 end
 
 
-# Report extreme cases
-println("\n" * "="^70)
-println("TOP 50 EXTREME APE VALUES AND THEIR N2")
-println("="^70)
-sort!(extreme_cases, by = x -> x.APE, rev=true)
-println("   Tile      i   j   k    Lon      Lat     Depth      N2          b           APE")
-println("-"^100)
-for case in extreme_cases[1:min(50, end)]
-    println(@sprintf("%s  %3d %3d %3d  %7.3f  %7.3f   %3d   %.3e  %.3e  %.3e",
-            case.tile, case.i, case.j, case.k, case.lon, case.lat, case.depth,
-            case.N2, case.b, case.APE))
+# Sort by absolute z-score
+sort!(outliers, by = x -> abs(x.z_score), rev=true)
+
+
+# ==========================================================
+# ============ REPORT OUTLIERS =============================
+# ==========================================================
+
+
+println("\n🔴 HIGH OUTLIERS (top 30):")
+println("   i    j     Lon      Lat        APE      Z-score   Ratio  Neighbor_med  Type")
+println("-"^95)
+high_outliers = filter(x -> x.type == "HIGH", outliers)
+for pt in high_outliers[1:min(30, end)]
+    @printf("%4d %4d  %7.3f  %7.3f  %10.1f  %8.2f  %6.2f  %10.1f   %s\n",
+            pt.i, pt.j, pt.lon, pt.lat, pt.APE, pt.z_score, pt.ratio, 
+            pt.neighbor_median, pt.type)
 end
 
 
+println("\n🔵 LOW OUTLIERS (top 30):")
+println("   i    j     Lon      Lat        APE      Z-score   Ratio  Neighbor_med  Type")
+println("-"^95)
+low_outliers = filter(x -> x.type == "LOW", outliers)
+for pt in low_outliers[1:min(30, end)]
+    @printf("%4d %4d  %7.3f  %7.3f  %10.1f  %8.2f  %6.2f  %10.1f   %s\n",
+            pt.i, pt.j, pt.lon, pt.lat, pt.APE, pt.z_score, pt.ratio,
+            pt.neighbor_median, pt.type)
+end
+
+
+println("\n📊 SUMMARY:")
+println("   Total high outliers: ", length(high_outliers))
+println("   Total low outliers: ", length(low_outliers))
+println("   Total outliers: ", length(outliers))
+
+
 # ==========================================================
-# =================== VISUALIZATIONS =======================
+# ============ VISUALIZATION WITH OUTLIERS MARKED ==========
 # ==========================================================
 
 
-fig = Figure(size=(1400, 1000))
+fig = Figure(size=(1200, 900))
 
 
-# 1. N2 histogram (log scale)
-ax1 = Axis(fig[1, 1], 
-          xlabel="N2 [s⁻²]", 
-          ylabel="Count",
-          title="N2 Distribution (log scale)",
-          xscale=log10)
-hist!(ax1, all_N2_values[all_N2_values .> 0], bins=100)
+ax = Axis(fig[1, 1],
+         title="Depth-Integrated Time-Averaged APE with Outliers",
+         xlabel="Longitude [°]",
+         ylabel="Latitude [°]")
 
 
-# 2. APE vs N2 scatter (log-log)
-ax2 = Axis(fig[1, 2],
-          xlabel="N2 [s⁻²]",
-          ylabel="APE [J/m³]",
-          title="APE vs N2",
-          xscale=log10,
-          yscale=log10)
-scatter!(ax2, all_N2_values, all_APE_values, 
-         markersize=2, alpha=0.1, color=:blue)
+hm = CairoMakie.heatmap!(ax, lon, lat, APE_full;
+                        interpolate=false,
+                        colormap=:jet,
+                        colorrange=(0, 5000))
 
 
-# 3. APE histogram (log scale)
-ax3 = Axis(fig[2, 1],
-          xlabel="APE [J/m³]",
-          ylabel="Count",
-          title="APE Distribution (log scale)",
-          xscale=log10)
-hist!(ax3, all_APE_values[all_APE_values .> 0], bins=100)
+Colorbar(fig[1, 2], hm, label="APE [J/m²]")
 
 
-# 4. b² vs N2 (to see the direct relationship)
-b_squared = all_b_values.^2
-ax4 = Axis(fig[2, 2],
-          xlabel="N2 [s⁻²]",
-          ylabel="b² [s⁻⁴]",
-          title="b² vs N2",
-          xscale=log10,
-          yscale=log10)
-scatter!(ax4, all_N2_values, b_squared,
-         markersize=2, alpha=0.1, color=:red)
+# Mark high outliers with red circles
+if !isempty(high_outliers)
+    high_lons = [x.lon for x in high_outliers[1:min(50, end)]]
+    high_lats = [x.lat for x in high_outliers[1:min(50, end)]]
+    scatter!(ax, high_lons, high_lats, 
+            color=:red, marker='○', markersize=12, 
+            strokecolor=:white, strokewidth=2,
+            label="High outliers")
+end
+
+
+# Mark low outliers with blue circles
+if !isempty(low_outliers)
+    low_lons = [x.lon for x in low_outliers[1:min(50, end)]]
+    low_lats = [x.lat for x in low_outliers[1:min(50, end)]]
+    scatter!(ax, low_lons, low_lats,
+            color=:blue, marker='○', markersize=12,
+            strokecolor=:white, strokewidth=2,
+            label="Low outliers")
+end
+
+
+#axislegend(ax, position=:lt)
 
 
 display(fig)
 
 
 # ==========================================================
-# =============== SUGGEST THRESHOLD ========================
+# ============ ZOOM IN ON SPECIFIC OUTLIERS ================
 # ==========================================================
 
 
-println("\n" * "="^70)
-println("THRESHOLD SUGGESTIONS")
-println("="^70)
-
-
-# Find N2 value where APE becomes unreasonably large
-ape_threshold = 1e5  # You can adjust this
-problematic_N2 = all_N2_values[all_APE_values .> ape_threshold]
-if !isempty(problematic_N2)
-    suggested_threshold = maximum(problematic_N2)
-    println(@sprintf("\nTo limit APE < %.0e, consider filtering N2 < %.3e", 
-            ape_threshold, suggested_threshold))
-    println(@sprintf("This would affect %.2f%% of data points",
-            100 * sum(all_N2_values .< suggested_threshold) / length(all_N2_values)))
-else
-    println("\nNo problematic N2 values found for APE threshold of ", ape_threshold)
+if !isempty(outliers)
+    println("\n" * "="^70)
+    println("DETAILED VIEW OF TOP 5 OUTLIERS")
+    println("="^70)
+    
+    for (idx, pt) in enumerate(outliers[1:min(5, end)])
+        println("\n--- Outlier #$idx ---")
+        println("Location: (i=$(pt.i), j=$(pt.j)) → Lon=$(round(pt.lon, digits=3))°, Lat=$(round(pt.lat, digits=3))°")
+        println("APE value: $(round(pt.APE, digits=1)) J/m²")
+        println("Z-score: $(round(pt.z_score, digits=2))")
+        println("Ratio to neighbors: $(round(pt.ratio, digits=2))")
+        println("Neighbor median: $(round(pt.neighbor_median, digits=1)) J/m²")
+        println("Type: $(pt.type)")
+        
+        # Show 5x5 neighborhood
+        println("\n5x5 Neighborhood APE values:")
+        for dj in -2:2
+            row_str = ""
+            for di in -2:2
+                ni, nj = pt.i + di, pt.j + dj
+                if 1 <= ni <= NX && 1 <= nj <= NY
+                    val = APE_full[ni, nj]
+                    if di == 0 && dj == 0
+                        row_str *= @sprintf(" [%7.0f]", val)  # Mark center
+                    elseif isfinite(val)
+                        row_str *= @sprintf("  %7.0f ", val)
+                    else
+                        row_str *= "      NaN "
+                    end
+                end
+            end
+            println(row_str)
+        end
+    end
 end
+
+
+
 
