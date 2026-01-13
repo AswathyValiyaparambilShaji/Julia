@@ -95,7 +95,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     
      # Use physical threshold instead of statistical one
      # N2 < 1e-6 represents very weak stratification
-     N2_threshold = 1.0e-6
+     N2_threshold = 1.0e-8
     
      println("Tile $suffix:")
      println("  Using physical N2 threshold: $N2_threshold")
