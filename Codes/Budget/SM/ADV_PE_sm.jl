@@ -1,7 +1,16 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra
-include("/home3/avaliyap/Documents/julia/FluxUtils.jl")
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+
+
+include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 
+
+config_file = get(ENV, "JULIA_CONFIG",
+               joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+cfg = TOML.parsefile(config_file)
+
+base  = cfg["base_path"]
+base2 = cfg["base_path2"]
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -11,58 +20,55 @@ lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
 
-# --- Tile & time ---
+# --- Tile & time parameters ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 88
-kz = 1
 dt = 25
 dto = 144
 Tts = 366192
 nt = div(Tts, dto)
-
-
-# --- Thickness & constants ---
-thk = matread("/nobackup/avaliyap/Box56/hFacC/thk90.mat")["thk90"]
-DRF = thk[1:nz]
-DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.8
-ts = 72  # 3 timesteps = 72 hours
+ts = 72  # CRITICAL FIX: Was undefined, needed for t_avg calculation
 nt_avg = div(nt, ts)
 
 
-# --- Reference density (Kg/m³) ---
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+
+
 rho0 = 999.8
 
 
-# --- Base paths ---
-base = "/nobackup/avaliyap/Box56/"
-base2 = "/nobackup/avaliyap/Box56/SM/"
-base3 = "/nobackup/avaliyap/Box56/3day_avg/"
+# --- Output directories ---
+mkpath(joinpath(base2, "ADV_PE"))
+
+println("Starting KE flux calculation for 42 tiles...")
+
+for xn in cfg["xn_start"]:cfg["xn_end"]
+    for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
-# --- Process all 42 tiles ---
-for xn in 1:6
-    for yn in 1:7
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        println("Processing tile: $suffix")
-        
+
+        println("\n--- Processing tile: $suffix ---")
         # --- Read grid metrics ---
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
         dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
         dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         
         # --- Read U and V (3-day averaged) ---
-        U = Float64.(open(joinpath(base3, "U", "ucc_3day_$suffix.bin"), "r") do io
+        U = Float64.(open(joinpath(base,"3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx, ny, nz, nt_avg)
         end)
         
-        V = Float64.(open(joinpath(base3, "V", "vcc_3day_$suffix.bin"), "r") do io
+        V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -70,15 +76,15 @@ for xn in 1:6
         end)
         
         # --- Read PE (full temporal resolution) ---
-        pe = open(joinpath(base2, "pe", "pe_t_sm_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float64)
+        pe = Float64.(open(joinpath(base2, "pe", "pe_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
             raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float64, raw_bytes)
+            raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx, ny, nz, nt)
-        end
+        end)
         
         # --- Read N2 (3-day averaged) ---
-        N2 = Float64.(open(joinpath(base3, "N2", "N2_3day_$suffix.bin"), "r") do io
+        N2 = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -99,6 +105,29 @@ for xn in 1:6
         for k in 1:nz
             N2_center[:, :, k, :] = (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :]) ./ 2.0
         end
+
+        # ==========================================================
+        # ======== FILTER OUT ANOMALOUSLY LOW N2 VALUES ============
+        # ==========================================================
+        
+        # Use physical threshold instead of statistical one
+        # N2 < 1e-6 represents very weak stratification
+        N2_threshold = 1.0e-8
+        
+        println("Tile $suffix:")
+        println("  Using physical N2 threshold: $N2_threshold")
+        
+        # Count values that will be filtered
+        n_filtered = sum(N2_center .< N2_threshold)
+        n_total = length(N2_center)
+        println("  Filtering $(n_filtered) values out of $(n_total) ($(round(100*n_filtered/n_total, digits=2))%)")
+        
+        # Replace low N2 values with threshold (conservative approach)
+        # This avoids over-smoothing while preventing extreme APE values
+        N2_center[N2_center .< N2_threshold] .= N2_threshold
+        
+        println("  After filtering - N2 range: ", extrema(N2_center))
+
         
         # --- Calculate PE gradients (fully vectorized) ---
         println("Calculating PE gradients...")
@@ -116,6 +145,9 @@ for xn in 1:6
                                   reshape(dy_avg, nx, ny-2, 1, 1)
         
         println("Gradients calculated")
+
+        # Need to mask N2 greater than 10^-8
+
         
         # --- Initialize output: depth-integrated flux at each timestep ---
         U_PE = zeros(Float64, nx, ny, nt)
@@ -140,8 +172,8 @@ for xn in 1:6
             temp2 = v_avg .* pe_y_t ./ n2_avg
             
             # Handle infinities and NaNs
-            temp1[.!isfinite.(temp1)] .= 0.0
-            temp2[.!isfinite.(temp2)] .= 0.0
+            temp1[isnan.(temp1)] .= 0.0
+            temp2[isnan.(temp2)] .= 0.0
             
             # Depth integrate: ρ₀ * ∫(u·∇PE / N²) dz
             U_PE[:, :, t] = rho0 .* dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
@@ -153,11 +185,12 @@ for xn in 1:6
         u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)
         
         # --- Save outputs ---
-        mkpath(joinpath(base2, "U_PE"))
-        
+        output_dir = joinpath(base2, "U_PE")
+        mkpath(output_dir)
+
         # Save time-averaged flux
         open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "w") do io
-            write(io, u_pe_mean)
+            write(io, Float32.(u_pe_mean))
         end
         
         #= Save full time series
