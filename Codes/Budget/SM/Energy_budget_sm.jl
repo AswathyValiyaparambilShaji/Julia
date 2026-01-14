@@ -77,12 +77,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         xe = xs + tx + (2 * buf) - 1 
         ys = (yn - 1) * ty + 1 
         ye = ys + ty + (2 * buf) - 1 
-        println(xs)
-        println(xe-2)# -(xs+2))
-        println(ye)
-        println(xs+2)
-        println(buf+1)
-       
+             
             
         # Update global arrays (remove buffer zones)
         Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
@@ -210,7 +205,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-#save(joinpath(FIGDIR, "EnergyBudget_Complete_v1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_Complete_v1.png"), fig)
 
 
 println("\n=== Energy budget visualization complete ===")
