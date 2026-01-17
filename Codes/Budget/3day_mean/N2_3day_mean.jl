@@ -43,7 +43,7 @@ DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
 rho0 = 999.8
-
+println(DRF)
 
 # Create output directory
 mkpath(joinpath(base,"3day_mean", "N2"))

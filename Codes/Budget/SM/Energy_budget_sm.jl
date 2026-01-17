@@ -33,6 +33,7 @@ FDiv = zeros(NX, NY)
 U_KE_full = zeros(NX, NY)
 U_PE_full = zeros(NX, NY)
 SP_H_full = zeros(NX, NY)
+SP_V_full = zeros(NX, NY)
 
 
 println("Loading energy budget terms...")
@@ -81,6 +82,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
+
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+        end)
         
         # Calculate tile positions in global grid (same for all terms)
         xs = (xn - 1) * tx + 1 
@@ -97,11 +103,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
         u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
         sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        
+        sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+         
         # Same tile positions as Conv and FDiv
         U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
         U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
         SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
+        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
         
         println("Completed tile $suffix")
     end
@@ -111,7 +119,7 @@ end
 println("\nCalculating derived terms...")
 
 # Total energy fluxes (Flux Divergence + Advective fluxes)
-TotalFlux = FDiv .+ U_KE_full .+ U_PE_full .+ SP_H_full
+TotalFlux = FDiv .+ U_KE_full .+ U_PE_full .+ SP_V_full
 
 
 # Calculate Residual: R = C - (FDiv + U_KE + U_PE)
@@ -180,7 +188,8 @@ ax5 = Axis(fig[2, 2],
           title="(e) Shear Production P^s", 
           xlabel="Longitude [°]", 
           ylabel="Latitude [°]")
-hm5 = heatmap!(ax5, lon, lat, SP_H_full; 
+ax5.limits[] = (193.0,194.2,24.0, 25.4)
+hm5 = heatmap!(ax5, lon, lat, SP_V_full; 
               interpolate=false, 
               colorrange=crange, 
               colormap=cmap)
