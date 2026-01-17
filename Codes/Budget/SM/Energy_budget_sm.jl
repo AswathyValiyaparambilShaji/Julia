@@ -144,7 +144,7 @@ hm1 = heatmap!(ax1, lon, lat, Conv;
 
 # Row 1, Column 2: Flux Divergence (Eddy fluxes)
 ax2 = Axis(fig[1, 2], 
-          title="(b) Eddy Flux Divergence ⟨∇·F⟩", 
+          title="(b) Flux Divergence ⟨∇·F⟩", 
           xlabel="Longitude [°]", 
           ylabel="Latitude [°]")
 hm2 = heatmap!(ax2, lon, lat, FDiv; 
