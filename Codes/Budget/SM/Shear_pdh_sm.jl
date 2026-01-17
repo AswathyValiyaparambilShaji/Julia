@@ -46,7 +46,7 @@ rho0 = 999.8
 # --- Output directories ---
 mkpath(joinpath(base2, "ADV_KE"))
 
-println("Starting KE flux calculation for 42 tiles...")
+println("Starting Shear Production (hor) calculation for 42 tiles...")
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -130,8 +130,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # --- Initialize output array ---
         sp_h = zeros(Float64, nx, ny, nt)
         
-        # --- Calculate advective KE flux for each timestep ---
-        println("Calculating advective KE flux...")
         for t in 1:nt
             # Map timestep to corresponding 3-day average period
             t_avg = min(div(t - 1, ts) + 1, nt_avg)
@@ -168,12 +166,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         open(joinpath(output_dir, "sp_h_mean_$suffix.bin"), "w") do io
             write(io, Float32.(SP_H))
         end
-        
-        #= Save full time series
-        open(joinpath(output_dir, "u_ke_timeseries_$suffix.bin"), "w") do io
-            write(io, U_KE)
-        end=#
-        
+                 
         println("Completed tile: $suffix")
         println("Output saved to $output_dir")
     end
