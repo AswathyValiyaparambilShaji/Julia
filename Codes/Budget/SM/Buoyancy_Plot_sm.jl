@@ -82,7 +82,7 @@ ax = Axis(fig[1, 1],
          title="Depth-Integrated Time-Averaged Buoyancy Production",
          xlabel="Longitude [°]",
          ylabel="Latitude [°]")
-ax.limits[] = (193.0,194.2,24.0, 25.4)
+#ax.limits[] = (193.0,194.2,24.0, 25.4)
 
 
 hm = CairoMakie.heatmap!(ax, lon, lat, BP_full;
@@ -99,7 +99,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "BP_production_v1.png"), fig)
+save(joinpath(FIGDIR, "BP_production_v2.png"), fig)
 
 
 
