@@ -75,6 +75,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
           reshape(raw_data, nx, ny, nz, nt)
       end)
       
+      # --- Mask rho to NaN where hFacC is zero ---
+        println("Masking density field to NaN where hFacC = 0...")
+        for t in 1:nt
+            for k in 1:nz
+                mask = hFacC[:, :, k] .== 0
+                rho[mask, k, t] .= NaN
+            end
+        end
       # --- Read N2 (3-day averaged) ---
       N2_phase = Float64.(open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
           raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
@@ -123,17 +131,18 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
       # Filter N2: anything below threshold becomes NaN
-      N2_threshold = 1.0e-8
-      N2_center[N2_center .< N2_threshold] .= NaN
-      
-      # Linear interpolation to fill NaN values along vertical dimension
+      #N2_threshold = 1.0e-6
+      #N2_center[N2_center .< N2_threshold] .= NaN
+      #N2_center[N2_center .< N2_threshold] .= N2_threshold
+     
+      #= Linear interpolation to fill NaN values along vertical dimension
       println("  Interpolating N2 values...")
       for i in 1:nx, j in 1:ny, t in 1:nt_avg
           N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
       end
       
       println("  N2 range after interpolation: $(extrema(N2_center))")
-
+      =#
 
       # --- Calculate cell thicknesses ---
       DRFfull = hFacC .* DRF3d
@@ -147,28 +156,61 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
           t_start = (i-1) * ts + 1
           t_end = min(i * ts, nt)
           
-          # Average density over 3-day window
-          rho_avg = mean(rho[:, :, :, t_start:t_end], dims=4)[:, :, :, 1]
-          
-          # Calculate buoyancy: B = -g * (ρ - ρ₀) / ρ₀
-          B[:, :, :, i] = -g .* (rho_avg .- rho0) ./ rho0
+          # Average density over 3-day window, handling NaN
+            for x in 1:nx, y in 1:ny, z in 1:nz
+                rho_slice = rho[x, y, z, t_start:t_end]
+                valid_rho = rho_slice[isfinite.(rho_slice)]
+                
+                if length(valid_rho) > 0
+                    rho_avg = mean(valid_rho)
+                    # Calculate buoyancy: B = -g * (ρ - ρ₀) / ρ₀
+                    B[x, y, z, i] = -g * (rho_avg - rho0) / rho0
+                else
+                    B[x, y, z, i] = NaN
+                end
+            end
       end
     
       # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
-      println("Calculating mean buoyancy gradients...")
-      B_x = zeros(Float64, nx, ny, nz, nt_avg)
-      B_y = zeros(Float64, nx, ny, nz, nt_avg)
+        println("Calculating buoyancy gradients...")
+        B_x = fill(NaN, nx, ny, nz, nt_avg)
+        B_y = fill(NaN, nx, ny, nz, nt_avg)
       
-      # X-gradient: ∂B/∂x (central difference)
-      dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
-      B_x[2:end-1, :, :, :] = (B[3:end, :, :, :] .- B[1:end-2, :, :, :]) ./
-                                reshape(dx_avg, nx-2, ny, 1, 1)
-      
-      # Y-gradient: ∂B/∂y (central difference)
-      dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
-      B_y[:, 2:end-1, :, :] = (B[:, 3:end, :, :] .- B[:, 1:end-2, :, :]) ./
-                                reshape(dy_avg, nx, ny-2, 1, 1)
-      
+      # X-gradient: ∂B/∂x
+        for t in 1:nt_avg
+            for k in 1:nz
+                B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./ 
+                                        (dx[2:end-1, :] .+ dx[1:end-2, :])
+            end
+        end
+
+
+        # Y-gradient: ∂B/∂y
+        for t in 1:nt_avg
+            for k in 1:nz
+                B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./ 
+                                        (dy[:, 2:end-1] .+ dy[:, 1:end-2])
+            end
+        end
+
+        # --- Mask gradients to NaN where hFacC is not 1 ---
+        println("Masking gradients where hFacC != 1...")
+        for t in 1:nt_avg
+            for k in 1:nz
+                for j in 2:ny-1
+                    for i in 2:nx-1
+                        # Mask B_x if cell or x-neighbors are not fully valid
+                        if hFacC[i-1, j, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i+1, j, k] != 1
+                            B_x[i, j, k, t] = NaN
+                        end
+                        # Mask B_y if cell or y-neighbors are not fully valid
+                        if hFacC[i, j-1, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i, j+1, k] != 1
+                            B_y[i, j, k, t] = NaN
+                        end
+                    end
+                end
+            end
+        end
       println("Gradients calculated")
     
       # --- Initialize output array ---
@@ -188,8 +230,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
           # Get fluctuating fields at this timestep
           b_t = @view b[:, :, :, t]
-          ut = @view fu[:, :, :, t]
-          vt = @view fv[:, :, :, t]
+          ut  = @view fu[:, :, :, t]
+          vt  = @view fv[:, :, :, t]
 
 
           # Calculate buoyancy production terms:
@@ -198,8 +240,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
           temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull   # (b/N²)*v*∂B/∂y
           
           # Handle any remaining NaN/Inf from division
-          temp1[.!isfinite.(temp1)] .= 0.0
-          temp2[.!isfinite.(temp2)] .= 0.0
+          temp1[isnan.(temp1)] .= 0.0
+          temp2[isnan.(temp2)] .= 0.0
         
           # Depth integrate with negative sign: P^B = -ρ₀ * ∫[...] dz
           bp[:, :, t] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
