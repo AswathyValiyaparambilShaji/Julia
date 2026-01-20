@@ -76,7 +76,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
       end)
       
       # --- Mask rho to NaN where hFacC is zero ---
-        println("Masking density field to NaN where hFacC = 0...")
         for t in 1:nt
             for k in 1:nz
                 mask = hFacC[:, :, k] .== 0
@@ -131,18 +130,18 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
       # Filter N2: anything below threshold becomes NaN
-      #N2_threshold = 1.0e-6
-      #N2_center[N2_center .< N2_threshold] .= NaN
+      N2_threshold = 1.0e-8
+      N2_center[N2_center .< N2_threshold] .= NaN
       #N2_center[N2_center .< N2_threshold] .= N2_threshold
      
-      #= Linear interpolation to fill NaN values along vertical dimension
-      println("  Interpolating N2 values...")
+      # Linear interpolation to fill NaN values along vertical dimension
+      #println("  Interpolating N2 values...")
       for i in 1:nx, j in 1:ny, t in 1:nt_avg
           N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
       end
       
-      println("  N2 range after interpolation: $(extrema(N2_center))")
-      =#
+      #println("  N2 range after interpolation: $(extrema(N2_center))")
+      #
 
       # --- Calculate cell thicknesses ---
       DRFfull = hFacC .* DRF3d
@@ -193,8 +192,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             end
         end
 
-        # --- Mask gradients to NaN where hFacC is not 1 ---
-        println("Masking gradients where hFacC != 1...")
         for t in 1:nt_avg
             for k in 1:nz
                 for j in 2:ny-1
