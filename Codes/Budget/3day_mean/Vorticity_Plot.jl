@@ -67,8 +67,7 @@ fig = Figure(size=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
-    title = "Normalized Vorticity (timestep $timestep)")
-
+    title = "Normalized Vorticity (timestep $timestep)", colorrange=(-0.5, 0.5), colormap=Reverse(:RdBu))
 
 hm = heatmap!(ax, lon, lat, zf,
     colormap = :balance,
