@@ -63,7 +63,7 @@ end
 
 zf = ζ_full[:,:,1]
 # Create figure
-fig = Figure(size=(1000, 800))
+fig = Figure(resolution=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
@@ -80,5 +80,7 @@ Colorbar(fig[1, 2], hm, label = "ζ/f")
 display(fig)
 
 
-
+# Save figure
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "Vorticity_v1.png"), fig)
 
