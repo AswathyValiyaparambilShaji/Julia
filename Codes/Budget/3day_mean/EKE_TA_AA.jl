@@ -35,7 +35,7 @@ nt_avg = div(nt, timesteps_per_3days)
 # reference density
 rho0 = 999.8
 
-
+nt_10avg = div(nt_avg, 10)
 # Initialize arrays for full domain
 KE_surface = zeros(Float64, NX, NY, nt_avg)
 DX_full = zeros(Float64, NX, NY)
@@ -91,8 +91,42 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
    end
 end
 
+# --- 10-timestep averaging ---
+println("\nPerforming 10-timestep averaging...")
+KE_10avg = zeros(Float64, NX, NY, nt_10avg)
 
-# --- Time average ---
+
+for t in 1:nt_10avg
+    t_start = (t-1) * 10 + 1
+    t_end = min(t * 10, nt_avg)
+    
+    # Average over 10 timesteps
+    KE_10avg[:, :, t] = mean(KE_surface[:, :, t_start:t_end], dims=3)[:, :, 1]
+    
+    if t % 10 == 0
+        println("  Completed window $t / $nt_10avg")
+    end
+end
+
+
+# --- Time average over all 10-timestep windows ---
+
+
+println("\n10-timestep averaged surface KE calculated")
+println("KE_time_avg range: $(extrema(KE_time_avg))")
+
+ KE_AA = zeros(Float64, nt_10avg)
+# --- Weighted area average ---
+dA = DX_full .* DY_full
+for t in 1:nt_10avg
+    KE_AA[t]= sum(KE_10avg[:,:,t] .* dA) / sum(dA)
+
+end
+println("\nWeighted area-averaged surface KE: $KE_AA J/m³")
+
+println("Total area: $(sum(dA)/1e6) km²")
+
+#= --- Time average ---
 KE_time_avg = mean(KE_surface, dims=3)[:, :, 1]
 
 
@@ -135,6 +169,6 @@ display(fig)
 FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "EKE_v1.png"), fig)
 
-
+=#
 
 
