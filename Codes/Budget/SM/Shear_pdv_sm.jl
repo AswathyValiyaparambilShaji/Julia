@@ -148,7 +148,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            temp1 = wt .* ut .* U_z_t .* DRFfull   # w*u*∂U/∂z
            temp2 = wt .* vt .* V_z_t .* DRFfull   # w*v*∂V/∂z
           
-           # Depth integrate with negative sign: P^s_v = -ρ₀ * ∫[...] dz
+           # Depth integrate with negative sign:
            sp_v[:, :, t] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
        end
       

@@ -143,13 +143,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             ut = @view fu[:, :,:, t]
             vt = @view fv[:, :,:, t]
 
-            # Calculate advective flux: U·∇KE
+            # Calculate advective flux: 
             temp1 = ut .* ut .* U_x_t.* DRFfull
             temp2 = ut .* vt .* U_y_t.* DRFfull
             temp3 = ut .* vt .* V_x_t.* DRFfull
             temp4 = vt .* vt .* V_y_t.* DRFfull
            
-            # Depth integrate: ∫(U·∇KE) dz
+            # Depth integrate: 
             sp_h[:, :, t] = -rho0 .*(dropdims(sum((temp1 .+ temp2 .+temp3 .+temp4) , dims=3), dims=3))
         end
         
