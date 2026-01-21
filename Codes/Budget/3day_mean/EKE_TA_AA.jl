@@ -113,7 +113,6 @@ end
 
 
 println("\n10-timestep averaged surface KE calculated")
-println("KE_time_avg range: $(extrema(KE_time_avg))")
 
  KE_AA = zeros(Float64, nt_10avg)
 # --- Weighted area average ---
