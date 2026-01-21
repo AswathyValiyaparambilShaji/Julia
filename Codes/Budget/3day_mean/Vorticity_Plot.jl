@@ -1,8 +1,8 @@
-
+using DSP, MAT, Statistics, Printf,  FilePathsBase, LinearAlgebra, TOML, CairoMakie
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
-
+# Load configuration
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path"]
