@@ -61,7 +61,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 
-zf = ζ_full[:,:,1]
+zf = ζ_full[ :,:,1]
 # Create figure
 fig = Figure(resolution=(1000, 800))
 ax = Axis(fig[1, 1],
