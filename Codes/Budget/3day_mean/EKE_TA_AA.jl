@@ -143,6 +143,7 @@ println("Total area: $(sum(dA)) m²")
 
 
 # Optional: Save the time-averaged field
+=#
 using CairoMakie
 
 
@@ -153,8 +154,8 @@ ax = Axis(fig[1, 1],
     title="Time-Averaged Surface KE")
 
 
-hm = heatmap!(ax, lon, lat, KE_time_avg,
-    colormap=:thermal,
+hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg[:,:,1],
+    colormap=:jet,
     interpolate=false)
 
 
@@ -166,8 +167,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EKE_v1.png"), fig)
+save(joinpath(FIGDIR, "EKE_v2.png"), fig)
 
-=#
+#
 
 
