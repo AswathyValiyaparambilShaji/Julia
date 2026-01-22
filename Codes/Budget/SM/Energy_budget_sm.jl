@@ -271,5 +271,5 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Total_v1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_Total_v2.png"), fig)
 
