@@ -134,8 +134,9 @@ println("\nCalculating derived terms...")
 TotalFlux = FDiv .+ U_KE_full .+ U_PE_full .+ SP_H_full.+SP_V_full .+ BP_full
 MF = U_KE_full .+ U_PE_full .+ SP_H_full.+SP_V_full .+ BP_full
 A = U_KE_full .+ U_PE_full
-PS = SP_H_full.+ SP_V_full
-
+PS = SP_H_full.+SP_V_full
+T1 = FDiv.+ A
+T2 =  Conv .+ SP_H_full.+SP_V_full .+ BP_full
 Residual = Conv .- TotalFlux
 
 
@@ -144,22 +145,22 @@ Residual = Conv .- TotalFlux
 # ==========================================================
 
 
-fig = Figure(resolution=(1200, 800))
+fig = Figure(resolution=(1600, 400))
 
 # Color range for plots
-crange = (-0.05, 0.05)
+crange = (-0.02, 0.02)
 cmap = Reverse(:RdBu)
 
 
 # Row 1, Column 1: Conversion
 ax1 = Axis(fig[1, 1],
-        title="(a) Conversion ⟨C⟩",
-        xlabel="",
-        xticklabelsvisible=false,
+        title="(a) ⟨C⟩+⟨PS⟩+⟨BP⟩",
+        xlabel="Longitude [°]",
+        #xticklabelsvisible=false,
         ylabel="Latitude [°]" 
         )
         #aspect=1)
-hm1 = heatmap!(ax1, lon, lat, Conv;
+hm1 = heatmap!(ax1, lon, lat, T2;
             interpolate=false,
             colorrange=crange,
             colormap=cmap)
@@ -167,9 +168,9 @@ hm1 = heatmap!(ax1, lon, lat, Conv;
 
 # Row 1, Column 2: Flux Divergence (Eddy fluxes)
 ax2 = Axis(fig[1, 2],
-        title="(b) Flux Divergence ⟨∇·F⟩",
-        xlabel="",
-        xticklabelsvisible=false,
+        title="(b) Flux Divergence ⟨∇·F⟩+⟨A⟩",
+        xlabel="Longitude [°]",
+        #xticklabelsvisible=false,
         ylabel="",
         yticklabelsvisible=false, 
         )
@@ -182,7 +183,7 @@ hm2 = heatmap!(ax2, lon, lat, FDiv;
 
 # Row 1, Column 3: Advective KE
 ax3 = Axis(fig[1, 3],
-        title="(c) A",
+        title="(c) ⟨A⟩+⟨PS⟩+⟨BP⟩",
         xlabel="",
         xticklabelsvisible=false,
         ylabel="",
@@ -196,47 +197,20 @@ hm3 = heatmap!(ax3, lon, lat, A;
 
 
 # Row 1, Column 4: Advective PE
-ax4 = Axis(fig[2, 1],
-        title="(d) ⟨PS⟩",
-        xlabel="",
-        xticklabelsvisible=false,
+ax4 = Axis(fig[1, 4],
+        title="(d) Residual",
+        xlabel="Longitude [°]",
         ylabel="",
         yticklabelsvisible=false )#aspect=1.2)
         #aspect=1)
-hm4 = heatmap!(ax4, lon, lat, PS;
+hm4 = heatmap!(ax4, lon, lat,  Residual;
             interpolate=false,
             colorrange=crange,
             colormap=cmap)
-
-
-# Row 2, Column 1: Shear Production Horizontal
-ax5 = Axis(fig[2, 2],
-        title="(e) ⟨BP⟩",
-        xlabel="Longitude [°]",
-        ylabel="Latitude [°]",)#aspect=1.2)
-        #aspect=1)
-hm5 = heatmap!(ax5, lon, lat, BP_full;
-            interpolate=false,
-            colorrange=crange,
-            colormap=cmap)
-
-
-# Row 2, Column 2: Shear Production Vertical
-ax6 = Axis(fig[2, 3],
-        title="(f) Residual",
-        xlabel="Longitude [°]",
-        ylabel="",
-        yticklabelsvisible=false,)#aspect=1.2)
-#aspect=1)
-hm6 = heatmap!(ax6, lon, lat, Residual;
-            interpolate=false,
-            colorrange=crange,
-            colormap=cmap)
-
 
 
 # Add shared colorbar
-Colorbar(fig[1:2, 4], hm6, label="Energy Flux [W/m²]")
+Colorbar(fig[1, 5], hm4, label="Energy Flux [W/m²]")
 
 
 display(fig)
@@ -244,5 +218,5 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_map1_v1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_map2_v2.png"), fig)
 
