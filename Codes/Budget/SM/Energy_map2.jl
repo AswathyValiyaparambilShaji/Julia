@@ -147,7 +147,7 @@ Residual = Conv .- TotalFlux
 fig = Figure(resolution=(1600, 400))
 
 # Color range for plots
-crange = (-0.05, 0.05)
+crange = (-0.02, 0.02)
 cmap = Reverse(:RdBu)
 
 
@@ -217,5 +217,5 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_map2_v1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_map2_v2.png"), fig)
 
