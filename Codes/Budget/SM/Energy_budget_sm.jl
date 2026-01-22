@@ -222,11 +222,11 @@ Residual2 = Conv .- FDiv
 
 
 # Calculate spatial standard deviations
-std_residual = std(Residual)
-std_residual2 = std(Residual2)
+std_residual = std(Residual, corrected = false)
+std_residual2 = std(Residual2, corrected = false)
 
 
-println("\nSpatial Standard Deviations:")
+println("\nStandard Deviations:")
 println("  Residual:  $(std_residual)")
 println("  Residual2: $(std_residual2)")
 
