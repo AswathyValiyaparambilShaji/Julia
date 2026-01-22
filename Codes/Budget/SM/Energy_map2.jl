@@ -133,7 +133,7 @@ println("\nCalculating derived terms...")
 # Total energy fluxes (Flux Divergence + Advective fluxes)
 TotalFlux = FDiv .+ U_KE_full .+ U_PE_full 
 MF = SP_H_full.+SP_V_full .+ BP_full .-U_KE_full .- U_PE_full
-A = U_KE_full .+ U_PE_full
+A = U_KE_full .+ U_PE_ful
 PS = SP_H_full.+SP_V_full
 
 Residual = Conv .- TotalFlux .+ SP_H_full.+SP_V_full .+ BP_full
@@ -181,7 +181,7 @@ hm2 = heatmap!(ax2, lon, lat, FDiv;
 
 # Row 1, Column 3: Advective KE
 ax3 = Axis(fig[1, 3],
-        title="(c) ⟨A⟩+⟨PS⟩+⟨BP⟩",
+        title="(c) ⟨PS⟩+⟨BP⟩-⟨A⟩",
         xlabel="",
         xticklabelsvisible=false,
         ylabel="",
