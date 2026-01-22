@@ -132,12 +132,11 @@ println("\nCalculating derived terms...")
 
 # Total energy fluxes (Flux Divergence + Advective fluxes)
 TotalFlux = FDiv .+ U_KE_full .+ U_PE_full 
-MF = U_KE_full .+ U_PE_full .+ SP_H_full.+SP_V_full .+ BP_full
+MF = SP_H_full.+SP_V_full .+ BP_full .-U_KE_full .- U_PE_full
 A = U_KE_full .+ U_PE_full
 PS = SP_H_full.+SP_V_full
 
 Residual = Conv .- TotalFlux .+ SP_H_full.+SP_V_full .+ BP_full
-
 
 # ==========================================================
 # =================== VISUALIZATION ========================
