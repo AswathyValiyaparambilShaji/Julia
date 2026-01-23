@@ -231,5 +231,34 @@ FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "Residual_STD_Comparison.png"), fig_bar)
 
 
+fig = Figure(resolution=(500, 400))
 
+# Color range for plots
+crange = (-0.02, 0.02)
+cmap = Reverse(:RdBu)
+
+
+# Row 1, Column 1: Conversion
+ax1 = Axis(fig[1, 1],
+        title="(a)Old_R - NewR",
+        xlabel="Longitude [°] ",
+        #xticklabelsvisible=false,
+        ylabel="Latitude [°]" 
+        )
+        #aspect=1)
+hm1 = heatmap!(ax1, lon, lat, Diff;
+            interpolate=false,
+            colorrange=crange,
+            colormap=cmap)
+
+# Add shared colorbar
+Colorbar(fig[1, 2], hm1, label="Energy Flux [W/m²]")
+
+
+display(fig)
+
+
+# Save figure
+FIGDIR = cfg["fig_base"]
+save(joinpath(FIGDIR, "EnergyBudget_Rdif_v1.png"), fig)
 
