@@ -46,84 +46,84 @@ println("Loading energy budget terms...")
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        
-        # --- Read Flux Divergence ---
-        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
-        end)
-        
-        # --- Read Conversion ---
-        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
-        end)
-        
-        # --- Read KE Advection ---
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read PE Advection ---
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+      
+       # --- Read Flux Divergence ---
+       fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
+      
+       # --- Read Conversion ---
+       C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
+      
+       # --- Read KE Advection ---
+       u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # --- Read PE Advection ---
+       u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # --- Read Shear Production ---
+       sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
 
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
+       sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
 
-        # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
+       # --- Read Buoyancy Production ---
+       bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
 
-        # Calculate tile positions in global grid (same for all terms)
-        xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
-        ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
-        
-        # Update global arrays (remove buffer zones - same indexing for all)
-        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
-        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
-        
-        # Use same interior extraction for advection terms
-        u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
-        u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
-        sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-        bp_interior = bp_mean[buf:nx-buf+1, buf:ny-buf+1]
-        
-        # Same tile positions as Conv and FDiv
-        U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
-        U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
-        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
-        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
-        BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_interior
-        
-        println("Completed tile $suffix")
-    end
+       # Calculate tile positions in global grid (same for all terms)
+       xs = (xn - 1) * tx + 1
+       xe = xs + tx + (2 * buf) - 1
+       ys = (yn - 1) * ty + 1
+       ye = ys + ty + (2 * buf) - 1
+      
+       # Update global arrays (remove buffer zones - same indexing for all)
+       Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
+       FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
+      
+       # Use same interior extraction for advection terms
+       u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
+       u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
+       sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+       sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+       bp_interior = bp_mean[buf:nx-buf+1, buf:ny-buf+1]
+      
+       # Same tile positions as Conv and FDiv
+       U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
+       U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
+       SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
+       SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
+       BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_interior
+      
+       println("Completed tile $suffix")
+   end
 end
 
 
@@ -155,6 +155,22 @@ std_residual3 = std(Residual3, corrected = false)
 std_residual4 = std(Residual4, corrected = false)
 
 
+# Calculate means
+mean_residual = mean(Residual)
+mean_residual1 = mean(Residual1)
+mean_residual2 = mean(Residual2)
+mean_residual3 = mean(Residual3)
+mean_residual4 = mean(Residual4)
+
+
+# Calculate coefficient of variation (CV = std/mean * 100)
+cv_residual = abs(std_residual / mean_residual * 100)
+cv_residual1 = abs(std_residual1 / mean_residual1 * 100)
+cv_residual2 = abs(std_residual2 / mean_residual2 * 100)
+cv_residual3 = abs(std_residual3 / mean_residual3 * 100)
+cv_residual4 = abs(std_residual4 / mean_residual4 * 100)
+
+
 println("\nStandard Deviations:")
 println("  Residual:  $(std_residual)")
 println("  Residual1: $(std_residual1)")
@@ -163,64 +179,61 @@ println("  Residual3: $(std_residual3)")
 println("  Residual4: $(std_residual4)")
 
 
+println("\nMeans:")
+println("  Residual:  $(mean_residual)")
+println("  Residual1: $(mean_residual1)")
+println("  Residual2: $(mean_residual2)")
+println("  Residual3: $(mean_residual3)")
+println("  Residual4: $(mean_residual4)")
+
+
+println("\nCoefficient of Variation (%):")
+println("  Residual:  $(cv_residual)")
+println("  Residual1: $(cv_residual1)")
+println("  Residual2: $(cv_residual2)")
+println("  Residual3: $(cv_residual3)")
+println("  Residual4: $(cv_residual4)")
+
+
 # ==========================================================
-# ============ BAR PLOT OF STANDARD DEVIATIONS =============
+# ============ BAR PLOT OF COEFFICIENT OF VARIATION ========
 # ==========================================================
 
 
-fig_bar = Figure(resolution=(900, 700))
+fig_bar = Figure(size=(1600, 600))
 ax_bar = Axis(fig_bar[1, 1],
-    xlabel = "Residual Type",
-    ylabel = "Standard Deviation [W/m²]",
-    title = "Spatial Standard Deviations of Residuals",
-    xticks = (1:4, ["⟨C⟩-⟨∇·F⟩", "⟨C⟩-⟨∇·F⟩-⟨A⟩","⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩ ", "⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩+⟨BP⟩"]),
-    limits = (0.7, 4.5, 0, nothing)  # Start y-axis from 0, add padding on x-axis
+   xlabel = "Residual Type",
+   ylabel = "Dissipation",
+   title = "Area Average of dissipation",
+   xticks = (1:4, ["⟨C⟩-⟨∇·F⟩", "⟨C⟩-⟨∇·F⟩-⟨A⟩","⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩ ", "⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩+⟨BP⟩"]),
+   limits = (0.3, 4.7, 0, nothing),
+   xticklabelsize = 14
 )
 
 
 # Data for bar plot
-std_values = [std_residual1, std_residual2, std_residual3, std_residual4]
+m_values = [mean_residual1, mean_residual2, mean_residual3, mean_residual4]
 
 
-# Create bar plot with different colors and gaps between bars
+# Create bar plot with different colors
 colors = [:coral, :seagreen, :goldenrod, :mediumpurple]
-barplot!(ax_bar, 1:4, std_values, 
-    color = colors, 
-    strokewidth = 1, 
-    strokecolor = :black,
-    gap = 0.7,  # Add space between bars
-    width = 0.7  # Make bars slightly narrower
+barplot!(ax_bar, 1:4, m_values,
+   color = colors,
+   strokewidth = 2,
+   strokecolor = :black,
+   width = 0.5
 )
 
 
 # Add value labels on top of bars
-for (i, val) in enumerate(std_values)
-    text!(ax_bar, i, val, 
-        text = @sprintf("%.4f", val), 
-        align = (:center, :bottom), 
-        fontsize = 12,
-        offset = (0, 5)
-    )
+for (i, val) in enumerate(m_values)
+   text!(ax_bar, i, val,
+       text = @sprintf("%.5f", val),
+       align = (:center, :bottom),
+       fontsize = 14,
+       offset = (0, 5)
+   )
 end
-
-
-#= Add legend inside the plot
-# Add legend explaining what each residual represents
-Legend(fig_bar[2, 1],
-   [PolyElement(color = colors[i]) for i in 1:4],
-   [
-       "Residual1: ⟨C⟩-⟨∇·F⟩",
-       "Residual2: ⟨C⟩-⟨∇·F⟩-⟨A⟩ ",
-       "Residual3: ⟨C⟩- ⟨∇·F⟩ - ⟨A⟩ + ⟨SP⟩ ",
-       "Residual4: ⟨C⟩ - ⟨∇·F⟩ - ⟨A⟩ + ⟨SP⟩ + ⟨BP⟩"
-   ],
-   framevisible = false,
-   orientation = :vertical,
-   labelsize = 11
-)
-
-=#
-
 
 
 display(fig_bar)
@@ -228,37 +241,5 @@ display(fig_bar)
 
 # Save bar plot
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Residual_STD_Comparison.png"), fig_bar)
-
-
-fig = Figure(resolution=(500, 400))
-
-# Color range for plots
-crange = (-0.02, 0.02)
-cmap = Reverse(:RdBu)
-
-
-# Row 1, Column 1: Conversion
-ax1 = Axis(fig[1, 1],
-        title="(a)Old_R - NewR",
-        xlabel="Longitude [°] ",
-        #xticklabelsvisible=false,
-        ylabel="Latitude [°]" 
-        )
-        #aspect=1)
-hm1 = heatmap!(ax1, lon, lat, Diff;
-            interpolate=false,
-            colorrange=crange,
-            colormap=cmap)
-
-# Add shared colorbar
-Colorbar(fig[1, 2], hm1, label="Energy Flux [W/m²]")
-
-
-display(fig)
-
-
-# Save figure
-FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Rdif_v1.png"), fig)
+save(joinpath(FIGDIR, "Residual_mean_Comparison.png"), fig_bar)
 
