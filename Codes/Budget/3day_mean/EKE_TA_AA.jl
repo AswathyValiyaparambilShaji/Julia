@@ -159,7 +159,7 @@ hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg[:,:,1],
     interpolate=false)
 
 
-Colorbar(fig[1, 2], hm, label="KE [J/m³]")
+Colorbar(fig[1, 2], hm, label="[J/m³]")
 
 
 display(fig)
