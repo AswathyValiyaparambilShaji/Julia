@@ -131,7 +131,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        
        dEdt_time_avg[:, :] = mean(dEdt_depth_int[:, :, :], dims=3)
       
-       println(dEdt_time_avg[:,1])
+       #println(dEdt_time_avg[:,1])
 
 
        # --- Save output ---
@@ -143,7 +143,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            write(io, Float32.(dEdt_time_avg))
        end
       
-       println("Processed tile ($xn, $yn): saved $(sizeof(Float32.(dEdt_time_avg)) / 1024^2) MB")
+       println("Processed tile ($xn, $yn)")
 
 
    end
