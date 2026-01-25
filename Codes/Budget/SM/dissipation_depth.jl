@@ -366,8 +366,8 @@ FH_plot[.!ocean_mask] .= NaN
 # --- Figure 1: Bathymetry ---
 fig_bathy = Figure(resolution=(1000, 800), fontsize=16)
 ax_bathy = Axis(fig_bathy[1, 1],
-   xlabel="Longitude (°E)",
-   ylabel="Latitude (°N)",
+   xlabel="Longitude (°)",
+   ylabel="Latitude (°)",
    title="Bathymetry")
 
 
@@ -404,7 +404,7 @@ fig_bars = Figure(resolution=(1400, 600), fontsize=14)
 # Panel 1: Depth vs Residual
 ax_depth = Axis(fig_bars[1, 1],
    xlabel="Depth Range (m)",
-   ylabel="Area-weighted Residual (W/m²)",
+   ylabel="Area-weighted Residual (-D) [W/m²]",
    title="Residual vs Depth")
    #,   xticklabelrotation=π/45)
 
@@ -437,7 +437,7 @@ hlines!(ax_depth, [0], color=:black, linewidth=1.5, linestyle=:dash)
 # Panel 2: Roughness vs Residual
 ax_rough_bar = Axis(fig_bars[1, 2],
    xlabel="Roughness Range (×10⁻³)",
-   ylabel="Area-weighted Residual (W/m²)",
+   ylabel="Area-weighted Residual (D) [W/m²]",
    title="Residual vs Roughness")#,    xticklabelrotation=π/4)
 
 
