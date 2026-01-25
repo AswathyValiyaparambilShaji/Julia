@@ -67,7 +67,7 @@ fig = Figure(resolution=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
-    title = "Normalized Vorticity (timestep $timestep)")
+    title = "Normalized Vorticity ")
 
 hm = CairoMakie.heatmap!(ax, lon, lat, zf,
     interpolate = false,colorrange=(-0.5, 0.5), colormap=Reverse(:RdBu))

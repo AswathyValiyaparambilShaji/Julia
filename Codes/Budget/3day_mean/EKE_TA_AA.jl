@@ -151,7 +151,7 @@ fig = Figure(size=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
-    title="Time-Averaged Surface KE")
+    title="EKE")
 
 
 hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg[:,:,1],

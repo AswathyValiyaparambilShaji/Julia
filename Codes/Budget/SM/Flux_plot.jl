@@ -125,7 +125,7 @@ LAT = lat
 # -------------------------------
 fig1 = Figure(resolution = (700, 600))
 ax1  = Axis(fig1[1, 1],
-    title  = "MITgcm Flux (with quiver)",
+    title  = "MITgcm Flux ",
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
 )
