@@ -213,7 +213,7 @@ println("  Residual2: $(std_residual2)")
 fig = Figure(resolution=(1200, 800))
 
 # Color range for plots
-crange = (-1.4, 1.4)
+crange = (-1.2, 1.2)
 cmap = Reverse(:RdBu)
 # Row 1, Column 1: Conversion
 ax1 = Axis(fig[1, 1],
@@ -319,7 +319,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v2.png"), fig)
 
 
    #println(rich("P",subscript("b")))
