@@ -40,7 +40,7 @@ thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
-
+depth80 = cumsum(DRF[1:81])
 # Initialize global arrays
 Conv = zeros(NX, NY)
 FDiv = zeros(NX, NY)
@@ -313,7 +313,7 @@ hm8 = heatmap!(ax8, lon, lat, (Residual./(rho0.*FH))*10^8;
            colormap=cmap)
 
 # Add shared colorbar
-Colorbar(fig[1:2, 4], hm8, label=rich("[x 10",superscript("-8"),"W/m²]"))
+Colorbar(fig[1:2, 4], hm8, label=rich("[x 10",superscript("-8"),"W/kg]"))
 display(fig)
 
 
