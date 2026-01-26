@@ -205,7 +205,7 @@ Residual1 = Conv .- FDiv
 Residual2 = Conv .- FDiv .- (U_KE_full .+ U_PE_full)
 Residual3 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full
 Residual4 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full .+ BP_full
-Residual5 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full .+ BP_full .-ET_Full
+Residual5 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full .+ BP_full .-ET_full
 
 
 Diff = Residual1 .-Residual
