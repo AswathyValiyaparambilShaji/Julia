@@ -213,7 +213,7 @@ println("  Residual2: $(std_residual2)")
 fig = Figure(resolution=(1200, 800))
 
 # Color range for plots
-crange = (-1.5, 1.5)
+crange = (-1.4, 1.4)
 cmap = Reverse(:RdBu)
 # Row 1, Column 1: Conversion
 ax1 = Axis(fig[1, 1],
