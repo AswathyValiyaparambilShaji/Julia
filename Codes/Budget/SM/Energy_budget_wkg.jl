@@ -24,7 +24,7 @@ nx = tx + 2*buf
 ny = ty + 2*buf
 
 rho0 = 999.8
-
+nz = 88
 # Initialize global arrays
 Conv = zeros(NX, NY)
 FDiv = zeros(NX, NY)
