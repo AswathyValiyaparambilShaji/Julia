@@ -24,7 +24,23 @@ nx = tx + 2*buf
 ny = ty + 2*buf
 
 rho0 = 999.8
+# --- Vertical levels ---
 nz = 88
+
+
+kz = 1
+dt = 25
+dto = 144
+Tts = 366192
+nt = div(Tts, dto)
+
+
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+g = 9.8
+
 # Initialize global arrays
 Conv = zeros(NX, NY)
 FDiv = zeros(NX, NY)
