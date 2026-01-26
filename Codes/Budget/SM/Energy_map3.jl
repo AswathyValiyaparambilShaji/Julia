@@ -25,9 +25,23 @@ buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
+nz = 88
 
 
-# Initialize global arrays
+kz = 1
+dt = 25
+dto = 144
+Tts = 366192
+nt = div(Tts, dto)
+
+
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+g = 9.8
+rho0=999.8
+
 Conv = zeros(NX, NY)
 FDiv = zeros(NX, NY)
 U_KE_full = zeros(NX, NY)
@@ -35,6 +49,10 @@ U_PE_full = zeros(NX, NY)
 SP_H_full = zeros(NX, NY)
 SP_V_full = zeros(NX, NY)
 BP_full = zeros(NX, NY)
+∇H = zeros(NX, NY)
+FH = zeros(NX, NY)
+RAC = zeros(NX, NY)  # Grid cell area
+ET_full = zeros(NX, NY)
 
 
 println("Loading energy budget terms...")
@@ -49,7 +67,17 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
    for yn in cfg["yn_start"]:cfg["yn_end"]
        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-      
+       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+
+
+       DRFfull = hFacC .* DRF3d
+       z = cumsum(DRFfull, dims=3)
+       depth = sum(DRFfull, dims=3)
+       DRFfull[hFacC .== 0] .= 0.0
+       
+       # Convert to negative depth (oceanographic convention)
+
+
        # --- Read Flux Divergence ---
        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
@@ -57,7 +85,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            raw_data = reinterpret(Float32, raw_bytes)
            reshape(raw_data, nx-2, ny-2)
        end)
-      
+       
        # --- Read Conversion ---
        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
@@ -65,19 +93,19 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            raw_data = reinterpret(Float32, raw_bytes)
            reshape(raw_data, nx-2, ny-2)
        end)
-      
+       
        # --- Read KE Advection ---
        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
            nbytes = nx * ny * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
        end)
-      
+       
        # --- Read PE Advection ---
        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
            nbytes = nx * ny * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
        end)
-      
+       
        # --- Read Shear Production ---
        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
            nbytes = nx * ny * sizeof(Float32)
@@ -96,32 +124,67 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            nbytes = nx * ny * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
        end)
+       # Read time-averaged energy tendency
+       te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+
+       dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+       dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+       
+       # Calculate grid cell area
+       rac = dx .* dy
 
 
-       # Calculate tile positions in global grid (same for all terms)
+       H = depth
+
+
+       # Horizontal gradients for roughness
+       dHdx = zeros(nx, ny)
+       dHdx[2:end-1, :] .= (H[3:end, :] .- H[1:end-2, :]) ./ (dx[2:end-1, :] .+ dx[3:end, :])
+
+
+       dHdy = zeros(nx, ny)
+       dHdy[:, 2:end-1] .= (H[:, 3:end] .- H[:, 1:end-2]) ./ (dy[:, 2:end-1] .+ dy[:, 3:end])
+
+
+       # Gradient magnitude = topographic slope (roughness measure)
+       gh = sqrt.(dHdx.^2 .+ dHdy.^2)
+
+
+       # Calculate tile positions in global grid
        xs = (xn - 1) * tx + 1
        xe = xs + tx + (2 * buf) - 1
        ys = (yn - 1) * ty + 1
        ye = ys + ty + (2 * buf) - 1
-      
-       # Update global arrays (remove buffer zones - same indexing for all)
+       
+       # Update global arrays (remove buffer zones)
        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
-      
-       # Use same interior extraction for advection terms
+       
+       # Extract interior regions
        u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
        u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
        sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
        sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
        bp_interior = bp_mean[buf:nx-buf+1, buf:ny-buf+1]
-      
-       # Same tile positions as Conv and FDiv
+       gh_interior = gh[buf:nx-buf+1, buf:ny-buf+1]
+       H_interior = H[buf:nx-buf+1, buf:ny-buf+1]
+       rac_interior = rac[buf:nx-buf+1, buf:ny-buf+1]
+       te_interior = te_mean[buf:nx-buf+1, buf:ny-buf+1]
+       
+       # Assign to global arrays
        U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
        U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
        BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_interior
-      
+       ∇H[xs+2:xe-2, ys+2:ye-2] .= gh_interior
+       FH[xs+2:xe-2, ys+2:ye-2] .= H_interior
+       RAC[xs+2:xe-2, ys+2:ye-2] .= rac_interior
+       ET_full[xs+2:xe-2, ys+2:ye-2] .= te_interior
+
        println("Completed tile $suffix")
    end
 end
@@ -142,6 +205,7 @@ Residual1 = Conv .- FDiv
 Residual2 = Conv .- FDiv .- (U_KE_full .+ U_PE_full)
 Residual3 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full
 Residual4 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full .+ BP_full
+Residual5 = Conv .- FDiv .- (U_KE_full .+ U_PE_full) .+ SP_H_full.+SP_V_full .+ BP_full .-ET_Full
 
 
 Diff = Residual1 .-Residual
@@ -153,6 +217,7 @@ std_residual1 = std(Residual1, corrected = false)
 std_residual2 = std(Residual2, corrected = false)
 std_residual3 = std(Residual3, corrected = false)
 std_residual4 = std(Residual4, corrected = false)
+std_residual4 = std(Residual5, corrected = false)
 
 
 # Calculate means
@@ -177,8 +242,9 @@ println("  Residual1: $(std_residual1)")
 println("  Residual2: $(std_residual2)")
 println("  Residual3: $(std_residual3)")
 println("  Residual4: $(std_residual4)")
+println("  Residual5: $(std_residual4)")
 
-
+#
 println("\nMeans:")
 println("  Residual:  $(mean_residual)")
 println("  Residual1: $(mean_residual1)")
@@ -200,19 +266,20 @@ println("  Residual4: $(cv_residual4)")
 # ==========================================================
 
 
-fig_bar = Figure(size=(1600, 600))
+fig_bar = Figure(size=(800, 600))
 ax_bar = Axis(fig_bar[1, 1],
    xlabel = "Residual Type",
    ylabel = "Dissipation",
-   title = "Area Average of dissipation",
-   xticks = (1:4, ["⟨C⟩-⟨∇·F⟩", "⟨C⟩-⟨∇·F⟩-⟨A⟩","⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩ ", "⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩+⟨BP⟩"]),
+   title = "STD of dissipation",
+   xticks = (1:5, ["⟨C⟩-⟨∇·F⟩", "⟨C⟩-⟨∇·F⟩-⟨A⟩","⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩ ", "⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩+⟨BP⟩ ","⟨C⟩-⟨∇·F⟩-⟨A⟩+⟨SP⟩+⟨BP⟩+⟨∂E/∂t⟩"]),
    limits = (0.3, 4.7, 0, nothing),
    xticklabelsize = 14
 )
 
 
 # Data for bar plot
-m_values = [mean_residual1, mean_residual2, mean_residual3, mean_residual4]
+#m_values = [mean_residual1, mean_residual2, mean_residual3, mean_residual4]
+m_values = [std_residual1, std_residual2, std_residual3, std_residual4,std_residual5]
 
 
 # Create bar plot with different colors
@@ -241,5 +308,5 @@ display(fig_bar)
 
 # Save bar plot
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Residual_mean_Comparison.png"), fig_bar)
+save(joinpath(FIGDIR, "Residual_std_Comparison.png"), fig_bar)
 

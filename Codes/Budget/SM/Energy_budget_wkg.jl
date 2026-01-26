@@ -40,7 +40,7 @@ thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
-depth80 = cumsum(DRF[1:81])
+#depth80 = cumsum(DRF[1:81])
 # Initialize global arrays
 Conv = zeros(NX, NY)
 FDiv = zeros(NX, NY)
@@ -197,7 +197,7 @@ MF = U_KE_full .+ U_PE_full .+ SP_H_full.+SP_V_full .+ BP_full
 A = U_KE_full .+ U_PE_full
 PS = SP_H_full.+SP_V_full
 
-Residual = -(Conv .- TotalFlux .+ SP_H_full.+SP_V_full .+ BP_full.+ET_full)
+Residual = -(Conv .- TotalFlux .+ SP_H_full.+SP_V_full .+ BP_full.-ET_full)
 Residual2 = Conv .- FDiv
 
 
