@@ -135,7 +135,10 @@ ax1  = Axis(fig1[1, 1],
 hm1 = CairoMakie.heatmap!(ax1, LON, LAT, F;
     interpolate = false,
     colorrange  = (0, HEAT_CBAR_MAX),
-    colormap    = :jet,
+    colormap    = :Accent_5,
+    ylabelsize = 22,
+    xlabelsize = 22,
+    titlesize = 26,
 )
 
 # Build quiver subsample
@@ -161,7 +164,7 @@ if !isempty(vec)
     arrows!(ax1, pos, scale .* vec; color=:black, shaftwidth=1.5f0, tipwidth=8f0, tiplength=8f0)
 end
 
-Colorbar(fig1[1, 2], hm1, label = "Flux (kW/m)")
-save(joinpath(FIGDIR, "Flux_with_quiver_SM_v1.png"), fig1)
+Colorbar(fig1[1, 2], hm1, label = "(kW/m)")
+save(joinpath(FIGDIR, "Flux_with_quiver_SM_v2.png"), fig1)
 
 display(fig1)

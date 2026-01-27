@@ -67,7 +67,11 @@ fig = Figure(resolution=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
-    title = "Normalized Vorticity ")
+    title = "Normalized Vorticity ",
+    titlesize=26,
+    ylabelsize = 22,
+    xlabelsize = 22,
+    )
 
 hm = CairoMakie.heatmap!(ax, lon, lat, zf,
     interpolate = false,colorrange=(-0.5, 0.5), colormap=Reverse(:RdBu))
@@ -81,5 +85,5 @@ display(fig)
 
 # Save figure
 FIGDIR        = cfg["fig_base"]
-save(joinpath(FIGDIR, "Vorticity_v1.png"), fig)
+save(joinpath(FIGDIR, "Vorticity_v2.png"), fig)
 

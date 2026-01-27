@@ -93,25 +93,19 @@ end
 
 # --- 10-timestep averaging ---
 println("\nPerforming 10-timestep averaging...")
-KE_10avg = zeros(Float64, NX, NY, nt_10avg)
+KE_10avg = zeros(Float64, NX, NY)
 
 
-for t in 1:nt_10avg
-    t_start = (t-1) * 10 + 1
-    t_end = min(t * 10, nt_avg)
     
     # Average over 10 timesteps
-    KE_10avg[:, :, t] = mean(KE_surface[:, :, t_start:t_end], dims=3)[:, :, 1]
+    KE_10avg[:, :] = mean(KE_surface[:, :, :], dims=3)
     
-    if t % 10 == 0
-        println("  Completed window $t / $nt_10avg")
-    end
-end
-
-
+   
 # --- Time average over all 10-timestep windows ---
 
 
+
+#= --- Time average ---
 println("\n10-timestep averaged surface KE calculated")
 
  KE_AA = zeros(Float64, nt_10avg)
@@ -125,7 +119,6 @@ println("\nWeighted area-averaged surface KE: $KE_AA J/m³")
 
 println("Total area: $(sum(dA)/1e6) km²")
 
-#= --- Time average ---
 KE_time_avg = mean(KE_surface, dims=3)[:, :, 1]
 
 
@@ -151,10 +144,14 @@ fig = Figure(size=(1000, 800))
 ax = Axis(fig[1, 1],
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
-    title="EKE")
+    title="EKE",
+    titlesize=26,
+    ylabelsize = 22,
+    xlabelsize = 22,
+    )
 
 
-hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg[:,:,1],
+hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg,
     colormap=:jet,
     interpolate=false)
 
@@ -167,7 +164,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EKE_v2.png"), fig)
+save(joinpath(FIGDIR, "EKE_v3.png"), fig)
 
 #
 

@@ -214,13 +214,17 @@ fig = Figure(resolution=(1200, 800))
 
 # Color range for plots
 crange = (-1.2, 1.2)
-cmap = Reverse(:RdBu)
+crange2 = (-0.2, 0.2)
+
+cmap = :diverging_bwr_40_95_c42_n256
 # Row 1, Column 1: Conversion
 ax1 = Axis(fig[1, 1],
        title="(a) ⟨C⟩",
        xlabel="",
        xticklabelsvisible=false,
-       ylabel="Latitude [°]"
+       ylabel="Latitude [°]",
+       ylabelsize = 22,
+       titlesize=26
        )
        #aspect=1)
 hm1 = heatmap!(ax1, lon, lat, (Conv./(rho0.*FH))*10^8;
@@ -235,6 +239,7 @@ ax2 = Axis(fig[1, 2],
        xticklabelsvisible=false,
        ylabel="",
        yticklabelsvisible=false,
+       titlesize=26
        )
        #aspect=1)
 hm2 = heatmap!(ax2, lon, lat, (FDiv./(rho0.*FH))*10^8;
@@ -242,18 +247,21 @@ hm2 = heatmap!(ax2, lon, lat, (FDiv./(rho0.*FH))*10^8;
            colorrange=crange,
            colormap=cmap)
 # Row 1, Column 3: Advective KE
-ax3 = Axis(fig[1, 3],
-       title="(c) ⟨A⟩",
-       xlabel="",
-       xticklabelsvisible=false,
-       ylabel="",
-       yticklabelsvisible=false
+ax3 = Axis(fig[2, 3],
+       title="(f) ⟨A⟩",
+       xlabel="Longitude [°]",
+       #xticklabelsvisible=false,
+       #ylabel="Latitude [°]",
+       yticklabelsvisible=false,
+       xlabelsize = 22,
+       titlesize=26
        )
        #aspect=1)
 hm3 = heatmap!(ax3, lon, lat, (A./(rho0.*FH))*10^8;
            interpolate=false,
-           colorrange=crange,
+           colorrange=crange2,
            colormap=cmap)
+Colorbar(fig[2, 4], hm3, label=rich("[x 10",superscript("-8"),"W/kg]"))
 #= Row 1, Column 4: Advective PE
 ax4 = Axis(fig[1, 4],
        title="(d) Advective PE Flux",
@@ -270,23 +278,28 @@ hm4 = heatmap!(ax4, lon, lat, U_PE_full;
 ax5 = Axis(fig[2, 1],
        title="(d) ⟨Pₛ⟩",
        xlabel="Longitude [°]",
-       ylabel="Latitude [°]",)#aspect=1.2)
+       ylabel="Latitude [°]",
+       ylabelsize = 22,
+       xlabelsize = 22,
+       titlesize=26)#aspect=1.2)
        #aspect=1)
 hm5 = heatmap!(ax5, lon, lat, (PS./(rho0.*FH))*10^8;
            interpolate=false,
-           colorrange=crange,
+           colorrange=crange2,
            colormap=cmap)
 
 # Row 2, Column 2: Shear Production Vertical
 ax6 = Axis(fig[2, 2],
     title=rich("(e) ⟨P",subscript("b"),"⟩"),
        xlabel="Longitude [°]",
+       xlabelsize = 22,
        ylabel="",
-       yticklabelsvisible=false,)#aspect=1.2)
+       yticklabelsvisible=false,
+       titlesize=26)#aspect=1.2)
        #aspect=1)
 hm6 = heatmap!(ax6, lon, lat, (BP_full./(rho0.*FH))*10^8;
            interpolate=false,
-           colorrange=crange,
+           colorrange=crange2,
            colormap=cmap)
 #= Row 2, Column 3: Buoyancy Production
 ax7 = Axis(fig[2, 3],
@@ -301,11 +314,13 @@ hm7 = heatmap!(ax7, lon, lat, BP_full;
            colormap=cmap)
 =#
 # Row 2, Column 4: Residual
-ax8 = Axis(fig[2, 3],
-       title="(f) ⟨D⟩",
-       xlabel="Longitude [°]",
+ax8 = Axis(fig[1, 3],
+       title="(d) ⟨D⟩",
+       xlabel="",
+       xticklabelsvisible=false,
        ylabel="",
-       yticklabelsvisible=false,)#aspect=1.2)
+       yticklabelsvisible=false,
+       titlesize=26)#aspect=1.2)
 #aspect=1)
 hm8 = heatmap!(ax8, lon, lat, (Residual./(rho0.*FH))*10^8;
            interpolate=false,
@@ -313,13 +328,13 @@ hm8 = heatmap!(ax8, lon, lat, (Residual./(rho0.*FH))*10^8;
            colormap=cmap)
 
 # Add shared colorbar
-Colorbar(fig[1:2, 4], hm8, label=rich("[x 10",superscript("-8"),"W/kg]"))
+Colorbar(fig[1, 4], hm8, label=rich("[x 10",superscript("-8"),"W/kg]"))
 display(fig)
 
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v2.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v3.png"), fig)
 
 
    #println(rich("P",subscript("b")))
