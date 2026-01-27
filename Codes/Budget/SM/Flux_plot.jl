@@ -128,6 +128,9 @@ ax1  = Axis(fig1[1, 1],
     title  = "MITgcm Flux ",
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
+    ylabelsize = 22,
+    xlabelsize = 22,
+    titlesize = 26,
 )
 
 #ax1.limits[] = (193.0,194.2,24.0, 25.4)
@@ -136,9 +139,7 @@ hm1 = CairoMakie.heatmap!(ax1, LON, LAT, F;
     interpolate = false,
     colorrange  = (0, HEAT_CBAR_MAX),
     colormap    = :Accent_5,
-    ylabelsize = 22,
-    xlabelsize = 22,
-    titlesize = 26,
+    
 )
 
 # Build quiver subsample
