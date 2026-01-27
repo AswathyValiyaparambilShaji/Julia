@@ -239,8 +239,8 @@ end
 
 # Calculate area-weighted means
 mean_Conv = area_weighted_mean(Conv_wkg, RAC)
-mean_FDiv = area_weighted_mean(FDiv_wkg, RAC)
-mean_A = area_weighted_mean(A_wkg, RAC)
+mean_FDiv = -(area_weighted_mean(FDiv_wkg, RAC))
+mean_A = -(area_weighted_mean(A_wkg, RAC))
 mean_PS = area_weighted_mean(PS_wkg, RAC)
 mean_BP = area_weighted_mean(BP_wkg, RAC)
 mean_D = area_weighted_mean(D_wkg, RAC)
@@ -253,7 +253,7 @@ mean_D = area_weighted_mean(D_wkg, RAC)
 # ==========================================================
 
 
-fig_bar = Figure(resolution=(800, 600))
+fig_bar = Figure(resolution=(850, 500))
 
 
 ax_bar = Axis(fig_bar[1, 1],
@@ -277,7 +277,8 @@ colors = [v >= 0 ? :red : :blue for v in values]
 barplot!(ax_bar, 1:length(terms), values, 
     color = colors,
     strokecolor = :black,
-    strokewidth = 1
+    strokewidth = 1,
+    width = 0.45
 )
 
 
