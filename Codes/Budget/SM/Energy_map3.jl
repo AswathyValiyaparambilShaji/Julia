@@ -217,7 +217,7 @@ std_residual1 = std(Residual1, corrected = false)
 std_residual2 = std(Residual2, corrected = false)
 std_residual3 = std(Residual3, corrected = false)
 std_residual4 = std(Residual4, corrected = false)
-std_residual4 = std(Residual5, corrected = false)
+std_residual5 = std(Residual5, corrected = false)
 
 
 # Calculate means
@@ -225,6 +225,7 @@ mean_residual = mean(Residual)
 mean_residual1 = mean(Residual1)
 mean_residual2 = mean(Residual2)
 mean_residual3 = mean(Residual3)
+mean_residual4 = mean(Residual4)
 mean_residual4 = mean(Residual4)
 
 
