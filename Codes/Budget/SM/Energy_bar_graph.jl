@@ -263,6 +263,10 @@ std_PS = area_weighted_sem(PS_wkg, RAC)
 std_BP = area_weighted_sem(BP_wkg, RAC)
 std_D = area_weighted_sem(D_wkg, RAC)
 
+f1 = -mean_FDiv/mean_Conv
+f2 = (mean_PS+mean_BP)/mean_Conv
+println("f1 = $f1")
+println("f2 = $f2")
 
 # ==========================================================
 # ============ CREATE BARPLOT ==============================
