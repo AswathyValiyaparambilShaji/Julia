@@ -237,10 +237,12 @@ function area_weighted_mean(field, area)
 end
 
 
-# Function for standard deviation (excluding NaN/Inf values)
-function area_weighted_std(field, area)
+# Function for standard error of the mean
+function area_weighted_sem(field, area)
    valid_mask = .!(isnan.(field) .| isinf.(field))
-   return std(field[valid_mask], corrected=false)
+   n_valid = sum(valid_mask)
+   std_val = std(field[valid_mask], corrected=false)
+   return std_val / sqrt(n_valid)
 end
 
 
@@ -253,13 +255,13 @@ mean_BP = area_weighted_mean(BP_wkg, RAC)
 mean_D = area_weighted_mean(D_wkg, RAC)
 
 
-# Calculate standard deviations for error bars
-std_Conv = area_weighted_std(Conv_wkg, RAC)
-std_FDiv = area_weighted_std(FDiv_wkg, RAC)
-std_A = area_weighted_std(A_wkg, RAC)
-std_PS = area_weighted_std(PS_wkg, RAC)
-std_BP = area_weighted_std(BP_wkg, RAC)
-std_D = area_weighted_std(D_wkg, RAC)
+# Calculate standard errors for error bars
+std_Conv = area_weighted_sem(Conv_wkg, RAC)
+std_FDiv = area_weighted_sem(FDiv_wkg, RAC)
+std_A = area_weighted_sem(A_wkg, RAC)
+std_PS = area_weighted_sem(PS_wkg, RAC)
+std_BP = area_weighted_sem(BP_wkg, RAC)
+std_D = area_weighted_sem(D_wkg, RAC)
 
 
 # ==========================================================
@@ -267,7 +269,7 @@ std_D = area_weighted_std(D_wkg, RAC)
 # ==========================================================
 
 
-fig_bar = Figure(resolution=(950, 500))
+fig_bar = Figure(resolution=(850, 500))
 
 
 ax_bar = Axis(fig_bar[1, 1],
@@ -318,11 +320,9 @@ display(fig_bar)
 
 # Save barplot
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Barplot_v2.png"), fig_bar)
+save(joinpath(FIGDIR, "EnergyBudget_Barplot_v3.png"), fig_bar)
 
 
-println("\nBarplot saved to: $(joinpath(FIGDIR, "EnergyBudget_Barplot.png"))")
-
-
+println("\nBarplot saved to: $(joinpath(FIGDIR, "EnergyBudget_Barplot_v3.png"))")
 
 
