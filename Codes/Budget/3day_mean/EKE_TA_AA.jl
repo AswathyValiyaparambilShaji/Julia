@@ -140,7 +140,7 @@ println("Total area: $(sum(dA)) m²")
 using CairoMakie
 
 
-fig = Figure(size=(1000, 800))
+fig = Figure(size=(700, 600))
 ax = Axis(fig[1, 1],
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",

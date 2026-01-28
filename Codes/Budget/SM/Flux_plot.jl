@@ -138,9 +138,8 @@ ax1  = Axis(fig1[1, 1],
 hm1 = CairoMakie.heatmap!(ax1, LON, LAT, F;
     interpolate = false,
     colorrange  = (0, HEAT_CBAR_MAX),
-    colormap    = :Accent_5,
-    
-)
+    colormap    = :Spectral_9,
+    )
 
 # Build quiver subsample
 pos = Point2f[]

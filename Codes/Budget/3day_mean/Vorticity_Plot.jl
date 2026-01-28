@@ -63,7 +63,7 @@ end
 
 zf = ζ_full[ :,:,1]
 # Create figure
-fig = Figure(resolution=(1000, 800))
+fig = Figure(resolution=(700, 600))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",

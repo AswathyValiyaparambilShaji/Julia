@@ -216,15 +216,15 @@ fig = Figure(resolution=(1200, 800))
 crange = (-1.2, 1.2)
 crange2 = (-0.2, 0.2)
 
-cmap = :diverging_bwr_40_95_c42_n256
+cmap = :bwr#seismic#diverging_bwr_55_98_c37_n256#diverging_bwr_40_95_c42_n256
 # Row 1, Column 1: Conversion
 ax1 = Axis(fig[1, 1],
        title="(a) ⟨C⟩",
        xlabel="",
        xticklabelsvisible=false,
        ylabel="Latitude [°]",
-       ylabelsize = 22,
-       titlesize=26
+       ylabelsize = 19,
+       titlesize=22
        )
        #aspect=1)
 hm1 = heatmap!(ax1, lon, lat, (Conv./(rho0.*FH))*10^8;
@@ -239,7 +239,7 @@ ax2 = Axis(fig[1, 2],
        xticklabelsvisible=false,
        ylabel="",
        yticklabelsvisible=false,
-       titlesize=26
+       titlesize=22
        )
        #aspect=1)
 hm2 = heatmap!(ax2, lon, lat, (FDiv./(rho0.*FH))*10^8;
@@ -253,8 +253,8 @@ ax3 = Axis(fig[2, 3],
        #xticklabelsvisible=false,
        #ylabel="Latitude [°]",
        yticklabelsvisible=false,
-       xlabelsize = 22,
-       titlesize=26
+       xlabelsize = 19,
+       titlesize=22
        )
        #aspect=1)
 hm3 = heatmap!(ax3, lon, lat, (A./(rho0.*FH))*10^8;
@@ -279,9 +279,9 @@ ax5 = Axis(fig[2, 1],
        title="(d) ⟨Pₛ⟩",
        xlabel="Longitude [°]",
        ylabel="Latitude [°]",
-       ylabelsize = 22,
-       xlabelsize = 22,
-       titlesize=26)#aspect=1.2)
+       ylabelsize = 19,
+       xlabelsize = 19,
+       titlesize=22)#aspect=1.2)
        #aspect=1)
 hm5 = heatmap!(ax5, lon, lat, (PS./(rho0.*FH))*10^8;
            interpolate=false,
@@ -292,10 +292,10 @@ hm5 = heatmap!(ax5, lon, lat, (PS./(rho0.*FH))*10^8;
 ax6 = Axis(fig[2, 2],
     title=rich("(e) ⟨P",subscript("b"),"⟩"),
        xlabel="Longitude [°]",
-       xlabelsize = 22,
+       xlabelsize = 19,
        ylabel="",
        yticklabelsvisible=false,
-       titlesize=26)#aspect=1.2)
+       titlesize=22)#aspect=1.2)
        #aspect=1)
 hm6 = heatmap!(ax6, lon, lat, (BP_full./(rho0.*FH))*10^8;
            interpolate=false,
@@ -315,12 +315,12 @@ hm7 = heatmap!(ax7, lon, lat, BP_full;
 =#
 # Row 2, Column 4: Residual
 ax8 = Axis(fig[1, 3],
-       title="(d) ⟨D⟩",
+       title="(c) ⟨D⟩",
        xlabel="",
        xticklabelsvisible=false,
        ylabel="",
        yticklabelsvisible=false,
-       titlesize=26)#aspect=1.2)
+       titlesize=22)#aspect=1.2)
 #aspect=1)
 hm8 = heatmap!(ax8, lon, lat, (Residual./(rho0.*FH))*10^8;
            interpolate=false,

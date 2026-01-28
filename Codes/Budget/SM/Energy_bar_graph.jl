@@ -69,119 +69,119 @@ println("Loading energy budget terms...")
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-        
-        DRFfull = hFacC .* DRF3d
-        z = cumsum(DRFfull, dims=3)
-        depth = sum(DRFfull, dims=3)
-        DRFfull[hFacC .== 0] .= 0.0
-        
-        # --- Read Flux Divergence ---
-        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
-        end)
-        
-        # --- Read Conversion ---
-        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
-        end)
-        
-        # --- Read KE Advection ---
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read PE Advection ---
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # Read time-averaged energy tendency
-        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-        dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-        
-        # Calculate grid cell area
-        rac = dx .* dy
-        
-        H = depth
-        
-        # Horizontal gradients for roughness
-        dHdx = zeros(nx, ny)
-        dHdx[2:end-1, :] .= (H[3:end, :] .- H[1:end-2, :]) ./ (dx[2:end-1, :] .+ dx[3:end, :])
-        
-        dHdy = zeros(nx, ny)
-        dHdy[:, 2:end-1] .= (H[:, 3:end] .- H[:, 1:end-2]) ./ (dy[:, 2:end-1] .+ dy[:, 3:end])
-        
-        # Gradient magnitude = topographic slope (roughness measure)
-        gh = sqrt.(dHdx.^2 .+ dHdy.^2)
-        
-        # Calculate tile positions in global grid
-        xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
-        ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
-        
-        # Update global arrays (remove buffer zones)
-        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
-        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
-        
-        # Extract interior regions
-        u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
-        u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
-        sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-        bp_interior = bp_mean[buf:nx-buf+1, buf:ny-buf+1]
-        gh_interior = gh[buf:nx-buf+1, buf:ny-buf+1]
-        H_interior = H[buf:nx-buf+1, buf:ny-buf+1]
-        rac_interior = rac[buf:nx-buf+1, buf:ny-buf+1]
-        te_interior = te_mean[buf:nx-buf+1, buf:ny-buf+1]
-        
-        # Assign to global arrays
-        U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
-        U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
-        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
-        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
-        BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_interior
-        ∇H[xs+2:xe-2, ys+2:ye-2] .= gh_interior
-        FH[xs+2:xe-2, ys+2:ye-2] .= H_interior
-        RAC[xs+2:xe-2, ys+2:ye-2] .= rac_interior
-        ET_full[xs+2:xe-2, ys+2:ye-2] .= te_interior
-        
-        println("Completed tile $suffix")
-    end
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+      
+       DRFfull = hFacC .* DRF3d
+       z = cumsum(DRFfull, dims=3)
+       depth = sum(DRFfull, dims=3)
+       DRFfull[hFacC .== 0] .= 0.0
+      
+       # --- Read Flux Divergence ---
+       fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
+      
+       # --- Read Conversion ---
+       C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
+      
+       # --- Read KE Advection ---
+       u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # --- Read PE Advection ---
+       u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # --- Read Shear Production ---
+       sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # --- Read Buoyancy Production ---
+       bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       # Read time-averaged energy tendency
+       te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+      
+       dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+       dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+      
+       # Calculate grid cell area
+       rac = dx .* dy
+      
+       H = depth
+      
+       # Horizontal gradients for roughness
+       dHdx = zeros(nx, ny)
+       dHdx[2:end-1, :] .= (H[3:end, :] .- H[1:end-2, :]) ./ (dx[2:end-1, :] .+ dx[3:end, :])
+      
+       dHdy = zeros(nx, ny)
+       dHdy[:, 2:end-1] .= (H[:, 3:end] .- H[:, 1:end-2]) ./ (dy[:, 2:end-1] .+ dy[:, 3:end])
+      
+       # Gradient magnitude = topographic slope (roughness measure)
+       gh = sqrt.(dHdx.^2 .+ dHdy.^2)
+      
+       # Calculate tile positions in global grid
+       xs = (xn - 1) * tx + 1
+       xe = xs + tx + (2 * buf) - 1
+       ys = (yn - 1) * ty + 1
+       ye = ys + ty + (2 * buf) - 1
+      
+       # Update global arrays (remove buffer zones)
+       Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
+       FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
+      
+       # Extract interior regions
+       u_ke_interior = u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
+       u_pe_interior = u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
+       sp_h_interior = sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+       sp_v_interior = sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+       bp_interior = bp_mean[buf:nx-buf+1, buf:ny-buf+1]
+       gh_interior = gh[buf:nx-buf+1, buf:ny-buf+1]
+       H_interior = H[buf:nx-buf+1, buf:ny-buf+1]
+       rac_interior = rac[buf:nx-buf+1, buf:ny-buf+1]
+       te_interior = te_mean[buf:nx-buf+1, buf:ny-buf+1]
+      
+       # Assign to global arrays
+       U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_interior
+       U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_interior
+       SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_interior
+       SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_interior
+       BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_interior
+       ∇H[xs+2:xe-2, ys+2:ye-2] .= gh_interior
+       FH[xs+2:xe-2, ys+2:ye-2] .= H_interior
+       RAC[xs+2:xe-2, ys+2:ye-2] .= rac_interior
+       ET_full[xs+2:xe-2, ys+2:ye-2] .= te_interior
+      
+       println("Completed tile $suffix")
+   end
 end
 
 
@@ -230,10 +230,17 @@ D_wkg = (Residual ./ (rho0 .* FH)) * 10^8
 
 # Function for area-weighted mean (excluding NaN/Inf values)
 function area_weighted_mean(field, area)
-    valid_mask = .!(isnan.(field) .| isinf.(field))
-    numerator = sum(field[valid_mask] .* area[valid_mask])
-    denominator = sum(area[valid_mask])
-    return numerator / denominator
+   valid_mask = .!(isnan.(field) .| isinf.(field))
+   numerator = sum(field[valid_mask] .* area[valid_mask])
+   denominator = sum(area[valid_mask])
+   return numerator / denominator
+end
+
+
+# Function for standard deviation (excluding NaN/Inf values)
+function area_weighted_std(field, area)
+   valid_mask = .!(isnan.(field) .| isinf.(field))
+   return std(field[valid_mask], corrected=false)
 end
 
 
@@ -246,6 +253,13 @@ mean_BP = area_weighted_mean(BP_wkg, RAC)
 mean_D = area_weighted_mean(D_wkg, RAC)
 
 
+# Calculate standard deviations for error bars
+std_Conv = area_weighted_std(Conv_wkg, RAC)
+std_FDiv = area_weighted_std(FDiv_wkg, RAC)
+std_A = area_weighted_std(A_wkg, RAC)
+std_PS = area_weighted_std(PS_wkg, RAC)
+std_BP = area_weighted_std(BP_wkg, RAC)
+std_D = area_weighted_std(D_wkg, RAC)
 
 
 # ==========================================================
@@ -253,20 +267,21 @@ mean_D = area_weighted_mean(D_wkg, RAC)
 # ==========================================================
 
 
-fig_bar = Figure(resolution=(850, 500))
+fig_bar = Figure(resolution=(950, 500))
 
 
 ax_bar = Axis(fig_bar[1, 1],
-    xlabel = "Energy Budget Terms",
-    ylabel = rich("[×10", superscript("-8"), " W/kg]"),
-    title = "Area-Weighted Averaged Energy Budget",
-    #xticklabelrotation = π/4
+   xlabel = "Energy Budget Terms",
+   ylabel = rich("[×10", superscript("-8"), " W/kg]"),
+   title = "Area-Weighted Averaged Energy Budget",
+   #xticklabelrotation = π/4
 )
 
 
 # Data for barplot
-terms = ["⟨C⟩", "⟨∇·F⟩", "⟨A⟩", "⟨Pₛ⟩", rich("⟨P",subscript("b"),"⟩"), "⟨D⟩"]
+terms = ["⟨C⟩", "-⟨∇·F⟩", "-⟨A⟩", "⟨Pₛ⟩", rich("⟨P",subscript("b"),"⟩"), "⟨D⟩"]
 values = [mean_Conv, mean_FDiv, mean_A, mean_PS, mean_BP, mean_D]
+errors = [std_Conv, std_FDiv, std_A, std_PS, std_BP, std_D]
 
 
 # Create colors: positive = red, negative = blue
@@ -274,11 +289,19 @@ colors = [v >= 0 ? :red : :blue for v in values]
 
 
 # Create barplot
-barplot!(ax_bar, 1:length(terms), values, 
-    color = colors,
-    strokecolor = :black,
-    strokewidth = 1,
-    width = 0.45
+barplot!(ax_bar, 1:length(terms), values,
+   color = colors,
+   strokecolor = :black,
+   strokewidth = 1,
+   width = 0.45
+)
+
+
+# Add error bars
+errorbars!(ax_bar, 1:length(terms), values, errors,
+   whiskerwidth = 10,
+   color = :black,
+   linewidth = 1.5
 )
 
 
@@ -295,7 +318,7 @@ display(fig_bar)
 
 # Save barplot
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_Barplot.png"), fig_bar)
+save(joinpath(FIGDIR, "EnergyBudget_Barplot_v2.png"), fig_bar)
 
 
 println("\nBarplot saved to: $(joinpath(FIGDIR, "EnergyBudget_Barplot.png"))")
