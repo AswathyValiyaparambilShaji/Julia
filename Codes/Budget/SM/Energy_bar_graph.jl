@@ -303,12 +303,12 @@ barplot!(ax_bar, 1:length(terms), values,
 )
 
 
-# Add error bars
+#= Add error bars
 errorbars!(ax_bar, 1:length(terms), values, errors,
    whiskerwidth = 10,
    color = :black,
    linewidth = 1.5
-)
+)=#
 
 
 # Set x-axis labels
