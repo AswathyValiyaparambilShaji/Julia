@@ -199,7 +199,7 @@ if use_3day
            cell_y = (maximum(lat) - minimum(lat)) / NY_local
            target = 5f0 * Float32(min(cell_x, cell_y))
            scale = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)
-           arrows!(ax, pos, scale .* vec, color=:black, shaftwidth=1.5f0, tipwidth=8f0, tiplength=8f0)
+           arrows!(ax, pos, scale .* vec, color=:black, arrowsize=8, linewidth=1.5)
        end
       
        Colorbar(fig[1, 2], hm, label = "(kW/m)")
@@ -208,18 +208,26 @@ if use_3day
   
    println("Frames saved to: $frames_dir")
    
-   # Create video
+   # Create video with better error handling
    movie_file = joinpath(FIGDIR, "Flux_3day_movie.mp4")
    input_pattern = joinpath(frames_dir, "frame_%04d.png")
    
    try
-       run(`ffmpeg -y -framerate 5 -i $input_pattern -c:v libx264 -pix_fmt yuv420p -crf 23 $movie_file`)
+       # Capture both stdout and stderr
+       result = read(`ffmpeg -y -framerate 5 -i $input_pattern -c:v libx264 -pix_fmt yuv420p -crf 23 $movie_file`, String)
        println("Video created: $movie_file")
        rm(frames_dir, recursive=true)
        println("Frames cleaned up")
    catch e
-       println("Video creation failed. Run manually:")
-       println("ffmpeg -framerate 5 -i $input_pattern -c:v libx264 -pix_fmt yuv420p $movie_file")
+       println("\nffmpeg error:")
+       if isa(e, ProcessFailedException)
+           println(e.proc)
+       else
+           println(e)
+       end
+       println("\nTry running manually:")
+       println("cd $(dirname(frames_dir))")
+       println("ffmpeg -y -framerate 5 -i $(basename(frames_dir))/frame_%04d.png -c:v libx264 -pix_fmt yuv420p Flux_3day_movie.mp4")
    end
   
 else
@@ -261,7 +269,7 @@ else
        cell_y = (maximum(lat) - minimum(lat)) / NY_local
        target = 5f0 * Float32(min(cell_x, cell_y))
        scale = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)
-       arrows!(ax1, pos, scale .* vec, color=:black, shaftwidth=1.5f0, tipwidth=8f0, tiplength=8f0)
+       arrows!(ax1, pos, scale .* vec, color=:black, arrowsize=8, linewidth=1.5)
    end
   
    Colorbar(fig1[1, 2], hm1, label = "(kW/m)")
