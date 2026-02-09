@@ -17,7 +17,7 @@ base2 = cfg["base_path2"]
 
 # --- TIME AVERAGING CONFIGURATION ---
 # Set to true for 3-day averaging, false for full time period averaging
-use_3day = false  # Change this to true for 3-day averaging
+use_3day = true  # Change this to true for 3-day averaging
 
 
 NX, NY = 288, 468
