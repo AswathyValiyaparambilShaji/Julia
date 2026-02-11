@@ -2,7 +2,7 @@ using Printf, FilePathsBase, TOML#, JSON
 
 
 # Include FluxUtils.jl for any additional utility functions
-include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
 
