@@ -45,8 +45,8 @@ for ts in 1:nt
     
     # --- Read the wind stress data for `taux` and `tauy` ---
     # Corrected file names based on Python output
-    taux_file = joinpath(base, "TauX", "oceTAUX.$suffix.data")
-    tauy_file = joinpath(base, "TauY", "oceTAUY.$suffix.data")
+    taux_file = joinpath(base, "MIT_WS", "oceTAUX.$suffix.data")
+    tauy_file = joinpath(base, "MIT_WS", "oceTAUY.$suffix.data")
     
     # Read binary data - 2D fields (NX, NY) for each time step
     taux = read_bin(taux_file, (NX, NY))  # taux is on U-grid (face in x-direction)
