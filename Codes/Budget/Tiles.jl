@@ -43,22 +43,14 @@ for ts in 1:nt
     tt = (ts - 1) * dto
     suffix = @sprintf("%010d", tt + 597888)
     
+    # --- Read the wind stress data for `taux` and `tauy` ---
+    # Corrected file names based on Python output
+    taux_file = joinpath(base, "TauX", "oceTAUX.$suffix.data")
+    tauy_file = joinpath(base, "TauY", "oceTAUY.$suffix.data")
     
-    taux_file = joinpath(base, "MIT_WS", "oceTAUX.$suffix.data")
-    tauy_file = joinpath(base, "MIT_WS", "oceTAUY.$suffix.data")
-    
-    
-    taux = read_bin(taux_file, (NX, NY)) 
-    tauy = read_bin(tauy_file, (NX, NY))  
-
-    taux_centered = zeros(Float64, NX, NY)
-    taux_centered[1:end-1, :] .= 0.5 .* (taux[1:end-1, :] .+ taux[2:end, :])
-    
-    taux_centered[end, :] .= taux[end, :]
-    tauy_centered = zeros(Float64, NX, NY)
-    
-    tauy_centered[:, 1:end-1] .= 0.5 .* (tauy[:, 1:end-1] .+ tauy[:, 2:end, :])
-    tauy_centered[:, end] .= tauy[:, end]
+    # Read binary data - 2D fields (NX, NY) for each time step
+    taux = read_bin(taux_file, (NX, NY))  # taux is on U-grid (face in x-direction)
+    tauy = read_bin(tauy_file, (NX, NY))  # tauy is on V-grid (face in y-direction)
     
     # --- Tile data and save ---
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -79,8 +71,8 @@ for ts in 1:nt
             y_end = min(NY, y_end)
             
             # Extract tile subdomain
-            taux_tile = taux_centered[x_start:x_end, y_start:y_end]
-            tauy_tile = tauy_centered[x_start:x_end, y_start:y_end]
+            taux_tile = taux[x_start:x_end, y_start:y_end]
+            tauy_tile = tauy[x_start:x_end, y_start:y_end]
             
             # Define output file paths for the tiles
             taux_tile_file = joinpath(base2, "WindStress_F", "taux_$tile_suffix.bin")
@@ -96,11 +88,14 @@ for ts in 1:nt
         end
     end
     
-   
+    if ts % 30 == 0 || ts == 1
+        println("Progress: $ts/$nt - Time step: $suffix")
+    end
 end
 
 
 println("Wind stress tiling complete!")
+println("Created $(cfg["xn_end"] - cfg["xn_start"] + 1) × $(cfg["yn_end"] - cfg["yn_start"] + 1) = $((cfg["xn_end"] - cfg["xn_start"] + 1) * (cfg["yn_end"] - cfg["yn_start"] + 1)) tiles")
 
 
 
