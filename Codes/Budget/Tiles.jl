@@ -11,7 +11,7 @@ config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "con
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path"]
 base2 = cfg["base_path2"]
-mkpath(joinpath(base2, "WindStress_F"))  # Directory for storing the wind stress tiles
+mkpath(joinpath(base, "Windstress"))  # Directory for storing the wind stress tiles
 
 
 # --- Grid parameters ---
