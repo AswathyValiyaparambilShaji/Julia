@@ -1,7 +1,7 @@
 using Printf, FilePathsBase, TOML
 
 
-# Include FluxUtils.jl for any additional utility functions
+# Include FluxUtils.jl
 include(joinpath(@__DIR__, "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
@@ -10,7 +10,6 @@ using .FluxUtils: read_bin
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path"]
-base2 = cfg["base_path2"]
 
 
 # Create output directory
@@ -20,10 +19,6 @@ mkpath(output_dir)
 
 # --- Grid parameters ---
 NX, NY = 288, 468
-minlat, maxlat = 24.0, 31.91
-minlon, maxlon = 193.0, 199.0
-lat = LinRange(minlat, maxlat, NY)
-lon = LinRange(minlon, maxlon, NX)
 
 
 # Tiling parameters
@@ -31,13 +26,13 @@ buf = 3
 tx, ty = 47, 66
 nx = tx + 2 * buf
 ny = ty + 2 * buf
-dt = 25
 dto = 144
 Tts = 366192
 nt = div(Tts, dto)
 
 
 println("Processing $nt time steps...")
+println("Tile core: $tx × $ty, with buffer: $nx × $ny")
 println("Output directory: $output_dir")
 
 
@@ -48,7 +43,7 @@ for ts in 1:nt
     tt = (ts - 1) * dto
     suffix = @sprintf("%010d", tt + 597888)
     
-    # --- Read the wind stress data for `taux` and `tauy` ---
+    # --- Read the wind stress data ---
     taux_file = joinpath(base, "MIT_WS", "oceTAUX.$suffix.data")
     tauy_file = joinpath(base, "MIT_WS", "oceTAUY.$suffix.data")
     
@@ -62,47 +57,46 @@ for ts in 1:nt
         continue
     end
     
-    # Read binary data - 2D fields (NX, NY) for each time step
+    # Read binary data
     taux = read_bin(taux_file, (NX, NY))
     tauy = read_bin(tauy_file, (NX, NY))
     
-    # --- Tile data and save ---
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
+    # --- Tile data (following MATLAB logic) ---
+    xn = 1
+    for xs in (buf + 1):tx:(NX - buf)
+        xe = xs + tx - 1
+        xsb = xs - buf
+        xeb = xe + buf
+        
+        yn = 1
+        for ys in (buf + 1):ty:(NY - buf)
+            ye = ys + ty - 1
+            ysb = ys - buf
+            yeb = ye + buf
             
+            # Extract tile with buffer
+            taux_blk = taux[xsb:xeb, ysb:yeb]
+            tauy_blk = tauy[xsb:xeb, ysb:yeb]
+            
+            # Define output files
             tile_suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-            
-            # Calculate tile indices (with buffer)
-            x_start = (xn - 1) * tx - buf + 1
-            x_end = xn * tx + buf
-            y_start = (yn - 1) * ty - buf + 1
-            y_end = yn * ty + buf
-            
-            # Ensure indices are within bounds
-            x_start = max(1, x_start)
-            x_end = min(NX, x_end)
-            y_start = max(1, y_start)
-            y_end = min(NY, y_end)
-            
-            # Extract tile subdomain
-            taux_tile = taux[x_start:x_end, y_start:y_end]
-            tauy_tile = tauy[x_start:x_end, y_start:y_end]
-            
-            # Define output file paths for the tiles
             taux_tile_file = joinpath(output_dir, "taux_$tile_suffix.bin")
             tauy_tile_file = joinpath(output_dir, "tauy_$tile_suffix.bin")
             
-            # Append tile data to files
-            open(taux_tile_file, "a") do io
-                write(io, Float32.(taux_tile))
+            # Append to files
+            open(taux_tile_file, "a") do fid
+                write(fid, Float32.(taux_blk))
             end
-            open(tauy_tile_file, "a") do io
-                write(io, Float32.(tauy_tile))
+            open(tauy_tile_file, "a") do fid
+                write(fid, Float32.(tauy_blk))
             end
+            
+            yn = yn + 1
         end
+        xn = xn + 1
     end
     
-    # Print progress every 50 time steps
+    # Print progress
     if ts % 50 == 0 || ts == 1 || ts == nt
         println("Progress: $ts/$nt - Time step: $suffix")
     end
@@ -110,8 +104,6 @@ end
 
 
 println("\nWind stress tiling complete!")
-n_tiles = (cfg["xn_end"] - cfg["xn_start"] + 1) * (cfg["yn_end"] - cfg["yn_start"] + 1)
-println("Created $n_tiles tiles")
 println("Output location: $output_dir")
 
 

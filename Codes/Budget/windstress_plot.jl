@@ -43,7 +43,7 @@ println("Number of 3-day periods: $nt3")
 
 
 # Check file size for first tile
-test_file = joinpath(base, "Windstress", @sprintf("taux_%02dx%02d_%d.bin", cfg["xn_start"], cfg["yn_start"], buf))
+test_file = joinpath(base, "Windstress", @sprintf("tauy_%02dx%02d_%d.bin", cfg["xn_start"], cfg["yn_start"], buf))
 if isfile(test_file)
     filesize_bytes = stat(test_file).size
     n_elements = filesize_bytes ÷ sizeof(Float32)
