@@ -1,4 +1,4 @@
-using Printf, FilePathsBase, TOML#, JSON
+using Printf, FilePathsBase, TOML
 
 
 # Include FluxUtils.jl for any additional utility functions
@@ -11,7 +11,11 @@ config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "con
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path"]
 base2 = cfg["base_path2"]
-mkpath(joinpath(base, "Windstress"))  # Directory for storing the wind stress tiles
+
+
+# Create output directory
+output_dir = joinpath(base, "Windstress")
+mkpath(output_dir)
 
 
 # --- Grid parameters ---
@@ -34,6 +38,7 @@ nt = div(Tts, dto)
 
 
 println("Processing $nt time steps...")
+println("Output directory: $output_dir")
 
 
 # --- Process time steps ---
@@ -44,13 +49,22 @@ for ts in 1:nt
     suffix = @sprintf("%010d", tt + 597888)
     
     # --- Read the wind stress data for `taux` and `tauy` ---
-    # Corrected file names based on Python output
     taux_file = joinpath(base, "MIT_WS", "oceTAUX.$suffix.data")
     tauy_file = joinpath(base, "MIT_WS", "oceTAUY.$suffix.data")
     
+    # Check if files exist
+    if !isfile(taux_file)
+        println("ERROR: Missing file at time step $ts: $taux_file")
+        continue
+    end
+    if !isfile(tauy_file)
+        println("ERROR: Missing file at time step $ts: $tauy_file")
+        continue
+    end
+    
     # Read binary data - 2D fields (NX, NY) for each time step
-    taux = read_bin(taux_file, (NX, NY))  # taux is on U-grid (face in x-direction)
-    tauy = read_bin(tauy_file, (NX, NY))  # tauy is on V-grid (face in y-direction)
+    taux = read_bin(taux_file, (NX, NY))
+    tauy = read_bin(tauy_file, (NX, NY))
     
     # --- Tile data and save ---
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -75,8 +89,8 @@ for ts in 1:nt
             tauy_tile = tauy[x_start:x_end, y_start:y_end]
             
             # Define output file paths for the tiles
-            taux_tile_file = joinpath(base, "Windstress", "taux_$tile_suffix.bin")
-            tauy_tile_file = joinpath(base, "Windstress", "tauy_$tile_suffix.bin")
+            taux_tile_file = joinpath(output_dir, "taux_$tile_suffix.bin")
+            tauy_tile_file = joinpath(output_dir, "tauy_$tile_suffix.bin")
             
             # Append tile data to files
             open(taux_tile_file, "a") do io
@@ -88,14 +102,17 @@ for ts in 1:nt
         end
     end
     
-    
-        println("Progress: $ts - Time step: $suffix")
-   
+    # Print progress every 50 time steps
+    if ts % 50 == 0 || ts == 1 || ts == nt
+        println("Progress: $ts/$nt - Time step: $suffix")
+    end
 end
 
 
-println("Wind stress tiling complete!")
-println("Created $(cfg["xn_end"] - cfg["xn_start"] + 1) × $(cfg["yn_end"] - cfg["yn_start"] + 1) = $((cfg["xn_end"] - cfg["xn_start"] + 1) * (cfg["yn_end"] - cfg["yn_start"] + 1)) tiles")
+println("\nWind stress tiling complete!")
+n_tiles = (cfg["xn_end"] - cfg["xn_start"] + 1) * (cfg["yn_end"] - cfg["yn_start"] + 1)
+println("Created $n_tiles tiles")
+println("Output location: $output_dir")
 
 
 
