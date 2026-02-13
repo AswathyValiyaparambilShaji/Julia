@@ -88,9 +88,9 @@ for ts in 1:nt
         end
     end
     
-    if ts % 30 == 0 || ts == 1
-        println("Progress: $ts/$nt - Time step: $suffix")
-    end
+    
+        println("Progress: $ts - Time step: $suffix")
+   
 end
 
 
