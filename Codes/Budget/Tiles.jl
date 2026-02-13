@@ -75,8 +75,8 @@ for ts in 1:nt
             tauy_tile = tauy[x_start:x_end, y_start:y_end]
             
             # Define output file paths for the tiles
-            taux_tile_file = joinpath(base2, "WindStress_F", "taux_$tile_suffix.bin")
-            tauy_tile_file = joinpath(base2, "WindStress_F", "tauy_$tile_suffix.bin")
+            taux_tile_file = joinpath(base, "Windstress", "taux_$tile_suffix.bin")
+            tauy_tile_file = joinpath(base, "Windstress", "tauy_$tile_suffix.bin")
             
             # Append tile data to files
             open(taux_tile_file, "a") do io
