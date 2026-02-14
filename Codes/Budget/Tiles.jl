@@ -95,12 +95,12 @@ for ts in 1:nt
             yn = yn + 1
         end
         xn = xn + 1
+        println(taux_blk)
+    
     end
     
     # Print progress
-    if ts % 50 == 0 || ts == 1 || ts == nt
-        println(taux_blk)
-    end
+    
 end
 
 
