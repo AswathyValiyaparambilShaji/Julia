@@ -58,8 +58,8 @@ for ts in 1:nt
     end
     
     # Read binary data
-    taux = read_bin(taux_file, (NX, NY))
-    tauy = read_bin(tauy_file, (NX, NY))
+    taux = read_bin_be(taux_file, (NX, NY))
+    tauy = read_bin_be(tauy_file, (NX, NY))
     
     # --- Tile data (following MATLAB logic) ---
     xn = 1
@@ -91,7 +91,7 @@ for ts in 1:nt
                 write(fid, Float32.(tauy_blk))
             end
             =#        
-            println(taux_blk)
+            println(taux_blk[1,1])
 
             
             yn = yn + 1

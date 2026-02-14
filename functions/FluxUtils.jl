@@ -16,6 +16,17 @@ function read_bin(filename::AbstractString, dims::NTuple{N,Int}) where {N}
     end
 end
 
+function read_bin_be(filename::AbstractString, dims::NTuple{N,Int}) where {N}
+    open(filename, "r") do io
+        data = read!(io, Vector{Float32}(undef, prod(dims)))
+        # Convert from big-endian to native byte order
+        data_native = ntoh.(data)
+        reshape(data_native, dims)
+    end
+end
+
+
+
 
 """
     bandpass_butter(y, Tl, Th, dt, N, nt)
