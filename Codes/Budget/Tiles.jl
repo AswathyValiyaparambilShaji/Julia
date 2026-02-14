@@ -83,15 +83,15 @@ for ts in 1:nt
             taux_tile_file = joinpath(output_dir, "taux_$tile_suffix.bin")
             tauy_tile_file = joinpath(output_dir, "tauy_$tile_suffix.bin")
             
-            #=Append to files
+            #Append to files
             open(taux_tile_file, "a") do fid
                 write(fid, Float32.(taux_blk))
             end
             open(tauy_tile_file, "a") do fid
                 write(fid, Float32.(tauy_blk))
             end
-            =#        
-            println(taux_blk[1,1])
+                   
+            #println(taux_blk[1,1])
 
             
             yn = yn + 1
