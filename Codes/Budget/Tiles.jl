@@ -90,12 +90,13 @@ for ts in 1:nt
             open(tauy_tile_file, "a") do fid
                 write(fid, Float32.(tauy_blk))
             end
-            =#
+            =#        
+            println(taux_blk)
+
             
             yn = yn + 1
         end
         xn = xn + 1
-        println(taux_blk)
     
     end
     
