@@ -3,7 +3,7 @@ using Printf, FilePathsBase, TOML
 
 # Include FluxUtils.jl
 include(joinpath(@__DIR__, "..", "..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin
+using .FluxUtils: read_bin_be
 
 
 # Read the configuration file for paths
