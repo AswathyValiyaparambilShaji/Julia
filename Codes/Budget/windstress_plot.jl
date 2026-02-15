@@ -87,112 +87,116 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 
-# Check global arrays
-println("\n=== GLOBAL ARRAYS ===")
-println("TauX_all:")
-println("  Min: $(minimum(TauX_all))")
-println("  Max: $(maximum(TauX_all))")
-println("  Mean: $(mean(TauX_all))")
-println("  Any NaN: $(any(isnan.(TauX_all)))")
-println("  Any non-zero: $(any(TauX_all .!= 0))")
-
-#println("  Any non-NaN: $(any(!isnan.(TauX_all )))")
-
-println("\nTauY_all:")
-println("  Min: $(minimum(TauY_all))")
-println("  Max: $(maximum(TauY_all))")
-println("  Mean: $(mean(TauY_all))")
-println("  Any NaN: $(any(isnan.(TauY_all)))")
-println("  Any non-zero: $(any(TauY_all .!= 0))")
-
-# Check for NaN
-println("\nData check:")
-println("  TauX range: $(minimum(TauX_all)) to $(maximum(TauX_all))")
-println("  TauY range: $(minimum(TauY_all)) to $(maximum(TauY_all))")
-println("  Any NaN in TauX: $(any(isnan.(TauX_all)))")
-println("  Any NaN in TauY: $(any(isnan.(TauY_all)))")
 
 
-# Create frames
+
+# ============================================================================
+# TIME AVERAGE
+# ============================================================================
+
+
+println("\nCalculating time average over $nt time steps...")
+
+
+# Time average along dimension 3
+TauX_mean = mean(TauX_all, dims=3)[:, :, 1]
+TauY_mean = mean(TauY_all, dims=3)[:, :, 1]
+
+
+
+
+# Calculate magnitude
+Tau_mag = sqrt.(TauX_mean.^2 .+ TauY_mean.^2)
+println("  Magnitude: min=$(minimum(Tau_mag)), max=$(maximum(Tau_mag))")
+
+
+# ============================================================================
+# CREATE SINGLE PLOT
+# ============================================================================
+
+
+println("\nCreating time-averaged wind stress plot...")
+
+
 FIGDIR = cfg["fig_base"]
-frames_dir = joinpath(FIGDIR, "windstress_frames")
-mkpath(frames_dir)
+mkpath(FIGDIR)
 
 
-println("\nCalculating color range...")
-all_mag = sqrt.(TauX_all.^2 .+ TauY_all.^2)
-CMAX = maximum(all_mag)
-println("Color range: 0 to $CMAX N/m²")
-
-
+# Arrow parameters
 QUIVER_STEP = 8
-ARROW_SCALE = 5.0
+ARROW_LENGTH_SCALE = 0.3  # Fraction of grid spacing
+ARROW_HEAD_SIZE = 8
+ARROW_LINE_WIDTH = 1.5
 
 
-println("\nCreating $nt frames...")
+fig = Figure(size=(900, 700))
+ax = Axis(fig[1, 1],
+    title = "Wind Stress",
+    xlabel = "Longitude [°]",
+    ylabel = "Latitude [°]",
+    ylabelsize = 20,
+    xlabelsize = 20,
+    titlesize = 24
+)
 
 
-for t in 1:nt
-    Tau_mag = all_mag[:, :, t]
-    
-    fig = Figure(size=(700, 600))
-    ax = Axis(fig[1, 1],
-        title = "Wind Stress - Step $t/$nt",
-        xlabel = "Longitude [°]",
-        ylabel = "Latitude [°]",
-        ylabelsize = 22,
-        xlabelsize = 22,
-        titlesize = 26
-    )
-    
-    heatmap!(ax, lon, lat, Tau_mag',
-        colorrange = (0, CMAX),
-        colormap = :thermal
-    )
-    
-    # Arrows
-    pos = Point2f[]
-    vec = Vec2f[]
-    for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
-        u, v = TauX_all[i, j, t], TauY_all[i, j, t]
-        if isfinite(u) && isfinite(v)
-            push!(pos, Point2f(lon[i], lat[j]))
-            push!(vec, Vec2f(u, v))
-        end
+# Heatmap
+hm = heatmap!(ax, lon, lat, Tau_mag,
+    colorrange = (0, maximum(Tau_mag)),
+    colormap = :Spectral_9
+)
+
+
+# Arrows with adaptive scaling
+pos = Point2f[]
+vec = Vec2f[]
+
+
+for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
+    u, v = TauX_mean[i, j], TauY_mean[i, j]
+    if isfinite(u) && isfinite(v)
+        push!(pos, Point2f(lon[i], lat[j]))
+        push!(vec, Vec2f(u, v))
     end
-    
-    if !isempty(vec)
-        maxm = maximum(norm, vec)
-        if maxm > 0
-            arrows!(ax, pos, ARROW_SCALE .* vec ./ maxm, 
-                color=:white, arrowsize=10, linewidth=1.5)
-        end
-    end
-    
-    Colorbar(fig[1, 2], label = "Wind Stress [N/m²]")
-    save(joinpath(frames_dir, @sprintf("frame_%04d.png", t)), fig)
-    
-    t % 100 == 0 && println("  Frame $t/$nt")
 end
 
 
-# Create video
-movie_file = joinpath(FIGDIR, "WindStress_movie.mp4")
-input_pattern = joinpath(frames_dir, "frame_%04d.png")
-
-
-try
-    run(`ffmpeg -y -framerate 10 -i $input_pattern -c:v libx264 -pix_fmt yuv420p -crf 23 $movie_file`)
-    println("\nVideo created: $movie_file")
-    rm(frames_dir, recursive=true)
-    println("Frames cleaned up")
-catch e
-    println("\nffmpeg error: $e")
-    println("Frames kept in: $frames_dir")
+if !isempty(vec)
+    maxm = maximum(norm, vec)
+    if maxm > 0
+        # Adaptive scaling based on grid spacing
+        cell_x = (maximum(lon) - minimum(lon)) / NX
+        cell_y = (maximum(lat) - minimum(lat)) / NY
+        target_length = min(cell_x, cell_y) * QUIVER_STEP * ARROW_LENGTH_SCALE
+        
+        scale = target_length / maxm
+        
+        arrows!(ax, pos, scale .* vec,
+            color = :black, 
+            arrowsize = ARROW_HEAD_SIZE,
+            linewidth = ARROW_LINE_WIDTH
+        )
+        
+        
+    end
 end
 
 
-println("\nDone!")
+# Colorbar
+Colorbar(fig[1, 2], hm, label = "[N/m²]") #,vertical=true, labelrotation = 90, valign =:top, halign =:center)
+
+
+# Display
+display(fig)
+
+
+# Save
+output_file = joinpath(FIGDIR, "WindStress_TimeAverage.png")
+save(output_file, fig)
+
+
+println("\nPlot saved: $output_file")
+println("Done!")
 
 
 
