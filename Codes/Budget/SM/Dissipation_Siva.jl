@@ -241,7 +241,7 @@ cmap = :bwr
 
 # Plot 1: Siva Dissipation
 ax1 = Axis(fig[1, 1],
-    title="(a) Siva Dissipation",
+    title="(a) Direct Dissipation",
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
     ylabelsize=16,
@@ -253,7 +253,7 @@ hm1 = heatmap!(ax1, lon, lat, Siva_Diss_norm,
 
 # Plot 2: Energy Budget Dissipation
 ax2 = Axis(fig[1, 2],
-    title="(b) Energy Budget Dissipation",
+    title="(b) Residual Dissipation",
     xlabel="Longitude [°]",
     ylabel="",
     yticklabelsvisible=false,
