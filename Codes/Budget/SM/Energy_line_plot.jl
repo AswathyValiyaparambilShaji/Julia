@@ -166,7 +166,35 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
+
+# Check for NaN values in loaded data
+println("\n=== DATA QUALITY CHECK ===")
+println("Conv - NaN count: $(sum(isnan.(Conv)))")
+println("FDiv - NaN count: $(sum(isnan.(FDiv)))")
+println("U_KE - NaN count: $(sum(isnan.(U_KE_full)))")
+println("U_PE - NaN count: $(sum(isnan.(U_PE_full)))")
+println("SP_H - NaN count: $(sum(isnan.(SP_H_full)))")
+println("SP_V - NaN count: $(sum(isnan.(SP_V_full)))")
+println("BP - NaN count: $(sum(isnan.(BP_full)))")
+println("ET - NaN count: $(sum(isnan.(ET_full)))")
+println("FH - Zero count: $(sum(FH .== 0)), Min: $(minimum(FH)), Max: $(maximum(FH))")
+println("RAC - Zero count: $(sum(RAC .== 0)), Min: $(minimum(RAC)), Max: $(maximum(RAC))")
+println("========================\n")
+
+
 println("\nComputing area-averaged budget terms...")
+
+
+# Create valid data mask (where RAC > 0 AND FH > 0, meaning we have actual data with depth)
+valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
+println("Valid data points: $(sum(valid_mask)) out of $(length(valid_mask))")
+println("Total area (with data): $(sum(RAC[valid_mask]))")
+
+
+# Check if we have valid data
+if sum(valid_mask) == 0
+    error("No valid data points found! Check that tiles are loading correctly.")
+end
 
 
 # Initialize arrays for area-averaged time series
@@ -186,15 +214,34 @@ Residual_avg = zeros(nt3)
 
 # Compute area-weighted averages for each time step
 for t in 1:nt3
-    # Normalize by depth and density for each term
-    Conv_norm = Conv[:, :, t] ./ (rho0 .* FH)
-    FDiv_norm = FDiv[:, :, t] ./ (rho0 .* FH)
-    U_KE_norm = U_KE_full[:, :, t] ./ (rho0 .* FH)
-    U_PE_norm = U_PE_full[:, :, t] ./ (rho0 .* FH)
-    SP_H_norm = SP_H_full[:, :, t] ./ (rho0 .* FH)
-    SP_V_norm = SP_V_full[:, :, t] ./ (rho0 .* FH)
-    BP_norm = BP_full[:, :, t] ./ (rho0 .* FH)
-    ET_norm = ET_full[:, :, t] ./ (rho0 .* FH)
+    # Initialize normalized arrays as zeros
+    Conv_norm = zeros(NX, NY)
+    FDiv_norm = zeros(NX, NY)
+    U_KE_norm = zeros(NX, NY)
+    U_PE_norm = zeros(NX, NY)
+    SP_H_norm = zeros(NX, NY)
+    SP_V_norm = zeros(NX, NY)
+    BP_norm = zeros(NX, NY)
+    ET_norm = zeros(NX, NY)
+    
+    # Normalize ONLY at valid points (prevents NaN from division by zero)
+    Conv_t = Conv[:, :, t]
+    FDiv_t = FDiv[:, :, t]
+    U_KE_t = U_KE_full[:, :, t]
+    U_PE_t = U_PE_full[:, :, t]
+    SP_H_t = SP_H_full[:, :, t]
+    SP_V_t = SP_V_full[:, :, t]
+    BP_t = BP_full[:, :, t]
+    ET_t = ET_full[:, :, t]
+    
+    Conv_norm[valid_mask] = Conv_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    FDiv_norm[valid_mask] = FDiv_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    U_KE_norm[valid_mask] = U_KE_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    U_PE_norm[valid_mask] = U_PE_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    SP_H_norm[valid_mask] = SP_H_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    SP_V_norm[valid_mask] = SP_V_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    BP_norm[valid_mask] = BP_t[valid_mask] ./ (rho0 .* FH[valid_mask])
+    ET_norm[valid_mask] = ET_t[valid_mask] ./ (rho0 .* FH[valid_mask])
     
     # Calculate derived terms
     A_norm = U_KE_norm .+ U_PE_norm
@@ -202,21 +249,21 @@ for t in 1:nt3
     TotalFlux_norm = FDiv_norm .+ U_KE_norm .+ U_PE_norm
     Residual_norm = -(Conv_norm .- TotalFlux_norm .+ PS_norm .+ BP_norm .- ET_norm)
     
-    # Area-weighted average (using RAC as area weights)
-    total_area = sum(RAC)
+    # Area-weighted average (only over valid data points)
+    total_area = sum(RAC[valid_mask])
     
-    Conv_avg[t] = sum(Conv_norm .* RAC) / total_area
-    FDiv_avg[t] = sum(FDiv_norm .* RAC) / total_area
-    U_KE_avg[t] = sum(U_KE_norm .* RAC) / total_area
-    U_PE_avg[t] = sum(U_PE_norm .* RAC) / total_area
-    SP_H_avg[t] = sum(SP_H_norm .* RAC) / total_area
-    SP_V_avg[t] = sum(SP_V_norm .* RAC) / total_area
-    BP_avg[t] = sum(BP_norm .* RAC) / total_area
-    ET_avg[t] = sum(ET_norm .* RAC) / total_area
-    A_avg[t] = sum(A_norm .* RAC) / total_area
-    PS_avg[t] = sum(PS_norm .* RAC) / total_area
-    TotalFlux_avg[t] = sum(TotalFlux_norm .* RAC) / total_area
-    Residual_avg[t] = sum(Residual_norm .* RAC) / total_area
+    Conv_avg[t] = sum(Conv_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    FDiv_avg[t] = sum(FDiv_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    U_KE_avg[t] = sum(U_KE_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    U_PE_avg[t] = sum(U_PE_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    SP_H_avg[t] = sum(SP_H_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    SP_V_avg[t] = sum(SP_V_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    BP_avg[t] = sum(BP_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    ET_avg[t] = sum(ET_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    A_avg[t] = sum(A_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    PS_avg[t] = sum(PS_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    TotalFlux_avg[t] = sum(TotalFlux_norm[valid_mask] .* RAC[valid_mask]) / total_area
+    Residual_avg[t] = sum(Residual_norm[valid_mask] .* RAC[valid_mask]) / total_area
     
     if t % 10 == 0
         println("  Processed $t/$nt3 time periods")
@@ -340,7 +387,5 @@ println("\nData saved: $(joinpath(FIGDIR, "energy_budget_timeseries_3day.txt"))"
 
 
 println("\nProcessing complete!")
-
-
 
 
