@@ -160,7 +160,7 @@ A = U_KE_full .+ U_PE_full
 PS = SP_H_full .+ SP_V_full
 
 
-# Update residual to include WPI
+# Update residual to include WPI (Dissipation)
 Residual = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .+ ET_full)
 Residual2 = Conv .- FDiv
 
@@ -190,6 +190,32 @@ println("  Min:  $(minimum(WPI_plot)) mW/m²")
 println("  Max:  $(maximum(WPI_plot)) mW/m²")
 
 
+println("\nDissipation Statistics:")
+println("  Mean: $(mean(Residual)) W/m²")
+println("  Min:  $(minimum(Residual)) W/m²")
+println("  Max:  $(maximum(Residual)) W/m²")
+
+
+# ==========================================================
+# ============ SAVE DISSIPATION TO BINARY FILE =============
+# ==========================================================
+
+
+println("\nSaving dissipation field...")
+
+
+DISS_DIR = joinpath(base2, "Dissipation")
+mkpath(DISS_DIR)
+
+
+open(joinpath(DISS_DIR, "dissipation_mean.bin"), "w") do io
+    write(io, Float32.(Residual))
+end
+
+
+println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
+
+
 # ==========================================================
 # =================== VISUALIZATION ========================
 # ==========================================================
@@ -198,8 +224,9 @@ println("  Max:  $(maximum(WPI_plot)) mW/m²")
 fig = Figure(resolution=(1400, 900))
 
 
-# Color range for ALL plots (same for all terms including WPI)
-crange = (-0.03, 0.03)
+# Color ranges
+crange = (-0.03, 0.03)        # Row 1
+crange2 = (-0.01, 0.01)     # Row 2
 cmap = Reverse(:RdBu)
 
 
@@ -244,17 +271,17 @@ hm3 = heatmap!(ax3, lon, lat, A;
     colormap = cmap)
 
 
-# Row 1, Column 4: Wind Power Input (×10⁻³) - SAME colorrange
+# Row 1, Column 4: Dissipation
 ax4 = Axis(fig[1, 4],
-    title = rich("(d) ⟨WPI⟩ [×10", superscript("-3"), "]"),
+    title = "(d) ⟨D⟩",
     xlabel = "",
     xticklabelsvisible = false,
     ylabel = "",
     yticklabelsvisible = false
 )
-hm4 = heatmap!(ax4, lon, lat, WPI_plot;
+hm4 = heatmap!(ax4, lon, lat, Residual;
     interpolate = false,
-    colorrange = crange,  # Same range as others
+    colorrange = crange,
     colormap = cmap)
 
 
@@ -266,7 +293,7 @@ ax5 = Axis(fig[2, 1],
 )
 hm5 = heatmap!(ax5, lon, lat, PS;
     interpolate = false,
-    colorrange = crange,
+    colorrange = crange2,
     colormap = cmap)
 
 
@@ -279,7 +306,7 @@ ax6 = Axis(fig[2, 2],
 )
 hm6 = heatmap!(ax6, lon, lat, BP_full;
     interpolate = false,
-    colorrange = crange,
+    colorrange = crange2,
     colormap = cmap)
 
 
@@ -292,25 +319,29 @@ ax7 = Axis(fig[2, 3],
 )
 hm7 = heatmap!(ax7, lon, lat, ET_full;
     interpolate = false,
-    colorrange = crange,
+    colorrange = crange2,
     colormap = cmap)
 
 
-# Row 2, Column 4: Residual (Dissipation)
+# Row 2, Column 4: Wind Power Input (×10⁻³)
 ax8 = Axis(fig[2, 4],
-    title = "(h) ⟨D⟩",
+    title = rich("(h) ⟨WPI⟩ [×10", superscript("-3"), "]"),
     xlabel = "Longitude [°]",
     ylabel = "",
     yticklabelsvisible = false
 )
-hm8 = heatmap!(ax8, lon, lat, Residual;
+hm8 = heatmap!(ax8, lon, lat, WPI_plot;
     interpolate = false,
-    colorrange = crange,
+    colorrange = crange2,
     colormap = cmap)
 
 
-# Add shared colorbar for ALL terms (including WPI)
-Colorbar(fig[1:2, 5], hm8, label = "[W/m²]")
+# Add colorbar for Row 1
+Colorbar(fig[1, 5], hm4, label = "[W/m²]")
+
+
+# Add colorbar for Row 2
+Colorbar(fig[2, 5], hm7, label = "[W/m²]")
 
 
 display(fig)

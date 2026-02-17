@@ -235,7 +235,7 @@ Budget_Diss_norm = (Budget_Diss ./ (rho0 .* FH)) * 10^8
 fig = Figure(resolution=(800, 400))
 
 
-crange = (-1.5, 1.5)
+crange = (-1.2, 1.2)
 cmap = :bwr
 
 
