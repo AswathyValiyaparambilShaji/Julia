@@ -36,7 +36,7 @@ rho0 = 999.8
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3900.0
+DEPTH_THRESHOLD = 3000.0
 
 
 # --- Thickness & constants ---
@@ -256,6 +256,37 @@ Siva_zonal_scaled = Siva_zonal * 1e8
 Budget_zonal_scaled = Budget_zonal * 1e8
 
 
+# Smooth the Budget dissipation to reduce noise
+using Statistics
+function smooth_data(data, window=5)
+    smoothed = copy(data)
+    n = length(data)
+    half_window = div(window, 2)
+    
+    for i in 1:n
+        if isnan(data[i])
+            continue
+        end
+        # Get window indices
+        i_start = max(1, i - half_window)
+        i_end = min(n, i + half_window)
+        
+        # Calculate mean of non-NaN values in window
+        window_data = data[i_start:i_end]
+        valid_data = filter(!isnan, window_data)
+        
+        if length(valid_data) > 0
+            smoothed[i] = mean(valid_data)
+        end
+    end
+    
+    return smoothed
+end
+
+
+Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 5)
+
+
 # ============================================================================
 # PART 5: PLOT ZONAL AVERAGES
 # ============================================================================
@@ -265,7 +296,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation ",
+    title="Zonal Average Dissipation (Depth > $(DEPTH_THRESHOLD)m)",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -284,16 +315,14 @@ lines!(ax, Siva_zonal_scaled, lat,
     marker=:circle)=#
 
 
-lines!(ax, Budget_zonal_scaled, lat, 
+lines!(ax, Budget_zonal_scaled_smooth, lat, 
     label="Residual Dissipation", 
     color=:blue, 
     linewidth=2.5)
-
-#=scatter!(ax,Budget_zonal_scaled , lat,
+#=scatter!(ax, Budget_zonal_scaled_smooth, lat,
     color=:blue,
     markersize=8,
     marker=:diamond)=#
-
 
 
 # Add zero reference line
@@ -301,7 +330,7 @@ vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
 # Add legend
-axislegend(ax, position=:lt, framevisible=true, labelsize=14)
+axislegend(ax, position=:rt, framevisible=true, labelsize=14)
 
 
 display(fig)
@@ -310,9 +339,15 @@ display(fig)
 # Save figure
 FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_V2.png"))")
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"))")
 
 
-
+# Save data to file
+using DelimitedFiles
+output_data = hcat(lat, Siva_zonal_scaled, Budget_zonal_scaled)
+header = "Latitude Direct_Dissipation Residual_Dissipation [×10⁻⁸ W/kg]"
+writedlm(joinpath(FIGDIR, "dissipation_zonal_deep.txt"), 
+         vcat(header, output_data), '\t')
+println("Data saved: $(joinpath(FIGDIR, "dissipation_zonal_deep.txt"))")
 
 
