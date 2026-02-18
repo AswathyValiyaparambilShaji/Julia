@@ -36,7 +36,7 @@ rho0 = 999.8
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3000.0
+DEPTH_THRESHOLD = 3900.0
 
 
 # --- Thickness & constants ---
@@ -265,7 +265,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation (Depth > $(DEPTH_THRESHOLD)m)",
+    title="Zonal Average Dissipation ",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -278,10 +278,10 @@ lines!(ax, Siva_zonal_scaled, lat,
     label="Direct Dissipation", 
     color=:red, 
     linewidth=2.5)
-scatter!(ax, Siva_zonal_scaled, lat,
+#=scatter!(ax, Siva_zonal_scaled, lat,
     color=:red,
     markersize=8,
-    marker=:circle)
+    marker=:circle)=#
 
 
 lines!(ax, Budget_zonal_scaled, lat, 
@@ -289,10 +289,10 @@ lines!(ax, Budget_zonal_scaled, lat,
     color=:blue, 
     linewidth=2.5)
 
-scatter!(ax,Budget_zonal_scaled , lat,
+#=scatter!(ax,Budget_zonal_scaled , lat,
     color=:blue,
     markersize=8,
-    marker=:diamond)
+    marker=:diamond)=#
 
 
 
@@ -310,16 +310,8 @@ display(fig)
 # Save figure
 FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"))")
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_V2.png"))")
 
-
-# Save data to file
-using DelimitedFiles
-output_data = hcat(collect(lat), Siva_zonal_scaled, Budget_zonal_scaled)
-header = "Latitude Direct_Dissipation Residual_Dissipation [×10⁻⁸ W/kg]"
-writedlm(joinpath(FIGDIR, "dissipation_zonal_deep.txt"), 
-         vcat(header, output_data), '\t')
-println("Data saved: $(joinpath(FIGDIR, "dissipation_zonal_deep.txt"))")
 
 
 
