@@ -258,7 +258,7 @@ Budget_zonal_scaled = Budget_zonal * 1e8
 
 # Smooth the Budget dissipation to reduce noise
 using Statistics
-function smooth_data(data, window=5)
+function smooth_data(data, window=12)
     smoothed = copy(data)
     n = length(data)
     half_window = div(window, 2)
@@ -284,7 +284,7 @@ function smooth_data(data, window=5)
 end
 
 
-Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 5)
+Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 3)
 
 
 # ============================================================================
@@ -296,7 +296,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation (Depth > $(DEPTH_THRESHOLD)m)",
+    title="Zonal Average Dissipation ",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -330,7 +330,7 @@ vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
 # Add legend
-axislegend(ax, position=:rt, framevisible=true, labelsize=14)
+axislegend(ax, position=:lt, framevisible=true, labelsize=14)
 
 
 display(fig)
