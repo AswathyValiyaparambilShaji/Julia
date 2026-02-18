@@ -301,7 +301,7 @@ vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
 # Add legend
-axislegend(ax, position=:rt, framevisible=true, labelsize=14)
+axislegend(ax, position=:lt, framevisible=true, labelsize=14)
 
 
 display(fig)
