@@ -286,6 +286,16 @@ end
 
 Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 
+# Filter out NaN values for plotting
+valid_indices = .!isnan.(Siva_zonal_scaled) .& .!isnan.(Budget_zonal_scaled_smooth)
+lat_valid = lat[valid_indices]
+Siva_plot = Siva_zonal_scaled[valid_indices]
+Budget_plot = Budget_zonal_scaled_smooth[valid_indices]
+
+
+# 
+
+
 
 # ============================================================================
 # PART 5: PLOT ZONAL AVERAGES
