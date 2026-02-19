@@ -36,7 +36,7 @@ rho0 = 999.8
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3000.0
+DEPTH_THRESHOLD = 3900.0
 
 
 # --- Thickness & constants ---
@@ -284,7 +284,7 @@ function smooth_data(data, window=12)
 end
 
 
-Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 3)
+Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 
 
 # ============================================================================
