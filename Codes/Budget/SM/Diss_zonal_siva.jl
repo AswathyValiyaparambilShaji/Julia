@@ -301,9 +301,11 @@ ax = Axis(fig[1, 1],
     title="Zonal Average Dissipation",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
-    xlabelsize=16,
-    ylabelsize=16,
-    titlesize=18)
+   ylabelsize = 22,
+       xlabelsize = 22,
+       titlesize = 26,
+       xticklabelsize=16,
+       yticklabelsize=16)
 
 
 lines!(ax, Siva_zonal_scaled, lat,
@@ -321,7 +323,7 @@ lines!(ax, Budget_zonal_scaled_smooth, lat,
 vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
-axislegend(ax, position=:lt, framevisible=true, labelsize=14)
+axislegend(ax, position=:lt, framevisible=true, labelsize=18)
 
 
 display(fig)
