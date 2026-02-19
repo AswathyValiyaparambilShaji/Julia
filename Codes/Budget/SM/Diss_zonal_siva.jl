@@ -36,7 +36,7 @@ rho0 = 999.8
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3000.0
+DEPTH_THRESHOLD = 3900.0
 
 
 # --- Thickness & constants ---
@@ -215,7 +215,7 @@ Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full)
 # ============================================================================
 
 
-# Create depth mask - TRUE where depth > 3000m
+# Create depth mask - TRUE where depth > 3900m
 deep_mask = FH .> DEPTH_THRESHOLD
 
 
@@ -235,7 +235,7 @@ Budget_zonal = zeros(NY)
 
 
 for j in 1:NY
-    # For this latitude, find points where depth > 3000m
+    # For this latitude, find points where depth > 3900m
     deep_points_at_lat = deep_mask[:, j]
     
     if sum(deep_points_at_lat) > 0
@@ -257,8 +257,7 @@ Budget_zonal_scaled = Budget_zonal * 1e8
 
 
 # Smooth the Budget dissipation to reduce noise
-using Statistics
-function smooth_data(data, window=5)
+function smooth_data(data, window=15)
     smoothed = copy(data)
     n = length(data)
     half_window = div(window, 2)
@@ -287,16 +286,9 @@ end
 Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 
 
-# Set first and last values of Siva to NaN to remove edge artifacts
+# Set first and last values of Siva to NaN
 Siva_zonal_scaled[1] = NaN
 Siva_zonal_scaled[end] = NaN
-
-
-# Filter out NaN values for plotting
-valid_indices = .!isnan.(Siva_zonal_scaled) .& .!isnan.(Budget_zonal_scaled_smooth)
-lat_valid = lat[valid_indices]
-Siva_plot = Siva_zonal_scaled[valid_indices]
-Budget_plot = Budget_zonal_scaled_smooth[valid_indices]
 
 
 # ============================================================================
@@ -308,7 +300,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation (Depth > $(DEPTH_THRESHOLD)m)",
+    title="Zonal Average Dissipation ",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -316,18 +308,25 @@ ax = Axis(fig[1, 1],
     titlesize=18)
 
 
-# Plot both dissipation profiles (using filtered data)
-lines!(ax, Siva_plot, lat_valid, 
+# Plot both dissipation profiles
+lines!(ax, Siva_zonal_scaled, lat, 
     label="Direct Dissipation", 
     color=:red, 
     linewidth=2.5)
+scatter!(ax, Siva_zonal_scaled, lat,
+    color=:red,
+    markersize=8,
+    marker=:circle)
 
 
-lines!(ax, Budget_plot, lat_valid, 
+lines!(ax, Budget_zonal_scaled_smooth, lat, 
     label="Residual Dissipation", 
     color=:blue, 
     linewidth=2.5)
-
+scatter!(ax, Budget_zonal_scaled_smooth, lat,
+    color=:blue,
+    markersize=8,
+    marker=:diamond)
 
 
 # Add zero reference line
@@ -335,7 +334,7 @@ vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
 # Add legend
-axislegend(ax, position=:rt, framevisible=true, labelsize=14)
+axislegend(ax, position=:lt, framevisible=true, labelsize=14)
 
 
 display(fig)
@@ -346,14 +345,6 @@ FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"), fig)
 println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"))")
 
-
-# Save data to file
-using DelimitedFiles
-output_data = hcat(lat, Siva_zonal_scaled, Budget_zonal_scaled)
-header = "Latitude Direct_Dissipation Residual_Dissipation [×10⁻⁸ W/kg]"
-writedlm(joinpath(FIGDIR, "dissipation_zonal_deep.txt"), 
-         vcat(header, output_data), '\t')
-println("Data saved: $(joinpath(FIGDIR, "dissipation_zonal_deep.txt"))")
 
 
 
