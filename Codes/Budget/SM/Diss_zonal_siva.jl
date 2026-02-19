@@ -235,16 +235,13 @@ Budget_zonal = zeros(NY)
 
 
 for j in 1:NY
-    # For this latitude, find points where depth > 3900m
     deep_points_at_lat = deep_mask[:, j]
     
     if sum(deep_points_at_lat) > 0
-        # Zonal average weighted by dx (zonal grid spacing)
         total_dx = sum(DXC[deep_points_at_lat, j])
         Siva_zonal[j] = sum(Siva_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
         Budget_zonal[j] = sum(Budget_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
     else
-        # If no deep points at this latitude, set to NaN
         Siva_zonal[j] = NaN
         Budget_zonal[j] = NaN
     end
@@ -266,14 +263,10 @@ function smooth_data(data, window=15)
         if isnan(data[i])
             continue
         end
-        # Get window indices
         i_start = max(1, i - half_window)
         i_end = min(n, i + half_window)
-        
-        # Calculate mean of non-NaN values in window
         window_data = data[i_start:i_end]
         valid_data = filter(!isnan, window_data)
-        
         if length(valid_data) > 0
             smoothed[i] = mean(valid_data)
         end
@@ -286,13 +279,16 @@ end
 Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 
 
-# Set first and last values of Siva to NaN
-Siva_zonal_scaled[1] = NaN
-Siva_zonal_scaled[end] = NaN
+# ============================================================================
+# THE ONLY CHANGE: mask edges and latitudes beyond F_band data coverage
+# ============================================================================
+for j in 1:NY
+    if j > 467 || j <= 2 || j >= NY-1
+        Siva_zonal_scaled[j] = NaN
+    end
+end
 
-# Set first and last values of Siva to NaN
-Siva_zonal_scaled[2] = NaN
-Siva_zonal_scaled[end-1] = NaN
+
 # ============================================================================
 # PART 5: PLOT ZONAL AVERAGES
 # ============================================================================
@@ -302,7 +298,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation ",
+    title="Zonal Average Dissipation",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -310,26 +306,21 @@ ax = Axis(fig[1, 1],
     titlesize=18)
 
 
-# Plot both dissipation profiles
-lines!(ax, Siva_zonal_scaled, lat, 
-    label="Direct Dissipation", 
-    color=:red, 
+lines!(ax, Siva_zonal_scaled, lat,
+    label="Direct Dissipation",
+    color=:red,
     linewidth=2.5)
 
 
-
-lines!(ax, Budget_zonal_scaled_smooth, lat, 
-    label="Residual Dissipation", 
-    color=:blue, 
+lines!(ax, Budget_zonal_scaled_smooth, lat,
+    label="Residual Dissipation",
+    color=:blue,
     linewidth=2.5)
 
 
-
-# Add zero reference line
 vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
-# Add legend
 axislegend(ax, position=:lt, framevisible=true, labelsize=14)
 
 
@@ -340,7 +331,6 @@ display(fig)
 FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"), fig)
 println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep.png"))")
-
 
 
 
