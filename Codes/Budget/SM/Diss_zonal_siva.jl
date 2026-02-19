@@ -36,7 +36,7 @@ rho0 = 999.8
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3900.0
+DEPTH_THRESHOLD = 3000.0
 
 
 # --- Thickness & constants ---
@@ -258,7 +258,7 @@ Budget_zonal_scaled = Budget_zonal * 1e8
 
 # Smooth the Budget dissipation to reduce noise
 using Statistics
-function smooth_data(data, window=12)
+function smooth_data(data, window=5)
     smoothed = copy(data)
     n = length(data)
     half_window = div(window, 2)
@@ -286,11 +286,17 @@ end
 
 Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 
-Siva_zonal_scaled[end]=NaN
-Siva_zonal_scaled[1]=NaN
 
-# 
+# Set first and last values of Siva to NaN to remove edge artifacts
+Siva_zonal_scaled[1] = NaN
+Siva_zonal_scaled[end] = NaN
 
+
+# Filter out NaN values for plotting
+valid_indices = .!isnan.(Siva_zonal_scaled) .& .!isnan.(Budget_zonal_scaled_smooth)
+lat_valid = lat[valid_indices]
+Siva_plot = Siva_zonal_scaled[valid_indices]
+Budget_plot = Budget_zonal_scaled_smooth[valid_indices]
 
 
 # ============================================================================
@@ -302,7 +308,7 @@ fig = Figure(resolution=(800, 600))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation ",
+    title="Zonal Average Dissipation (Depth > $(DEPTH_THRESHOLD)m)",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
     xlabelsize=16,
@@ -310,25 +316,18 @@ ax = Axis(fig[1, 1],
     titlesize=18)
 
 
-# Plot both dissipation profiles
-lines!(ax, Siva_zonal_scaled, lat, 
+# Plot both dissipation profiles (using filtered data)
+lines!(ax, Siva_plot, lat_valid, 
     label="Direct Dissipation", 
     color=:red, 
     linewidth=2.5)
-#=scatter!(ax, Siva_zonal_scaled, lat,
-    color=:red,
-    markersize=8,
-    marker=:circle)=#
 
 
-lines!(ax, Budget_zonal_scaled_smooth, lat, 
+lines!(ax, Budget_plot, lat_valid, 
     label="Residual Dissipation", 
     color=:blue, 
     linewidth=2.5)
-#=scatter!(ax, Budget_zonal_scaled_smooth, lat,
-    color=:blue,
-    markersize=8,
-    marker=:diamond)=#
+
 
 
 # Add zero reference line
@@ -336,7 +335,7 @@ vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
 # Add legend
-axislegend(ax, position=:lt, framevisible=true, labelsize=14)
+axislegend(ax, position=:rt, framevisible=true, labelsize=14)
 
 
 display(fig)
@@ -355,5 +354,7 @@ header = "Latitude Direct_Dissipation Residual_Dissipation [×10⁻⁸ W/kg]"
 writedlm(joinpath(FIGDIR, "dissipation_zonal_deep.txt"), 
          vcat(header, output_data), '\t')
 println("Data saved: $(joinpath(FIGDIR, "dissipation_zonal_deep.txt"))")
+
+
 
 
