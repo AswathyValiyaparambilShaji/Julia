@@ -290,7 +290,9 @@ Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
 Siva_zonal_scaled[1] = NaN
 Siva_zonal_scaled[end] = NaN
 
-
+# Set first and last values of Siva to NaN
+Siva_zonal_scaled[2] = NaN
+Siva_zonal_scaled[end-1] = NaN
 # ============================================================================
 # PART 5: PLOT ZONAL AVERAGES
 # ============================================================================
@@ -313,20 +315,14 @@ lines!(ax, Siva_zonal_scaled, lat,
     label="Direct Dissipation", 
     color=:red, 
     linewidth=2.5)
-scatter!(ax, Siva_zonal_scaled, lat,
-    color=:red,
-    markersize=8,
-    marker=:circle)
+
 
 
 lines!(ax, Budget_zonal_scaled_smooth, lat, 
     label="Residual Dissipation", 
     color=:blue, 
     linewidth=2.5)
-scatter!(ax, Budget_zonal_scaled_smooth, lat,
-    color=:blue,
-    markersize=8,
-    marker=:diamond)
+
 
 
 # Add zero reference line
