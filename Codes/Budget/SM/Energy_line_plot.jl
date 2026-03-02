@@ -1,14 +1,14 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
 
 
-include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
 
 # Load configuration
-config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["base_path"]
+base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
@@ -20,372 +20,404 @@ lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
 
-# --- Tile parameters ---
-buf = 3
+# --- Tile & time parameters ---
+buf  = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
+nz = 88
+dt  = 25
+dto = 144
+Tts = 366192
+nt  = div(Tts, dto)          # total hourly timesteps
+ts  = 72                     # timesteps per 3-day period (3*24)
+nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
+nt3 = div(nt, 3*24)
 
 
 rho0 = 999.8
-# --- Vertical levels ---
-nz = 88
 
 
-kz = 1
-dt = 25
-dto = 144
-Tts = 366192
-nt = div(Tts, dto)
-nt3 = div(nt, 3*24)  # Number of 3-day periods
-
-
-# --- Thickness & constants ---
-thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
-DRF = thk[1:nz]
+# --- Thickness ---
+thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF  = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.8
 
 
-println("Computing area-averaged energy budget for $nt3 3-day periods...")
+println("Computing area-averaged KE and PE for $nt3 3-day periods...")
 
 
-# Initialize 3D arrays for time-varying data
-Conv = zeros(NX, NY, nt3)
-FDiv = zeros(NX, NY, nt3)
-U_KE_full = zeros(NX, NY, nt3)
-U_PE_full = zeros(NX, NY, nt3)
-SP_H_full = zeros(NX, NY, nt3)
-SP_V_full = zeros(NX, NY, nt3)
-BP_full = zeros(NX, NY, nt3)
-ET_full = zeros(NX, NY, nt3)
+# ============================================================
+# Global accumulators (NX×NY grids)
+# ============================================================
+KE_full   = zeros(NX, NY, nt3)
+PE_full   = zeros(NX, NY, nt3)
 
 
-# Static fields (same for all times)
-∇H = zeros(NX, NY)
-FH = zeros(NX, NY)
+# Budget terms (from existing 3-day files — mirrors document 2)
+Conv_full  = zeros(NX, NY, nt3)
+FDiv_full  = zeros(NX, NY, nt3)
+U_KE_full  = zeros(NX, NY, nt3)
+U_PE_full  = zeros(NX, NY, nt3)
+SP_H_full  = zeros(NX, NY, nt3)
+SP_V_full  = zeros(NX, NY, nt3)
+BP_full    = zeros(NX, NY, nt3)
+ET_full    = zeros(NX, NY, nt3)
+
+
+FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
 
 
-# Load data for all tiles
+# ============================================================
+# Loop over tiles
+# ============================================================
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+        suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        
-        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-        
+
+
+        println("\n--- Tile $suffix ---")
+
+
+        # ---- Grid metrics ----
+        hFacC  = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        dx     = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+        dy     = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         DRFfull = hFacC .* DRF3d
-        depth = sum(DRFfull, dims=3)
+        depth   = dropdims(sum(DRFfull, dims=3), dims=3)
         DRFfull[hFacC .== 0] .= 0.0
-        
-        # --- Read 3-day data (4D or 3D with time) ---
-        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * nt3 * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2, nt3)
-        end)
-        
-        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * nt3 * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2, nt3)
-        end)
-        
-        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-        dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         rac = dx .* dy
-        H = depth
-        
-        # Horizontal gradients for roughness
-        dHdx = zeros(nx, ny)
-        dHdx[2:end-1, :] .= (H[3:end, :] .- H[1:end-2, :]) ./ (dx[2:end-1, :] .+ dx[3:end, :])
-        
-        dHdy = zeros(nx, ny)
-        dHdy[:, 2:end-1] .= (H[:, 3:end] .- H[:, 1:end-2]) ./ (dy[:, 2:end-1] .+ dy[:, 3:end])
-        
-        gh = sqrt.(dHdx.^2 .+ dHdy.^2)
-        
-        # Calculate tile positions in global grid
+
+
+        # ---- KE (full temporal resolution, nx×ny×nz×nt, Float32) ----
+        println("  Reading KE...")
+        ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+        end)
+
+
+        # ---- APE (full temporal resolution, from APE/APE_t_sm_$suffix.bin) ----
+        println("  Reading APE...")
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+        end)
+
+
+        # ---- Depth-integrate KE (weighted by DRFfull) ----
+        DRFfull4 = reshape(DRFfull, nx, ny, nz, 1)   # broadcast-ready
+        ke_di = dropdims(sum(ke_raw .* DRFfull4, dims=3), dims=3)   # nx x ny x nt
+
+
+        # ---- Depth-integrate APE (NaN-safe, using DRF3d as in doc 4) ----
+        DRF3d4    = reshape(DRF3d, nx, ny, nz, 1)
+        ape_clean = replace(ape_raw, NaN => 0.0)
+        pe_di     = dropdims(sum(ape_clean .* DRF3d4, dims=3), dims=3)  # nx x ny x nt
+
+
+        # ---- Average into 3-day periods ----
+        ke_3day = zeros(nx, ny, nt3)
+        pe_3day = zeros(nx, ny, nt3)
+        for t in 1:nt3
+            t_start = (t-1)*ts + 1
+            t_end   = min(t*ts, nt)
+            ke_3day[:, :, t] = mean(ke_di[:, :, t_start:t_end], dims=3)
+            pe_3day[:, :, t] = mean(pe_di[:, :, t_start:t_end], dims=3)
+        end
+
+
+        # ---- Budget terms (already 3-day averaged) ----
+        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+        end)
+        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+        end)
+        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+
+
+        # ---- Tile position in global grid (matches document 2 exactly) ----
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
-        
-        # Update global arrays (remove buffer zones)
-        Conv[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
-        FDiv[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
-        
-        # Extract interior regions for each time
+
+
+        # Update global arrays (remove buffer zones) — same indices as document 2
+        Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
+        FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
+
+
         U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         U_PE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         SP_H_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        BP_full[xs+2:xe-2, ys+2:ye-2, :] .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        ET_full[xs+2:xe-2, ys+2:ye-2, :] .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        
-        # Static fields (use first time slice or mean)
-        ∇H[xs+2:xe-2, ys+2:ye-2] .= gh[buf:nx-buf+1, buf:ny-buf+1]
-        FH[xs+2:xe-2, ys+2:ye-2] .= H[buf:nx-buf+1, buf:ny-buf+1]
+        BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+
+
+        # KE and PE — same interior extraction as U_KE_full / U_PE_full
+        KE_full[xs+2:xe-2, ys+2:ye-2, :] .= ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        PE_full[xs+2:xe-2, ys+2:ye-2, :] .= pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+
+
+        # Static fields
+        FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
         RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
-        
-        println("Completed tile $suffix")
+
+
+        println("  Done.")
     end
 end
 
 
-
-# Check for NaN values in loaded data
-println("\n=== DATA QUALITY CHECK ===")
-println("Conv - NaN count: $(sum(isnan.(Conv)))")
-println("FDiv - NaN count: $(sum(isnan.(FDiv)))")
-println("U_KE - NaN count: $(sum(isnan.(U_KE_full)))")
-println("U_PE - NaN count: $(sum(isnan.(U_PE_full)))")
-println("SP_H - NaN count: $(sum(isnan.(SP_H_full)))")
-println("SP_V - NaN count: $(sum(isnan.(SP_V_full)))")
-println("BP - NaN count: $(sum(isnan.(BP_full)))")
-println("ET - NaN count: $(sum(isnan.(ET_full)))")
-println("FH - Zero count: $(sum(FH .== 0)), Min: $(minimum(FH)), Max: $(maximum(FH))")
-println("RAC - Zero count: $(sum(RAC .== 0)), Min: $(minimum(RAC)), Max: $(maximum(RAC))")
-println("========================\n")
-
-
-println("\nComputing area-averaged budget terms...")
-
-
-# Create valid data mask (where RAC > 0 AND FH > 0, meaning we have actual data with depth)
+# ============================================================
+# Area-weighted averages
+# ============================================================
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
-println("Valid data points: $(sum(valid_mask)) out of $(length(valid_mask))")
-println("Total area (with data): $(sum(RAC[valid_mask]))")
+println("\nValid points: $(sum(valid_mask)) / $(length(valid_mask))")
+total_area = sum(RAC[valid_mask])
 
 
-# Check if we have valid data
-if sum(valid_mask) == 0
-    error("No valid data points found! Check that tiles are loading correctly.")
-end
-
-
-# Initialize arrays for area-averaged time series
-Conv_avg = zeros(nt3)
-FDiv_avg = zeros(nt3)
-U_KE_avg = zeros(nt3)
-U_PE_avg = zeros(nt3)
-SP_H_avg = zeros(nt3)
-SP_V_avg = zeros(nt3)
-BP_avg = zeros(nt3)
-ET_avg = zeros(nt3)
-A_avg = zeros(nt3)
-PS_avg = zeros(nt3)
-TotalFlux_avg = zeros(nt3)
-Residual_avg = zeros(nt3)
-
-
-# Compute area-weighted averages for each time step
-for t in 1:nt3
-    # Initialize normalized arrays as zeros
-    Conv_norm = zeros(NX, NY)
-    FDiv_norm = zeros(NX, NY)
-    U_KE_norm = zeros(NX, NY)
-    U_PE_norm = zeros(NX, NY)
-    SP_H_norm = zeros(NX, NY)
-    SP_V_norm = zeros(NX, NY)
-    BP_norm = zeros(NX, NY)
-    ET_norm = zeros(NX, NY)
-    
-    # Normalize ONLY at valid points (prevents NaN from division by zero)
-    Conv_t = Conv[:, :, t]
-    FDiv_t = FDiv[:, :, t]
-    U_KE_t = U_KE_full[:, :, t]
-    U_PE_t = U_PE_full[:, :, t]
-    SP_H_t = SP_H_full[:, :, t]
-    SP_V_t = SP_V_full[:, :, t]
-    BP_t = BP_full[:, :, t]
-    ET_t = ET_full[:, :, t]
-    
-    Conv_norm[valid_mask] = Conv_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    FDiv_norm[valid_mask] = FDiv_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    U_KE_norm[valid_mask] = U_KE_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    U_PE_norm[valid_mask] = U_PE_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    SP_H_norm[valid_mask] = SP_H_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    SP_V_norm[valid_mask] = SP_V_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    BP_norm[valid_mask] = BP_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    ET_norm[valid_mask] = ET_t[valid_mask] ./ (rho0 .* FH[valid_mask])
-    
-    # Calculate derived terms
-    A_norm = U_KE_norm .+ U_PE_norm
-    PS_norm = SP_H_norm .+ SP_V_norm
-    TotalFlux_norm = FDiv_norm .+ U_KE_norm .+ U_PE_norm
-    Residual_norm = -(Conv_norm .- TotalFlux_norm .+ PS_norm .+ BP_norm .- ET_norm)
-    
-    # Area-weighted average (only over valid data points)
-    total_area = sum(RAC[valid_mask])
-    
-    Conv_avg[t] = sum(Conv_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    FDiv_avg[t] = sum(FDiv_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    U_KE_avg[t] = sum(U_KE_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    U_PE_avg[t] = sum(U_PE_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    SP_H_avg[t] = sum(SP_H_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    SP_V_avg[t] = sum(SP_V_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    BP_avg[t] = sum(BP_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    ET_avg[t] = sum(ET_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    A_avg[t] = sum(A_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    PS_avg[t] = sum(PS_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    TotalFlux_avg[t] = sum(TotalFlux_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    Residual_avg[t] = sum(Residual_norm[valid_mask] .* RAC[valid_mask]) / total_area
-    
-    if t % 10 == 0
-        println("  Processed $t/$nt3 time periods")
+# helper: area-weighted average of a 3D (NX×NY×nt3) field over valid points
+function area_avg(F, vmask, RAC, total_area)
+    out = zeros(size(F, 3))
+    for t in axes(F, 3)
+        Ft = F[:, :, t]
+        out[t] = sum(Ft[vmask] .* RAC[vmask]) / total_area
     end
+    return out
 end
 
 
-# Create time axis (in days, assuming 3-day periods)
+# Normalise budget terms by ρ₀·H (→ W/kg)
+norm_field(F) = begin
+    Fn = zeros(size(F))
+    for t in axes(F, 3)
+        Fn[valid_mask, t] .= F[valid_mask, t] ./ (rho0 .* FH[valid_mask])
+    end
+    Fn
+end
+
+
+Conv_n  = norm_field(Conv_full)
+FDiv_n  = norm_field(FDiv_full)
+U_KE_n  = norm_field(U_KE_full)
+U_PE_n  = norm_field(U_PE_full)
+SP_H_n  = norm_field(SP_H_full)
+SP_V_n  = norm_field(SP_V_full)
+BP_n    = norm_field(BP_full)
+ET_n    = norm_field(ET_full)
+
+
+# KE and PE: already depth-integrated (J/m²); normalise by ρ₀·H → J/kg
+KE_n = norm_field(KE_full)
+PE_n = norm_field(PE_full)
+
+
+# Derived budget terms
+A_n          = U_KE_n .+ U_PE_n
+PS_n         = SP_H_n .+ SP_V_n
+TotalFlux_n  = FDiv_n .+ U_KE_n .+ U_PE_n
+Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+
+
+# Time series (area-weighted)
+Conv_avg     = area_avg(Conv_n,  valid_mask, RAC, total_area)
+FDiv_avg     = area_avg(FDiv_n,  valid_mask, RAC, total_area)
+PS_avg       = area_avg(PS_n,    valid_mask, RAC, total_area)
+BP_avg       = area_avg(BP_n,    valid_mask, RAC, total_area)
+A_avg        = area_avg(A_n,     valid_mask, RAC, total_area)
+ET_avg       = area_avg(ET_n,    valid_mask, RAC, total_area)
+Residual_avg = area_avg(Residual_n, valid_mask, RAC, total_area)
+KE_avg       = area_avg(KE_n,    valid_mask, RAC, total_area)
+PE_avg       = area_avg(PE_n,    valid_mask, RAC, total_area)
+
+
+# Time axis
 time_days = collect(1:nt3) .* 3
 
 
-println("\nCreating time series plot...")
+# ============================================================
+# Plotting
+# ============================================================
+println("\nCreating plots...")
 
 
-# Create figure with subplots
-fig = Figure(resolution=(1400, 1000))
+fig = Figure(resolution=(1100, 900), fontsize=14,
+             backgroundcolor=:white)
 
 
-# Color scheme for different terms
-colors = Dict(
-    "Conv" => :red,
-    "FDiv" => :blue,
-    "Residual" => :black,
-    "PS" => :green,
-    "BP" => :orange,
-    "A" => :purple,
-    "ET" => :brown
+# ---- colour palette (dark colours on white background) ----
+c_conv  = RGBf(0.80, 0.10, 0.10)   # deep red
+c_fdiv  = RGBf(0.10, 0.40, 0.75)   # steel blue
+c_res   = RGBf(0.15, 0.15, 0.15)   # near-black (dissipation)
+c_ps    = RGBf(0.10, 0.60, 0.30)   # forest green
+c_bp    = RGBf(0.80, 0.40, 0.00)   # burnt amber
+c_a     = RGBf(0.50, 0.15, 0.75)   # violet
+c_et    = RGBf(0.55, 0.40, 0.05)   # dark gold
+c_ke    = RGBf(0.00, 0.50, 0.70)   # teal
+c_pe    = RGBf(0.75, 0.10, 0.55)   # magenta
+
+
+tick_col = RGBf(0.20, 0.20, 0.20)
+grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
+
+
+axis_theme = (
+    backgroundcolor   = :white,
+    xgridcolor        = grid_col,
+    ygridcolor        = grid_col,
+    xgridwidth        = 0.6,
+    ygridwidth        = 0.6,
+    xtickcolor        = tick_col,
+    ytickcolor        = tick_col,
+    xticklabelcolor   = tick_col,
+    yticklabelcolor   = tick_col,
+    xlabelcolor       = RGBf(0.10, 0.10, 0.10),
+    ylabelcolor       = RGBf(0.10, 0.10, 0.10),
+    titlecolor        = RGBf(0.05, 0.05, 0.05),
+    titlesize         = 15,
+    xlabelsize        = 13,
+    ylabelsize        = 13,
+    xticklabelsize    = 11,
+    yticklabelsize    = 11,
+    spinewidth        = 0.8,
+    topspinevisible   = false,
+    rightspinevisible = false,
+    leftspinecolor    = tick_col,
+    bottomspinecolor  = tick_col,
 )
 
 
-# Plot 1: Main budget terms (larger scale)
-ax1 = Axis(fig[1, 1],
-    title="Area-Averaged Energy Budget Terms (3-day periods)",
-    xlabel="Time [days]",
-    ylabel="Energy Rate [×10⁻⁸ W/kg]",
-    titlesize=20,
-    xlabelsize=16,
-    ylabelsize=16)
+sc = 1e8   # scale factor for display
 
 
-lines!(ax1, time_days, Conv_avg * 1e8, label="⟨C⟩ - Conversion", color=colors["Conv"], linewidth=2)
-lines!(ax1, time_days, FDiv_avg * 1e8, label="⟨∇·F⟩ - Flux Divergence", color=colors["FDiv"], linewidth=2)
-lines!(ax1, time_days, Residual_avg * 1e8, label="⟨D⟩ - Dissipation", color=colors["Residual"], linewidth=2)
-hlines!(ax1, [0], color=:gray, linestyle=:dash, linewidth=1)
+leg_style = (
+    framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
+    backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
+    labelcolor      = RGBf(0.10, 0.10, 0.10),
+    labelsize       = 11,
+    rowgap          = 3,
+    patchsize       = (22, 2),
+)
 
 
-axislegend(ax1, position=:rt, framevisible=true, labelsize=14)
+# ============================================================
+# Subplot 1: All budget terms + tendency
+# ============================================================
+ax1 = Axis(fig[1, 1];
+    title  = "All Budget Terms  (area-averaged, 3-day periods)",
+    xlabel = "Time  [days]",
+    ylabel = "Energy rate  [×10⁻⁸ W kg⁻¹]",
+    axis_theme...)
 
 
-# Plot 2: Production and advection terms (smaller scale)
-ax2 = Axis(fig[2, 1],
-    title="Production and Advection Terms",
-    xlabel="Time [days]",
-    ylabel="Energy Rate [×10⁻⁸ W/kg]",
-    titlesize=20,
-    xlabelsize=16,
-    ylabelsize=16)
+hlines!(ax1, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 
 
-lines!(ax2, time_days, PS_avg * 1e8, label="⟨Pₛ⟩ - Shear Production", color=colors["PS"], linewidth=2)
-lines!(ax2, time_days, BP_avg * 1e8, label="⟨Pᵦ⟩ - Buoyancy Production", color=colors["BP"], linewidth=2)
-lines!(ax2, time_days, A_avg * 1e8, label="⟨A⟩ - Advection", color=colors["A"], linewidth=2)
-lines!(ax2, time_days, ET_avg * 1e8, label="⟨∂E/∂t⟩ - Tendency", color=colors["ET"], linewidth=2)
-hlines!(ax2, [0], color=:gray, linestyle=:dash, linewidth=1)
+lines!(ax1, time_days, Conv_avg     .* sc; label="⟨C⟩  Conversion",       color=c_conv, linewidth=1.8)
+lines!(ax1, time_days, FDiv_avg     .* sc; label="⟨∇·F⟩  Flux divergence", color=c_fdiv, linewidth=1.8)
+lines!(ax1, time_days, PS_avg       .* sc; label="⟨Pₛ⟩  Shear production", color=c_ps,   linewidth=1.8)
+lines!(ax1, time_days, BP_avg       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",   color=c_bp,   linewidth=1.8)
+lines!(ax1, time_days, A_avg        .* sc; label="⟨A⟩  Advection",         color=c_a,    linewidth=1.8)
+lines!(ax1, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",      color=c_et,   linewidth=2.0, linestyle=:dashdot)
+lines!(ax1, time_days, Residual_avg .* sc; label="⟨D⟩  Dissipation",       color=c_res,  linewidth=1.8)
 
 
-axislegend(ax2, position=:rt, framevisible=true, labelsize=14)
+axislegend(ax1; position=:rt, leg_style...)
 
 
-# Plot 3: All terms together
-ax3 = Axis(fig[3, 1],
-    title="All Budget Terms Combined",
-    xlabel="Time [days]",
-    ylabel="Energy Rate [×10⁻⁸ W/kg]",
-    titlesize=20,
-    xlabelsize=16,
-    ylabelsize=16)
+# ============================================================
+# Subplot 2: KE and APE only (no tendency)
+# ============================================================
+ax2 = Axis(fig[2, 1];
+    title  = "Kinetic Energy and Available Potential Energy",
+    xlabel = "Time  [days]",
+    ylabel = "Energy  [×10⁻⁸ J kg⁻¹]",
+    axis_theme...)
 
 
-lines!(ax3, time_days, Conv_avg * 1e8, label="⟨C⟩", color=colors["Conv"], linewidth=1.5)
-lines!(ax3, time_days, FDiv_avg * 1e8, label="⟨∇·F⟩", color=colors["FDiv"], linewidth=1.5)
-lines!(ax3, time_days, PS_avg * 1e8, label="⟨Pₛ⟩", color=colors["PS"], linewidth=1.5)
-lines!(ax3, time_days, BP_avg * 1e8, label="⟨Pᵦ⟩", color=colors["BP"], linewidth=1.5)
-lines!(ax3, time_days, A_avg * 1e8, label="⟨A⟩", color=colors["A"], linewidth=1.5)
-lines!(ax3, time_days, Residual_avg * 1e8, label="⟨D⟩", color=colors["Residual"], linewidth=2)
-hlines!(ax3, [0], color=:gray, linestyle=:dash, linewidth=1)
+hlines!(ax2, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 
 
-axislegend(ax3, position=:rt, framevisible=true, labelsize=12, nbanks=2)
+lines!(ax2, time_days, KE_avg .* sc; label="⟨KE⟩  Kinetic energy",          color=c_ke, linewidth=2.0)
+lines!(ax2, time_days, PE_avg .* sc; label="⟨APE⟩  Avail. pot. energy",      color=c_pe, linewidth=2.0)
 
 
+axislegend(ax2; position=:rt, leg_style...)
+
+
+rowgap!(fig.layout, 1, 24)
+
+
+# ============================================================
+# Save
+# ============================================================
+FIGDIR = cfg["fig_base"]
+mkpath(FIGDIR)
+outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day.png")
+save(outpath, fig, px_per_unit=2)
+println("\nFigure saved → $outpath")
 display(fig)
 
 
-# Save figure
-FIGDIR = cfg["fig_base"]
-mkpath(FIGDIR)
-save(joinpath(FIGDIR, "EnergyBudget_TimeSeries_3day.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_TimeSeries_3day.png"))")
+# ============================================================
+# Statistics
+# ============================================================
+println("\n=== TIME-AVERAGED STATISTICS ===")
+@printf("  KE   (area-avg):       %+.4e ± %.4e  J/kg\n",  mean(KE_avg),       std(KE_avg))
+@printf("  APE  (area-avg):       %+.4e ± %.4e  J/kg\n",  mean(PE_avg),       std(PE_avg))
+@printf("  Tendency ∂E/∂t:        %+.4e ± %.4e  W/kg\n",  mean(ET_avg),       std(ET_avg))
+@printf("  Conversion C:          %+.4e ± %.4e  W/kg\n",  mean(Conv_avg),     std(Conv_avg))
+@printf("  Flux divergence ∇·F:   %+.4e ± %.4e  W/kg\n",  mean(FDiv_avg),     std(FDiv_avg))
+@printf("  Shear production Pₛ:   %+.4e ± %.4e  W/kg\n",  mean(PS_avg),       std(PS_avg))
+@printf("  Buoyancy prod. Pᵦ:     %+.4e ± %.4e  W/kg\n",  mean(BP_avg),       std(BP_avg))
+@printf("  Advection A:           %+.4e ± %.4e  W/kg\n",  mean(A_avg),        std(A_avg))
+@printf("  Dissipation D:         %+.4e ± %.4e  W/kg\n",  mean(Residual_avg), std(Residual_avg))
 
 
-# Print statistics
-println("\n=== TIME-AVERAGED STATISTICS (over all 3-day periods) ===")
-println("Conversion (C):           $(mean(Conv_avg)*1e8) ± $(std(Conv_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Flux Divergence (∇·F):    $(mean(FDiv_avg)*1e8) ± $(std(FDiv_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Shear Production (Pₛ):    $(mean(PS_avg)*1e8) ± $(std(PS_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Buoyancy Production (Pᵦ): $(mean(BP_avg)*1e8) ± $(std(BP_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Advection (A):            $(mean(A_avg)*1e8) ± $(std(A_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Tendency (∂E/∂t):         $(mean(ET_avg)*1e8) ± $(std(ET_avg)*1e8) [×10⁻⁸ W/kg]")
-println("Dissipation (D):          $(mean(Residual_avg)*1e8) ± $(std(Residual_avg)*1e8) [×10⁻⁸ W/kg]")
-
-
-# Save data to file for further analysis
+# Save text output
 using DelimitedFiles
-output_data = hcat(time_days, Conv_avg*1e8, FDiv_avg*1e8, PS_avg*1e8, BP_avg*1e8, 
-                   A_avg*1e8, ET_avg*1e8, Residual_avg*1e8)
-header = "Time[days] Conv FDiv PS BP A ET Dissipation [all in 1e-8 W/kg]"
-writedlm(joinpath(FIGDIR, "energy_budget_timeseries_3day.txt"), 
-         vcat(header, output_data), '\t')
-println("\nData saved: $(joinpath(FIGDIR, "energy_budget_timeseries_3day.txt"))")
+data_out = hcat(time_days,
+                KE_avg .* sc, PE_avg .* sc, ET_avg .* sc,
+                Conv_avg .* sc, FDiv_avg .* sc,
+                PS_avg .* sc, BP_avg .* sc, A_avg .* sc, Residual_avg .* sc)
+header = "Time[days]\tKE\tAPE\tdE_dt\tConv\tFDiv\tPS\tBP\tAdvection\tDissipation\t[all x1e-8 J/kg or W/kg]"
+writedlm(joinpath(FIGDIR, "KE_PE_budget_3day.txt"), vcat(header, data_out), '\t')
+println("Data saved  → $(joinpath(FIGDIR, "KE_PE_budget_3day.txt"))")
 
 
-println("\nProcessing complete!")
+println("\nDone!")
+
+
 
 

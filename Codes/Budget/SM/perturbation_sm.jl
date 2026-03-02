@@ -108,7 +108,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # --- Bandpass filter (time is last dim) ---
         fr = bandpassfilter(rho, T1, T2, delt,N,nt)
-            # --- Pressure & perturbations ---
+        # --- Pressure & perturbations ---
         pres  = g .* cumsum(fr .* DRFfull, dims=3)
         pfz   = cat(zeros(nx, ny, 1, nt), pres; dims=3)
         pc_3d = 0.5 .* (pfz[:, :, 1:end-1, :] .+ pfz[:, :, 2:end, :])
