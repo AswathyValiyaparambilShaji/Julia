@@ -1,250 +1,306 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
-include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, bandpassfilter
-config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
-cfg = TOML.parsefile(config_file)
+if !isdefined(Main, :FluxUtils)
+    include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
+    using .FluxUtils: read_bin, bandpassfilter
+end
+
+
+config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
+cfg  = TOML.parsefile(config_file)
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-use_3day = true
+# --- Toggle ---
+use_3day = true   # true → 3-day chunks;  false → full time average
 
 
+# --- Domain ---
 NX, NY = 288, 468
-minlat, maxlat = 24.0, 31.91
-minlon, maxlon = 193.0, 199.0
-lat = range(minlat, maxlat, length=NY)
-lon = range(minlon, maxlon, length=NX)
 
 
-buf = 3
+# --- Tile & grid ---
+buf    = 3
 tx, ty = 47, 66
-nx = tx + 2*buf
-ny = ty + 2*buf
-nz = 88
+nx     = tx + 2 * buf
+ny     = ty + 2 * buf
+nz     = 88
 
 
-kz  = 1
-dt  = 25
-dto = 144
-Tts = 366192
-nt  = div(Tts, dto)
-nt3 = div(nt, 3*24)
+# --- Time ---
+dt   = 25
+dto  = 144
+Tts  = 366192
+nt   = div(Tts, dto)
+nt3  = div(nt, 3 * 24)
 
 
-thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
-DRF   = thk[1:nz]
-DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+# --- Thickness ---
+thk    = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF    = thk[1:nz]
+DRF3d  = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+
+
+# --- Constants ---
 g = 9.8
 
 
+# --- Filter parameters ---
 T1, T2, delt, N = 9.0, 15.0, 1.0, 4
-fcutlow, fcuthigh = 1 / T2, 1 / T1
-fnq = 1 / delt
-bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
+
+
+# ============================================================================
+# MAIN WORKFLOW
+# ============================================================================
 
 
 if use_3day
 
 
-    println("Computing -rho'gW conversion for $nt3 3-day periods")
+    println("Computing C(z) [Option 1 W(z)] — 3-day chunks, nchunks = $nt3")
+    mkpath(joinpath(base2, "Conv_z_3day"))
     mkpath(joinpath(base2, "Conv_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
+            suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
+            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
+
+
+            # --- Read density ---
             rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
-                reshape(reinterpret(Float64, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float64, read(io, nx * ny * nz * nt * sizeof(Float64))), nx, ny, nz, nt)
             end)
 
 
+            # --- Grid masks & thickness ---
             hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
             DRFfull = hFacC .* DRF3d
-            depth   = sum(DRFfull, dims=3)                         # (nx, ny, 1)
+            depth   = sum(DRFfull, dims=3)          # (nx, ny, 1)  total depth H
             DRFfull[hFacC .== 0] .= 0.0
 
 
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
+            # --- Read filtered velocities ---
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
             end)
 
 
             fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
             end)
 
 
-            fr = bandpassfilter(rho, T1, T2, delt, N, nt)
+            # --- Grid spacings ---
+            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-            # Depth-averaged velocities
-            UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)   # (nx, ny, nt)
-            VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)   # (nx, ny, nt)
+            # --- Bandpass filter density → ρ' ---
+            fr = bandpassfilter(rho, T1, T2, delt, N, nt)   # (nx, ny, nz, nt)
 
 
-            # z = height above bottom at each level (nx, ny, nz)
-            # cumsum from bottom (k=nz) upward to k=1
-            z_from_bottom = cumsum(DRFfull[:, :, end:-1:1], dims=3)[:, :, end:-1:1]
+            # ----------------------------------------------------------------
+            # DEPTH-AVERAGED VELOCITIES
+            # UDA, VDA : (nx, ny, nt)
+            # ----------------------------------------------------------------
+            UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
+            VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
 
-            # d = total depth (nx, ny)
-            d = dropdims(depth, dims=3)                                    # (nx, ny)
+            # ----------------------------------------------------------------
+            # z and d for W(z) = -∇H·(dUH) - z ∇H·UH
+            #
+            #   d = total depth           (nx, ny, 1)
+            #   z = cumsum DRF top→down   (nx, ny, nz)
+            #       at level k this is depth from surface to mid-level k
+            # ----------------------------------------------------------------
+            d     = depth                                      # (nx, ny, 1)
+            z     = cumsum(DRFfull, dims=3)                   # (nx, ny, nz)
 
 
-            # Term 1: -div(d * UDA)  at interior points (nx-2, ny-2, nt)
-            dU = d .* UDA                                                  # (nx, ny, nt)
-            dV = d .* VDA                                                  # (nx, ny, nt)
+            # ----------------------------------------------------------------
+            # TERM 1 : -∇H · (d · UH)    shape (nx-2, ny-2, nt)
+            # ----------------------------------------------------------------
+            dU = dropdims(d, dims=3) .* UDA                   # (nx, ny, nt)
+            dV = dropdims(d, dims=3) .* VDA
 
 
             term1 = .-(
-                (dU[3:nx, 2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1, 2:ny-1] .+ dx[1:nx-2, 2:ny-1]) .+
-                (dV[2:nx-1, 3:ny,  :] .- dV[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1, 2:ny-1] .+ dy[2:nx-1, 1:ny-2])
-            )                                                              # (nx-2, ny-2, nt)
+                (dU[3:nx,   2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
+                (dx[2:nx-1, 2:ny-1]    .+ dx[1:nx-2, 2:ny-1])     .+
+                (dV[2:nx-1, 3:ny,   :] .- dV[2:nx-1, 1:ny-2, :]) ./
+                (dy[2:nx-1, 2:ny-1]    .+ dy[2:nx-1, 1:ny-2])
+            )                                                  # (nx-2, ny-2, nt)
 
 
-            # Term 2: -z * div(UDA)  at interior points
+            # ----------------------------------------------------------------
+            # TERM 2 : -z · ∇H · UH      shape (nx-2, ny-2, nz, nt)
+            # ----------------------------------------------------------------
             divUDA = (
-                (UDA[3:nx, 2:ny-1, :] .- UDA[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1, 2:ny-1] .+ dx[1:nx-2, 2:ny-1]) .+
-                (VDA[2:nx-1, 3:ny,  :] .- VDA[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1, 2:ny-1] .+ dy[2:nx-1, 1:ny-2])
-            )                                                              # (nx-2, ny-2, nt)
+                (UDA[3:nx,   2:ny-1, :] .- UDA[1:nx-2, 2:ny-1, :]) ./
+                (dx[2:nx-1,  2:ny-1]    .+ dx[1:nx-2,  2:ny-1])     .+
+                (VDA[2:nx-1, 3:ny,   :] .- VDA[2:nx-1, 1:ny-2, :]) ./
+                (dy[2:nx-1,  2:ny-1]    .+ dy[2:nx-1,  1:ny-2])
+            )                                                  # (nx-2, ny-2, nt)
 
 
-            # z at interior points (nx-2, ny-2, nz)
-            z_int = z_from_bottom[2:nx-1, 2:ny-1, :]
+            z_int = z[2:nx-1, 2:ny-1, :]                      # (nx-2, ny-2, nz)
 
 
-            # W(z) = -div(d*U) - z*div(U)  →  (nx-2, ny-2, nz, nt)
-            Wz = reshape(term1,   nx-2, ny-2, 1,  nt) .-
-                 reshape(z_int,   nx-2, ny-2, nz, 1)  .*
-                 reshape(divUDA,  nx-2, ny-2, 1,  nt)
+            # W(z) = term1 - z * divUDA   broadcasting to (nx-2, ny-2, nz, nt)
+            Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .-
+                 reshape(z_int,  nx-2, ny-2, nz, 1)  .*
+                 reshape(divUDA, nx-2, ny-2, 1,  nt)  # (nx-2, ny-2, nz, nt)
 
 
-            # Conversion C(z) = -rho'(z) * g * W(z)
-            rho_int  = fr[2:nx-1, 2:ny-1, :, :]                          # (nx-2, ny-2, nz, nt)
-            Cz       = .-rho_int .* g .* Wz                               # (nx-2, ny-2, nz, nt)
+            # ----------------------------------------------------------------
+            # CONVERSION  C(z,t) = ρ'(z,t) · g · W(z,t)
+            # sign follows paper: C = ρ'gW  (positive = generation)
+            # ----------------------------------------------------------------
+            rho_int = fr[2:nx-1, 2:ny-1, :, :]               # (nx-2, ny-2, nz, nt)
+            Cz      = -rho_int .* g .* Wz                      # (nx-2, ny-2, nz, nt)
 
 
-            DRFint   = DRFfull[2:nx-1, 2:ny-1, :]
+            # DRFfull at interior for depth integration
+            DRFint   = DRFfull[2:nx-1, 2:ny-1, :]             # (nx-2, ny-2, nz)
             DRFint4d = reshape(DRFint, nx-2, ny-2, nz, 1)
-            depth_int = sum(DRFint4d, dims=3)                             # (nx-2, ny-2, 1, 1)
 
 
-            Ca_full  = dropdims(sum(Cz .* DRFint4d, dims=3) ./ depth_int, dims=3)  # (nx-2, ny-2, nt)
+            # Depth-integrated C [W/m²] : (nx-2, ny-2, nt)
+            Ca_full = dropdims(
+                sum(Cz .* DRFint4d, dims=3),
+                dims=3
+            )
 
 
-            ca_3day       = zeros(nx-2, ny-2, nt3)
+            # ----------------------------------------------------------------
+            # 3-DAY AVERAGING
+            # ----------------------------------------------------------------
             hrs_per_chunk = 3 * 24
+
+
+            # C(z) per 3-day chunk : (nx-2, ny-2, nz, nt3)
+            Cz_3day  = zeros(Float32, nx-2, ny-2, nz,  nt3)
+            # Depth-averaged C per 3-day chunk : (nx-2, ny-2, nt3)
+            Ca_3day  = zeros(Float32, nx-2, ny-2, nt3)
+
+
             for t in 1:nt3
-                t_start = (t-1) * hrs_per_chunk + 1
+                t_start = (t - 1) * hrs_per_chunk + 1
                 t_end   = min(t * hrs_per_chunk, nt)
-                ca_3day[:, :, t] .= mean(Ca_full[:, :, t_start:t_end], dims=3)
+                Cz_3day[:, :, :, t] .= mean(Cz[:, :, :, t_start:t_end],  dims=4)
+                Ca_3day[:, :,    t] .= mean(Ca_full[:, :, t_start:t_end], dims=3)
             end
 
 
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-            open(joinpath(base2, "Conv_3day", "Conv_3day_$suffix2.bin"), "w") do io
-                write(io, Float32.(ca_3day))
+            # Save C(z) 3-day  — shape (nx-2, ny-2, nz, nt3)
+            open(joinpath(base2, "Conv_z_3day", "Conv_z_3day_$suffix2.bin"), "w") do io
+                write(io, Cz_3day)
             end
 
 
-            println("  Completed tile: $suffix")
+            # Save depth-integrated C 3-day [W/m²] — shape (nx-2, ny-2, nt3)
+            open(joinpath(base2, "Conv_3day", "Conv_3day_z_$suffix2.bin"), "w") do io
+                write(io, Ca_3day)
+            end
+
+
+            println("  Completed tile: $suffix (3-day)")
         end
     end
 
 
-    println("Completed -rho'gW conversion for $nt3 3-day periods")
+    println("Done — 3-day C(z) conversion saved.")
 
 
 else
 
 
-    println("Computing -rho'gW conversion for full time average")
+    println("Computing C(z) [Option 1 W(z)] — full time average")
+    mkpath(joinpath(base2, "Conv_z"))
     mkpath(joinpath(base2, "Conv"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
+            suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
+            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
+
+
+            # --- Read density ---
             rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
-                reshape(reinterpret(Float64, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float64, read(io, nx * ny * nz * nt * sizeof(Float64))), nx, ny, nz, nt)
             end)
 
 
+            # --- Grid masks & thickness ---
             hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
             DRFfull = hFacC .* DRF3d
             depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
 
 
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
+            # --- Read filtered velocities ---
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
             end)
 
 
             fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
             end)
 
 
+            # --- Grid spacings ---
+            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+
+
+            # --- Bandpass filter density → ρ' ---
             fr = bandpassfilter(rho, T1, T2, delt, N, nt)
 
 
-            # Depth-averaged velocities
+            # --- Depth-averaged velocities ---
             UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
             VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
 
-            # z = height above bottom at each level
-            z_from_bottom = cumsum(DRFfull[:, :, end:-1:1], dims=3)[:, :, end:-1:1]
+            # --- z and d ---
+            d   = depth
+            z   = cumsum(DRFfull, dims=3)
 
 
-            d  = dropdims(depth, dims=3)
-            dU = d .* UDA
-            dV = d .* VDA
+            # --- Term 1 : -∇H·(d·UH) ---
+            dU = dropdims(d, dims=3) .* UDA
+            dV = dropdims(d, dims=3) .* VDA
 
 
             term1 = .-(
-                (dU[3:nx, 2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1, 2:ny-1] .+ dx[1:nx-2, 2:ny-1]) .+
-                (dV[2:nx-1, 3:ny,  :] .- dV[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1, 2:ny-1] .+ dy[2:nx-1, 1:ny-2])
+                (dU[3:nx,   2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
+                (dx[2:nx-1, 2:ny-1]    .+ dx[1:nx-2, 2:ny-1])     .+
+                (dV[2:nx-1, 3:ny,   :] .- dV[2:nx-1, 1:ny-2, :]) ./
+                (dy[2:nx-1, 2:ny-1]    .+ dy[2:nx-1, 1:ny-2])
             )
 
 
+            # --- Term 2 : -z·∇H·UH ---
             divUDA = (
-                (UDA[3:nx, 2:ny-1, :] .- UDA[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1, 2:ny-1] .+ dx[1:nx-2, 2:ny-1]) .+
-                (VDA[2:nx-1, 3:ny,  :] .- VDA[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1, 2:ny-1] .+ dy[2:nx-1, 1:ny-2])
+                (UDA[3:nx,   2:ny-1, :] .- UDA[1:nx-2, 2:ny-1, :]) ./
+                (dx[2:nx-1,  2:ny-1]    .+ dx[1:nx-2,  2:ny-1])     .+
+                (VDA[2:nx-1, 3:ny,   :] .- VDA[2:nx-1, 1:ny-2, :]) ./
+                (dy[2:nx-1,  2:ny-1]    .+ dy[2:nx-1,  1:ny-2])
             )
 
 
-            z_int = z_from_bottom[2:nx-1, 2:ny-1, :]
+            z_int = z[2:nx-1, 2:ny-1, :]
 
 
             Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .-
@@ -252,35 +308,54 @@ else
                  reshape(divUDA, nx-2, ny-2, 1,  nt)
 
 
-            rho_int   = fr[2:nx-1, 2:ny-1, :, :]
-            Cz        = .-rho_int .* g .* Wz
+            # --- Conversion C(z,t) = ρ'gW ---
+            rho_int = fr[2:nx-1, 2:ny-1, :, :]
+            Cz      = rho_int .* g .* Wz
 
 
             DRFint    = DRFfull[2:nx-1, 2:ny-1, :]
             DRFint4d  = reshape(DRFint, nx-2, ny-2, nz, 1)
-            depth_int = sum(DRFint4d, dims=3)
 
 
-            Ca_full = dropdims(sum(Cz .* DRFint4d, dims=3) ./ depth_int, dims=3)
-            ca      = dropdims(mean(Ca_full; dims=3); dims=3)
+            # Depth-integrated C [W/m²] : (nx-2, ny-2, nt)
+            Ca_full = dropdims(
+                sum(Cz .* DRFint4d, dims=3),
+                dims=3
+            )
 
 
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+            # Full time average
+            # C(z) time-mean : (nx-2, ny-2, nz)
+            Cz_mean = dropdims(mean(Cz,      dims=4), dims=4)
+            Ca_mean = dropdims(mean(Ca_full, dims=3), dims=3)
+
+
+            
+
+            # Save depth-integrated C full mean [W/m²] — shape (nx-2, ny-2)
             open(joinpath(base2, "Conv", "Conv_$suffix2.bin"), "w") do io
-                write(io, Float32.(ca))
+                write(io, Float32.(Ca_mean))
             end
 
 
-            println("  Completed tile: $suffix")
+            println("  Completed tile: $suffix (full time average)")
         end
     end
 
 
-    println("Completed -rho'gW conversion for full time average")
+    println("Done — full time average C(z) conversion saved.")
 
 
 end
- 
+
+
+
+
+
+
+
+
+
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 using CairoMakie, SparseArrays
 
@@ -327,7 +402,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read 3D (nxi, nyi, nt3) then average over time to get 2D (nxi, nyi)
-        ca_3day = open(joinpath(base2, "Conv_3day", "Conv_3day_$suffix2.bin"), "r") do io
+        ca_3day = open(joinpath(base2, "Conv_3day", "Conv_3day_z_$suffix2.bin"), "r") do io
             nbytes = nxi * nyi * nt3 * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nxi, nyi, nt3)
         end
