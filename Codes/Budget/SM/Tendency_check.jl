@@ -101,7 +101,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # ---- Depth-integrate APE (NaN-safe, using DRF3d, as in reference) ----
         DRF3d4    = reshape(DRF3d, nx, ny, nz, 1)
         ape_clean = replace(ape_raw, NaN => 0.0)
-        pe_di     = dropdims(sum(ape_clean .* DRF3d4, dims=3), dims=3) # nx x ny x nt
+        pe_di     = dropdims(sum(ape_clean .* DRFfull4, dims=3), dims=3) # nx x ny x nt
 
 
         # ---- Total energy depth-integrated ----
@@ -145,22 +145,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         RAC[xs+2:xe-2, ys+2:ye-2]          .= rac[buf:nx-buf+1,    buf:ny-buf+1]
 
 
-        println("  Done.")
     end
 end
 
-
-# ============================================================
-# Time mean of KE and PE over all 3-day periods → (NX, NY)
-# ============================================================
 KE_tmean = dropdims(mean(KE_full,  dims=3), dims=3)   # NX x NY
 PE_tmean = dropdims(mean(PE_full,  dims=3), dims=3)   # NX x NY
 
 
-# ============================================================
-# RAC-weighted zonal mean → (NY,)
-# valid mask exactly as in reference code
-# ============================================================
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
 println("\nValid points: $(sum(valid_mask)) / $(length(valid_mask))")
 
@@ -168,8 +159,8 @@ println("\nValid points: $(sum(valid_mask)) / $(length(valid_mask))")
 lat_vec = collect(lat)
 
 
-KE_zonal  = fill(NaN, NY)
-PE_zonal  = fill(NaN, NY)
+KE_zonal  = zeros(NY)
+PE_zonal  = zeros(NY)
 
 
 for j in 1:NY
@@ -183,7 +174,7 @@ end
 
 
 # KE/APE ratio
-ratio_zonal = KE_zonal ./ max.(PE_zonal, 1e-30)
+ratio_zonal = KE_zonal ./ PE_zonal
 
 
 # ============================================================
