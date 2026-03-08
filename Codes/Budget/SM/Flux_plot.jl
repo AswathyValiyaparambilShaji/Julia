@@ -68,12 +68,13 @@ g = 9.8
 # ============================================================================
 # ASSEMBLE FULL DOMAIN FROM TILES
 # ============================================================================
-
+tfx = zeros(NX, NY)
+tfy = zeros(NX, NY)
 
 if time_mode == "3day"
     println("Using 3-day averaged files with $nt3 time periods")
-    local tfx = zeros(NX, NY, nt3)
-    local tfy = zeros(NX, NY, nt3)
+    tfx = zeros(NX, NY, nt3)
+    tfy = zeros(NX, NY, nt3)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -123,8 +124,8 @@ if time_mode == "3day"
 
 elseif time_mode == "weekly"
     println("Using weekly averaged files (Apr 22-28)")
-    local tfx = zeros(NX, NY)
-    local tfy = zeros(NX, NY)
+    tfx = zeros(NX, NY)
+    tfy = zeros(NX, NY)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -174,8 +175,8 @@ elseif time_mode == "weekly"
 
 elseif time_mode == "full"
     println("Using full time averaged files")
-    local tfx = zeros(NX, NY)
-    local tfy = zeros(NX, NY)
+    tfx = zeros(NX, NY)
+    tfy = zeros(NX, NY)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
