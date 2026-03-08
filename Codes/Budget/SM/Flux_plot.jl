@@ -51,7 +51,7 @@ dt  = 25
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
-nt3 = div(nt, 3*24)   # number of 3-day periods
+nt3 = div(nt, 3*24)
 
 
 
@@ -72,8 +72,8 @@ g = 9.8
 
 if time_mode == "3day"
     println("Using 3-day averaged files with $nt3 time periods")
-    tfx = zeros(NX, NY, nt3)
-    tfy = zeros(NX, NY, nt3)
+    local tfx = zeros(NX, NY, nt3)
+    local tfy = zeros(NX, NY, nt3)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -103,10 +103,10 @@ if time_mode == "3day"
             fyY = sum(fy .* DRFfull, dims=3)
 
 
-            xs = (xn - 1) * tx + 1
-            xe = xs + tx + (2 * buf) - 1
-            ys = (yn - 1) * ty + 1
-            ye = ys + ty + (2 * buf) - 1
+            xs  = (xn - 1) * tx + 1
+            xe  = xs + tx + (2 * buf) - 1
+            ys  = (yn - 1) * ty + 1
+            ye  = ys + ty + (2 * buf) - 1
             xsf = 2
             xef = tx + (2*buf) - 1
             ysf = 2
@@ -123,8 +123,8 @@ if time_mode == "3day"
 
 elseif time_mode == "weekly"
     println("Using weekly averaged files (Apr 22-28)")
-    tfx = zeros(NX, NY)
-    tfy = zeros(NX, NY)
+    local tfx = zeros(NX, NY)
+    local tfy = zeros(NX, NY)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -154,10 +154,10 @@ elseif time_mode == "weekly"
             fyY = sum(fy .* DRFfull, dims=3)
 
 
-            xs = (xn - 1) * tx + 1
-            xe = xs + tx + (2 * buf) - 1
-            ys = (yn - 1) * ty + 1
-            ye = ys + ty + (2 * buf) - 1
+            xs  = (xn - 1) * tx + 1
+            xe  = xs + tx + (2 * buf) - 1
+            ys  = (yn - 1) * ty + 1
+            ye  = ys + ty + (2 * buf) - 1
             xsf = 2
             xef = tx + (2*buf) - 1
             ysf = 2
@@ -174,8 +174,8 @@ elseif time_mode == "weekly"
 
 elseif time_mode == "full"
     println("Using full time averaged files")
-    tfx = zeros(NX, NY)
-    tfy = zeros(NX, NY)
+    local tfx = zeros(NX, NY)
+    local tfy = zeros(NX, NY)
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -205,10 +205,10 @@ elseif time_mode == "full"
             fyY = sum(fy .* DRFfull, dims=3)
 
 
-            xs = (xn - 1) * tx + 1
-            xe = xs + tx + (2 * buf) - 1
-            ys = (yn - 1) * ty + 1
-            ye = ys + ty + (2 * buf) - 1
+            xs  = (xn - 1) * tx + 1
+            xe  = xs + tx + (2 * buf) - 1
+            ys  = (yn - 1) * ty + 1
+            ye  = ys + ty + (2 * buf) - 1
             xsf = 2
             xef = tx + (2*buf) - 1
             ysf = 2
@@ -250,12 +250,16 @@ mkpath(FIGDIR)
 
 if time_mode == "3day"
     println("Creating $nt3 frames...")
-    frames_dir = joinpath(FIGDIR, "temp_frames")
+    local frames_dir = joinpath(FIGDIR, "temp_frames")
     mkpath(frames_dir)
 
 
     for t in 1:nt3
-        fm   = sqrt.(tfx[:, :, t].^2 .+ tfy[:, :, t].^2)
+        local fm, fm_kW, F, Ux, Uy, fig, ax, hm, pos, arrvec, NX_local, NY_local
+        local maxmag, cell_x, cell_y, target, scale
+
+
+        fm    = sqrt.(tfx[:, :, t].^2 .+ tfy[:, :, t].^2)
         fm_kW = fm ./ 1000
         F  = DO_TRANSPOSE ? fm_kW' : fm_kW
         Ux = DO_TRANSPOSE ? tfx[:, :, t]' : tfx[:, :, t]
@@ -278,25 +282,25 @@ if time_mode == "3day"
             colormap    = :Spectral_9)
 
 
-        pos = Point2f[]
-        vec = Vec2f[]
+        pos    = Point2f[]
+        arrvec = Vec2f[]
         NX_local, NY_local = size(F)
         for i in 1:QUIVER_STEP:NX_local, j in 1:QUIVER_STEP:NY_local
             u = Ux[i, j]; v = Uy[i, j]; m = F[i, j]
             if isfinite(u) && isfinite(v) && isfinite(m)
-                push!(pos, Point2f(Float32(lon[i]), Float32(lat[j])))
-                push!(vec, Vec2f(Float32(u), Float32(v)))
+                push!(pos,    Point2f(Float32(lon[i]), Float32(lat[j])))
+                push!(arrvec, Vec2f(Float32(u), Float32(v)))
             end
         end
 
 
-        if !isempty(vec)
-            maxmag = maximum(norm, vec)
+        if !isempty(arrvec)
+            maxmag = maximum(norm, arrvec)
             cell_x = (maximum(lon) - minimum(lon)) / NX_local
             cell_y = (maximum(lat) - minimum(lat)) / NY_local
             target = 5f0 * Float32(min(cell_x, cell_y))
             scale  = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)
-            arrows!(ax, pos, scale .* vec, color=:black, arrowsize=8, linewidth=1.5)
+            arrows!(ax, pos, scale .* arrvec, color=:black, arrowsize=8, linewidth=1.5)
         end
 
 
@@ -308,8 +312,8 @@ if time_mode == "3day"
     println("Frames saved to: $frames_dir")
 
 
-    movie_file    = joinpath(FIGDIR, "Flux_3day_movie.mp4")
-    input_pattern = joinpath(frames_dir, "frame_%04d.png")
+    local movie_file    = joinpath(FIGDIR, "Flux_3day_movie.mp4")
+    local input_pattern = joinpath(frames_dir, "frame_%04d.png")
 
 
     try
@@ -334,6 +338,10 @@ if time_mode == "3day"
 
 elseif time_mode == "weekly"
     println("Creating single PNG figure for weekly mean Apr 22-28...")
+    local fm, fm_kW, F, Ux, Uy, fig, ax, hm, pos, arrvec, NX_local, NY_local
+    local maxmag, cell_x, cell_y, target, scale, png_file
+
+
     fm    = sqrt.(tfx.^2 .+ tfy.^2)
     fm_kW = fm ./ 1000
     F  = DO_TRANSPOSE ? fm_kW' : fm_kW
@@ -357,25 +365,25 @@ elseif time_mode == "weekly"
         colormap    = :Spectral_9)
 
 
-    pos = Point2f[]
-    vec = Vec2f[]
+    pos    = Point2f[]
+    arrvec = Vec2f[]
     NX_local, NY_local = size(F)
     for i in 1:QUIVER_STEP:NX_local, j in 1:QUIVER_STEP:NY_local
         u = Ux[i, j]; v = Uy[i, j]; m = F[i, j]
         if isfinite(u) && isfinite(v) && isfinite(m)
-            push!(pos, Point2f(Float32(lon[i]), Float32(lat[j])))
-            push!(vec, Vec2f(Float32(u), Float32(v)))
+            push!(pos,    Point2f(Float32(lon[i]), Float32(lat[j])))
+            push!(arrvec, Vec2f(Float32(u), Float32(v)))
         end
     end
 
 
-    if !isempty(vec)
-        maxmag = maximum(norm, vec)
+    if !isempty(arrvec)
+        maxmag = maximum(norm, arrvec)
         cell_x = (maximum(lon) - minimum(lon)) / NX_local
         cell_y = (maximum(lat) - minimum(lat)) / NY_local
         target = 5f0 * Float32(min(cell_x, cell_y))
         scale  = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)
-        arrows!(ax, pos, scale .* vec, color=:black, arrowsize=8, linewidth=1.5)
+        arrows!(ax, pos, scale .* arrvec, color=:black, arrowsize=8, linewidth=1.5)
     end
 
 
@@ -392,6 +400,10 @@ elseif time_mode == "weekly"
 
 elseif time_mode == "full"
     println("Creating single PNG figure for full time average...")
+    local fm, fm_kW, F, Ux, Uy, fig, ax, hm, pos, arrvec, NX_local, NY_local
+    local maxmag, cell_x, cell_y, target, scale, png_file
+
+
     fm    = sqrt.(tfx.^2 .+ tfy.^2)
     fm_kW = fm ./ 1000
     F  = DO_TRANSPOSE ? fm_kW' : fm_kW
@@ -415,25 +427,25 @@ elseif time_mode == "full"
         colormap    = :Spectral_9)
 
 
-    pos = Point2f[]
-    vec = Vec2f[]
+    pos    = Point2f[]
+    arrvec = Vec2f[]
     NX_local, NY_local = size(F)
     for i in 1:QUIVER_STEP:NX_local, j in 1:QUIVER_STEP:NY_local
         u = Ux[i, j]; v = Uy[i, j]; m = F[i, j]
         if isfinite(u) && isfinite(v) && isfinite(m)
-            push!(pos, Point2f(Float32(lon[i]), Float32(lat[j])))
-            push!(vec, Vec2f(Float32(u), Float32(v)))
+            push!(pos,    Point2f(Float32(lon[i]), Float32(lat[j])))
+            push!(arrvec, Vec2f(Float32(u), Float32(v)))
         end
     end
 
 
-    if !isempty(vec)
-        maxmag = maximum(norm, vec)
+    if !isempty(arrvec)
+        maxmag = maximum(norm, arrvec)
         cell_x = (maximum(lon) - minimum(lon)) / NX_local
         cell_y = (maximum(lat) - minimum(lat)) / NY_local
         target = 5f0 * Float32(min(cell_x, cell_y))
         scale  = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)
-        arrows!(ax, pos, scale .* vec, color=:black, arrowsize=8, linewidth=1.5)
+        arrows!(ax, pos, scale .* arrvec, color=:black, arrowsize=8, linewidth=1.5)
     end
 
 
