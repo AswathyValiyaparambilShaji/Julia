@@ -18,7 +18,7 @@ base2 = cfg["base_path2"]
 # Options:
 #   "full"   -> reads FDiv and Conv files
 #   "weekly" -> reads FDiv_weekly and Conv_weekly files
-time_mode = "full"   # <-- change to "full" or "weekly"
+time_mode = "weekly"   # <-- change to "full" or "weekly"
 
 
 
