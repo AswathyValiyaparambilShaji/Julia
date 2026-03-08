@@ -154,7 +154,7 @@ if use_3day
 
 
             # W(z) = term1 - z * divUDA   broadcasting to (nx-2, ny-2, nz, nt)
-            Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .-
+            Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .+
                  reshape(z_int,  nx-2, ny-2, nz, 1)  .*
                  reshape(divUDA, nx-2, ny-2, 1,  nt)  # (nx-2, ny-2, nz, nt)
 
@@ -164,7 +164,7 @@ if use_3day
             # sign follows paper: C = ρ'gW  (positive = generation)
             # ----------------------------------------------------------------
             rho_int = fr[2:nx-1, 2:ny-1, :, :]               # (nx-2, ny-2, nz, nt)
-            Cz      = -rho_int .* g .* Wz                      # (nx-2, ny-2, nz, nt)
+            Cz      = rho_int .* g .* Wz                      # (nx-2, ny-2, nz, nt)
 
 
             # DRFfull at interior for depth integration

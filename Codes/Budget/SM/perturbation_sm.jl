@@ -117,7 +117,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
         pp_3d[repeat(mask4D, 1, 1, 1, size(pp_3d, 4))] .= 0
-
+ 
         ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
         up_3d  = fu .- ucA_3d
         up_3d[repeat(mask4D, 1, 1, 1, size(up_3d, 4))] .= 0
