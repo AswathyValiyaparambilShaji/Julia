@@ -17,7 +17,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> conversion for each 3-day bin over full record (output has nt3 time steps)
 #   "weekly" -> conversion mean over Apr 22 00:00 - Apr 28 23:00 (single output)
 #   "full"   -> conversion mean over full record (single output)
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
+time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
 
 
 

@@ -1,4 +1,8 @@
+"""
+"""
+
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using CairoMakie
 
 
 if !isdefined(Main, :FluxUtils)
@@ -56,17 +60,9 @@ T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 # ============================================================================
 
 
-if use_3day
 
-
-    println("Computing C(z) [Option 1 W(z)] — 3-day chunks, nchunks = $nt3")
-    mkpath(joinpath(base2, "Conv_z_3day"))
-    mkpath(joinpath(base2, "Conv_3day"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-
+xn = 1
+yn = 1
 
             suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
             suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
@@ -113,6 +109,28 @@ if use_3day
             VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
 
+
+t = 1  # change time step here
+z = 1  # change depth level here
+
+
+fig = Figure(resolution=(1200, 500))
+
+
+ax1 = Axis(fig[1,1], title="wz t=$t")
+hm1 = heatmap!(ax1, Ca_full[:,:,t], colormap=:balance)
+Colorbar(fig[1,2], hm1)
+
+
+ax2 = Axis(fig[1,3], title="cz  t=$t")
+hm2 = heatmap!(ax2, ca, colormap=:balance)
+Colorbar(fig[1,4], hm2)
+
+
+display(fig)
+
+
+
             # ----------------------------------------------------------------
             # z and d for W(z) = -∇H·(dUH) - z ∇H·UH
             #
@@ -129,7 +147,7 @@ if use_3day
             # ----------------------------------------------------------------
             dU = dropdims(d, dims=3) .* UDA                   # (nx, ny, nt)
             dV = dropdims(d, dims=3) .* VDA
-
+size(ca)
 
             term1 = .-(
                 (dU[3:nx,   2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
@@ -183,7 +201,7 @@ if use_3day
             # 3-DAY AVERAGING
             # ----------------------------------------------------------------
             hrs_per_chunk = 3 * 24
-
+            ca = dropdims(mean(Ca_full; dims=3); dims=3)   # (nx-2, ny-2)
 
             # C(z) per 3-day chunk : (nx-2, ny-2, nz, nt3)
             Cz_3day  = zeros(Float32, nx-2, ny-2, nz,  nt3)
@@ -212,141 +230,10 @@ if use_3day
 
 
             println("  Completed tile: $suffix (3-day)")
-        end
-    end
+   
 
 
     println("Done — 3-day C(z) conversion saved.")
-
-
-else
-
-
-    println("Computing C(z) [Option 1 W(z)] — full time average")
-    mkpath(joinpath(base2, "Conv_z"))
-    mkpath(joinpath(base2, "Conv"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-
-
-            suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
-
-
-            # --- Read density ---
-            rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float64, read(io, nx * ny * nz * nt * sizeof(Float64))), nx, ny, nz, nt)
-            end)
-
-
-            # --- Grid masks & thickness ---
-            hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-            DRFfull = hFacC .* DRF3d
-            depth   = sum(DRFfull, dims=3)
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            # --- Read filtered velocities ---
-            fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
-            end)
-
-
-            fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32))), nx, ny, nz, nt)
-            end)
-
-
-            # --- Grid spacings ---
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            # --- Bandpass filter density → ρ' ---
-            fr = bandpassfilter(rho, T1, T2, delt, N, nt)
-
-
-            # --- Depth-averaged velocities ---
-            UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
-            VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
-
-
-            # --- z and d ---
-            d   = depth
-            z   = cumsum(DRFfull, dims=3)
-
-
-            # --- Term 1 : -∇H·(d·UH) ---
-            dU = dropdims(d, dims=3) .* UDA
-            dV = dropdims(d, dims=3) .* VDA
-
-
-            term1 = .-(
-                (dU[3:nx,   2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1, 2:ny-1]    .+ dx[1:nx-2, 2:ny-1])     .+
-                (dV[2:nx-1, 3:ny,   :] .- dV[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1, 2:ny-1]    .+ dy[2:nx-1, 1:ny-2])
-            )
-
-
-            # --- Term 2 : -z·∇H·UH ---
-            divUDA = (
-                (UDA[3:nx,   2:ny-1, :] .- UDA[1:nx-2, 2:ny-1, :]) ./
-                (dx[2:nx-1,  2:ny-1]    .+ dx[1:nx-2,  2:ny-1])     .+
-                (VDA[2:nx-1, 3:ny,   :] .- VDA[2:nx-1, 1:ny-2, :]) ./
-                (dy[2:nx-1,  2:ny-1]    .+ dy[2:nx-1,  1:ny-2])
-            )
-
-
-            z_int = z[2:nx-1, 2:ny-1, :]
-
-
-            Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .-
-                 reshape(z_int,  nx-2, ny-2, nz, 1)  .*
-                 reshape(divUDA, nx-2, ny-2, 1,  nt)
-
-
-            # --- Conversion C(z,t) = ρ'gW ---
-            rho_int = fr[2:nx-1, 2:ny-1, :, :]
-            Cz      = rho_int .* g .* Wz
-
-
-            DRFint    = DRFfull[2:nx-1, 2:ny-1, :]
-            DRFint4d  = reshape(DRFint, nx-2, ny-2, nz, 1)
-
-
-            # Depth-integrated C [W/m²] : (nx-2, ny-2, nt)
-            Ca_full = dropdims(
-                sum(Cz .* DRFint4d, dims=3),
-                dims=3
-            )
-
-
-            # Full time average
-            # C(z) time-mean : (nx-2, ny-2, nz)
-            Cz_mean = dropdims(mean(Cz,      dims=4), dims=4)
-            Ca_mean = dropdims(mean(Ca_full, dims=3), dims=3)
-
-
-            
-
-            # Save depth-integrated C full mean [W/m²] — shape (nx-2, ny-2)
-            open(joinpath(base2, "Conv", "Conv_$suffix2.bin"), "w") do io
-                write(io, Float32.(Ca_mean))
-            end
-
-
-            println("  Completed tile: $suffix (full time average)")
-        end
-    end
-
-
-    println("Done — full time average C(z) conversion saved.")
-
-
-end
 
 
 
@@ -392,66 +279,4 @@ nt3 = div(div(366192, 144), 3*24)
 
 
 Conv_full = fill(NaN, NX, NY)
-
-
-for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
-
-
-        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-
-
-        # Read 3D (nxi, nyi, nt3) then average over time to get 2D (nxi, nyi)
-        ca_3day = open(joinpath(base2, "Conv_3day", "Conv_3day_z_$suffix2.bin"), "r") do io
-            nbytes = nxi * nyi * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nxi, nyi, nt3)
-        end
-
-
-        conv_mean = dropdims(mean(ca_3day, dims=3), dims=3)   # (nxi, nyi) — now 2D
-
-        xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
-        ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
-
-        
-
-        Conv_full[xs+2:xe-2, ys+2:ye-2].= conv_mean[2:end-1, 2:end-1]   # strip buffer → (tx, ty)
-
-
-        println("Completed tile $suffix2")
-    end
-end
-
-
-println("\nConv_full range: $(minimum(filter(!isnan, Conv_full))) to $(maximum(filter(!isnan, Conv_full)))")
-
-
-fig = Figure(size=(1000, 800))
-
-
-ax = Axis(fig[1, 1],
-        title="Depth-Integrated Time-Averaged Conversion (-ρ'gW)",
-        xlabel="Longitude [°]",
-        ylabel="Latitude [°]")
-
-
-hm = CairoMakie.heatmap!(ax, lon, lat, Conv_full;
-                       interpolate=false,
-                       colormap=Reverse(:RdBu),
-                       colorrange=(-0.05, 0.05))
-
-
-Colorbar(fig[1, 2], hm, label="Conversion [W/m²]")
-
-
-display(fig)
-
-
-FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Conv_rhogW_v1.png"), fig)
-
-
-
 
