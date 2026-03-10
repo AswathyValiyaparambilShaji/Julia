@@ -30,6 +30,17 @@ dt = 25
 dto = 144
 Tts = 366192
 nt = div(Tts, dto)
+rho0 = 999.8
+
+
+
+
+# --- Thickness ---
+thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF  = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+
+
 
 
 println("Total time steps: $nt")
@@ -52,16 +63,17 @@ println("\nOutput directory: $OUTDIR")
 diag_records = []   # will store NamedTuple for each tile
 
 
-println("\n" * "="^80)
-println("Processing tiles...")
-println("="^80)
-
-
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         println("\n[Tile $suffix]")
+        
+        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
+        DRFfull = hFacC .* DRF3d
+        z = cumsum(DRFfull, dims=3)
+        depth = sum(DRFfull, dims=3)
+        DRFfull[hFacC .== 0] .= 0.0
 
         # --- Read Wind Stress ---
         taux = Float64.(open(joinpath(base, "Windstress", "taux_$suffix.bin"), "r") do io
@@ -108,34 +120,22 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         tx_f = bandpassfilter(taux_c, T1, T2, delt, N, nt)
         ty_f = bandpassfilter(tauy_c, T1, T2, delt, N, nt)
 
+        mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
+ 
+        ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
+        up_3d  = fu .- ucA_3d
+        up_3d[repeat(mask4D, 1, 1, 1, size(up_3d, 4))] .= 0
 
+        vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
+        vp_3d  = fv .- vcA_3d
+        vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0 
         # --- Surface Velocity ---
-        fu_surf = fu[:, :, 1, :]
-        fv_surf = fv[:, :, 1, :]
+        fu_surf = up_3d[:, :, 1, :]
+        fv_surf = vp_3d[:, :, 1, :]
 
 
         # --- WPI ---
         WPI = tx_f .* fu_surf .+ ty_f .* fv_surf
-
-
-        # --- Store diagnostics for this tile (scalars only, no arrays) ---
-        push!(diag_records, (
-            suffix       = suffix,
-            taux_rms     = sqrt(mean(taux_c.^2)),
-            tauy_rms     = sqrt(mean(tauy_c.^2)),
-            txf_rms      = sqrt(mean(tx_f.^2)),
-            tyf_rms      = sqrt(mean(ty_f.^2)),
-            filt_ratio   = sqrt(mean(tx_f.^2)) / sqrt(mean(taux_c.^2)),
-            fu_rms       = sqrt(mean(fu_surf.^2)),
-            fv_rms       = sqrt(mean(fv_surf.^2)),
-            wpi_rms      = sqrt(mean(WPI.^2)),
-            wpi_mean     = mean(WPI),
-            wpi_max      = maximum(WPI),
-            wpi_min      = minimum(WPI),
-        ))
-
-
-        println("  ✓ Tile $suffix done | WPI RMS = $(round(sqrt(mean(WPI.^2)), sigdigits=4)) W/m²")
 
 
         # --- Save ---
@@ -145,49 +145,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end
 
 
-        # Free memory
-        taux = nothing; tauy = nothing
-        fu = nothing; fv = nothing
-        tx_f = nothing; ty_f = nothing
-        fu_surf = nothing; fv_surf = nothing
-        WPI = nothing
-        taux_c = nothing; tauy_c = nothing
-        taux_ext = nothing; tauy_ext = nothing
-        GC.gc()
+       
     end
 end
-
-
-# ============================================================================
-# PRINT FULL DIAGNOSTIC SUMMARY TABLE FOR ALL TILES
-# ============================================================================
-println("\n" * "="^80)
-println("DIAGNOSTIC SUMMARY — ALL TILES")
-println("="^80)
-println(@sprintf("%-15s %10s %10s %10s %10s %10s %10s %10s %12s %12s",
-    "Tile", "τx_rms", "τx_f_rms", "FiltRatio", "fu_rms", "fv_rms",
-    "WPI_rms", "WPI_mean", "WPI_max", "WPI_min"))
-println("-"^115)
-for d in diag_records
-    println(@sprintf("%-15s %10.4e %10.4e %10.4f %10.4e %10.4e %10.4e %12.4e %12.4e %12.4e",
-        d.suffix,
-        d.taux_rms, d.txf_rms, d.filt_ratio,
-        d.fu_rms,   d.fv_rms,
-        d.wpi_rms,  d.wpi_mean, d.wpi_max, d.wpi_min))
-end
-println("-"^115)
-
-
-# --- Domain averages across all tiles ---
-println("\nDomain averages across all $(length(diag_records)) tiles:")
-println(@sprintf("  Mean τx_rms      : %.4e N/m²",  mean([d.taux_rms   for d in diag_records])))
-println(@sprintf("  Mean τx_f_rms    : %.4e N/m²",  mean([d.txf_rms    for d in diag_records])))
-println(@sprintf("  Mean filt ratio  : %.4f",        mean([d.filt_ratio for d in diag_records])))
-println(@sprintf("  Mean fu_rms      : %.4e m/s",    mean([d.fu_rms     for d in diag_records])))
-println(@sprintf("  Mean fv_rms      : %.4e m/s",    mean([d.fv_rms     for d in diag_records])))
-println(@sprintf("  Mean WPI_rms     : %.4e W/m²",   mean([d.wpi_rms    for d in diag_records])))
-println(@sprintf("  Mean WPI_mean    : %.4e W/m²",   mean([d.wpi_mean   for d in diag_records])))
-println("="^80)
 
 
 println("\nAll WPI tiles saved to: $OUTDIR")
