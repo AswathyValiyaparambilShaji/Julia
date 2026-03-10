@@ -18,7 +18,7 @@ base2 = cfg["base_path2"]
 # Options:
 #   "full"   -> reads FDiv and Conv files
 #   "weekly" -> reads FDiv_weekly and Conv_weekly files
-time_mode = "weekly"   # <-- change to "full" or "weekly"
+time_mode = "full"   # <-- change to "full" or "weekly"
 
 
 
@@ -143,17 +143,17 @@ if time_mode == "full"
 
     ax1 = Axis(fig[1, 1], title="Conversion  (W/m²)", xlabel="Longitude[°]", ylabel="Latitude[°]")
     ax1.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
 
 
     ax2 = Axis(fig[1, 2], title="∇.F (W/m²)", xlabel="Longitude[°]")
     ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
 
 
     ax3 = Axis(fig[1, 3], title="Dissipation (W/m²)", xlabel="Longitude[°]")
     ax3.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
 
 
     Colorbar(fig[1, 4], hm2, label=" (W/m²)")
@@ -161,8 +161,8 @@ if time_mode == "full"
 
 
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "CCDFull_SM_I_v1.png"), fig)
-    println("Figure saved: $(joinpath(FIGDIR, "CCDFull_SM_I_v1.png"))")
+    save(joinpath(FIGDIR, "CCDFull_SM_I_v2.png"), fig)
+    println("Figure saved: $(joinpath(FIGDIR, "CCDFull_SM_I_v2.png"))")
 
 
 
