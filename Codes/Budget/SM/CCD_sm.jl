@@ -215,7 +215,7 @@ elseif time_mode == "weekly"
 
 
             # Update global arrays (remove buffer zones)
-            DS[xs+2:xe-2,   ys+2:ye-2] .= dispn[2:end-1, 2:end-1]
+            DS[xs+2:xe-2,   ys+2:ye-2] .= -dispn[2:end-1, 2:end-1]
             FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1,   2:end-1]
             Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1,     2:end-1]
         end

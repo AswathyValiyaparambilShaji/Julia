@@ -100,6 +100,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             Float64.(reshape(raw_data, nx, ny, nz, nt))
         end
 
+        fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
+            # Calculate the number of bytes needed
+            nbytes = nx * ny * nz *nt * sizeof(Float32)
+            # Read the raw bytes
+            raw_bytes = read(io, nbytes)
+            # Reinterpret as Float64 array and reshape
+            raw_data = reinterpret(Float32, raw_bytes)
+            reshaped_data = reshape(raw_data, nx, ny, nz, nt)
+        end)
 
         # --- Bandpass filter density ---
         fr = bandpassfilter(rho, T1, T2, delt, N, nt)
@@ -119,12 +128,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         vp_3d  = fv .- vcA_3d                               # baroclinic v'(nx,ny,nz,nt)
         vp_3d[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
 
-
+        wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
+        wp_3d  = fw .- wcA_3d
+        wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0
         # ----------------------------------------------------------------
         # Perturbation KE = 0.5 * rho0 * (u'^2 + v'^2)
         # Purely baroclinic, consistent with flux F = p'u'
         # ----------------------------------------------------------------
-        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2)        # (nx, ny, nz, nt)
+        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2+ wp_3d )        # (nx, ny, nz, nt)
         ke[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
 
 
@@ -136,8 +147,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # Required for APE consistency in baroclinic IT energy equation:
         #   d/dt(KE + APE) = -∇·F + sources/sinks
         # ----------------------------------------------------------------
-        rhoA_3d   = sum(fr .* DRFfull4D, dims=3) ./ depth4D  # barotropic rho (nx,ny,1,nt)
-        rho_prime = fr .- rhoA_3d                             # baroclinic rho'(nx,ny,nz,nt)
+        #rhoA_3d   = sum(fr .* DRFfull4D, dims=3) ./ depth4D  # barotropic rho (nx,ny,1,nt)
+        rho_prime = fr #.- rhoA_3d                             # baroclinic rho'(nx,ny,nz,nt)
         rho_prime[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
 
 
