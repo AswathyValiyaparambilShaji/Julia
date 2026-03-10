@@ -181,7 +181,7 @@ lat_vec = collect(lat)
 # ============================================================
 # 0.25° latitude binning  (area-weighted)
 # ============================================================
-bin_width   = 0.25
+bin_width   = 1
 bin_edges   = collect(minlat : bin_width : maxlat)
 bin_centers = bin_edges[1:end-1] .+ bin_width / 2
 nbins       = length(bin_centers)
@@ -288,8 +288,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned.png"), fig1)
-println("Saved: KE_APE_zonal_binned.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v1.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v1.png")
 display(fig1)
 
 
@@ -340,8 +340,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v1.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v1.png")
 display(fig2)
 
 
