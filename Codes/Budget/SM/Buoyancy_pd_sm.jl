@@ -1,12 +1,12 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Impute
 
 
-include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 
 
 config_file = get(ENV, "JULIA_CONFIG",
-            joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+             joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 
 
@@ -14,9 +14,16 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-# --- TIME AVERAGING CONFIGURATION ---
-# Set to true for 3-day averaging, false for full time period averaging
-use_3day = true  # Change this to true for 3-day averaging
+
+
+# --- TIME MODE CONFIGURATION ---
+# Options:
+#   "3day"   -> buoyancy production for each 3-day period
+#   "weekly" -> buoyancy production mean over Apr 22 00:00 - Apr 28 23:00
+#   "full"   -> buoyancy production mean over full time record
+time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
+
+
 
 
 # --- Domain & grid ---
@@ -25,6 +32,8 @@ minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
+
+
 
 
 # --- Tile & time parameters ---
@@ -37,9 +46,32 @@ dt = 25
 dto = 144
 Tts = 366192
 nt = div(Tts, dto)
-ts = 72  # timesteps per 3-day period
-nt_avg = div(nt, ts)  # number of 3-day periods
-nt3 = div(nt, 3*24)  # Number of 3-day periods
+ts = 72                  # timesteps per 3-day period
+nt_avg = div(nt, ts)     # number of 3-day periods
+nt3 = div(nt, 3*24)      # number of 3-day periods
+
+
+
+
+# -------------------------------------------------------------------------
+# Weekly window: April 22 00:00:00 to April 28 23:00:00, 2012
+#   Time series starts 2012-03-01T00:00:00, delta_t = 1 hour
+#   March = 31 days = 744 hours
+#   Apr 22 00:00 = hour 744 + (22-1)*24 = 1248  -> index 1248 + 1 = 1249
+#   Apr 28 23:00 = hour 744 +  28 *24-1 = 1415  -> index 1415 + 1 = 1416
+#   nt_week = 1416 - 1249 + 1 = 168  (7 days x 24 hrs)
+# -------------------------------------------------------------------------
+hour_apr22_start = 31*24 + (22-1)*24       # = 1248
+hour_apr28_end   = 31*24 +  28   *24 - 1   # = 1415
+idx_start        = hour_apr22_start + 1    # = 1249  (1-based)
+idx_end          = hour_apr28_end   + 1    # = 1416  (1-based)
+nt_week          = idx_end - idx_start + 1 # = 168
+
+
+@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
+        idx_start, idx_end, nt_week)
+
+
 
 
 # --- Thickness & constants ---
@@ -49,33 +81,40 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
 rho0 = 999.8
-g = 9.8
+g    = 9.8
+
+
 
 
 # ============================================================================
-# MAIN WORKFLOW SPLIT: 3-DAY vs FULL TIME AVERAGE
+# MAIN WORKFLOW
 # ============================================================================
 
 
-if use_3day
+if time_mode == "3day"
     # ========================================================================
     # 3-DAY BUOYANCY PRODUCTION WORKFLOW
     # ========================================================================
     println("Starting buoyancy production calculation for $nt3 3-day periods...")
-    
+
+
     mkpath(joinpath(base2, "BP_3day"))
-    
+
+
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
             suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-            
+
+
             println("\n--- Processing tile: $suffix (3-day) ---")
-            
+
+
             # --- Read grid metrics ---
             hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
             dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-            
+
+
             # --- Read density field ---
             rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float64)
@@ -83,7 +122,8 @@ if use_3day
                 raw_data = reinterpret(Float64, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             # --- Mask rho to NaN where hFacC is zero ---
             for t in 1:nt
                 for k in 1:nz
@@ -91,19 +131,22 @@ if use_3day
                     rho[mask, k, t] .= NaN
                 end
             end
-            
+
+
             # --- Read N2 (3-day averaged) ---
             N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
                 raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
                 reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
             end)
-            
+
+
             # --- Read buoyancy fluctuations ---
             b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
                 raw = read(io, nx * ny * nz * nt * sizeof(Float32))
                 reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
             end)
-            
+
+
             # --- Read fluctuating velocities ---
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
@@ -111,184 +154,402 @@ if use_3day
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
-            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
-            
-            # --- Average to cell centers ---
+            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
+            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+
+
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
-                N2_center[:, :, k, :] .=
-                    0.5 .* (N2_adjusted[:, :, k, :] .+
-                            N2_adjusted[:, :, k+1, :])
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-            
-            # Filter N2: anything below threshold becomes NaN
+
+
             N2_threshold = 1.0e-8
             N2_center[N2_center .< N2_threshold] .= NaN
-            
-            # Linear interpolation to fill NaN values along vertical dimension
+
+
             for i in 1:nx, j in 1:ny, t in 1:nt_avg
                 N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
             end
-            
+
+
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
-            
+
+
             # --- Calculate 3-day averaged mean buoyancy field B ---
             println("Calculating mean buoyancy field...")
             B = zeros(Float64, nx, ny, nz, nt_avg)
-            
+
+
             for i in 1:nt_avg
                 t_start = (i-1) * ts + 1
-                t_end = min(i * ts, nt)
-                
-                # Average density over 3-day window, handling NaN
+                t_end   = min(i * ts, nt)
                 for x in 1:nx, y in 1:ny, z in 1:nz
                     rho_slice = rho[x, y, z, t_start:t_end]
                     valid_rho = rho_slice[isfinite.(rho_slice)]
-                    
                     if length(valid_rho) > 0
-                        rho_avg = mean(valid_rho)
-                        # Calculate buoyancy: B = -g * (ρ - ρ₀) / ρ₀
-                        B[x, y, z, i] = -g * (rho_avg - rho0) / rho0
+                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
                     else
                         B[x, y, z, i] = NaN
                     end
                 end
             end
-            
+
+
             # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
             println("Calculating buoyancy gradients...")
             B_x = fill(NaN, nx, ny, nz, nt_avg)
             B_y = fill(NaN, nx, ny, nz, nt_avg)
-            
-            # X-gradient: ∂B/∂x
+
+
             for t in 1:nt_avg
                 for k in 1:nz
                     B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
-                                            (dx[2:end-1, :] .+ dx[1:end-2, :])
-                end
-            end
-            
-            # Y-gradient: ∂B/∂y
-            for t in 1:nt_avg
-                for k in 1:nz
+                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
                     B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
-                                            (dy[:, 2:end-1] .+ dy[:, 1:end-2])
+                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
                 end
             end
-            
-            for t in 1:nt_avg
-                for k in 1:nz
-                    for j in 2:ny-1
-                        for i in 2:nx-1
-                            # Mask B_x if cell or x-neighbors are not fully valid
-                            if hFacC[i-1, j, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i+1, j, k] != 1
-                                B_x[i, j, k, t] = NaN
-                            end
-                            # Mask B_y if cell or y-neighbors are not fully valid
-                            if hFacC[i, j-1, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i, j+1, k] != 1
-                                B_y[i, j, k, t] = NaN
-                            end
-                        end
-                    end
+
+
+            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
+                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
+                    B_x[i, j, k, t] = NaN
+                end
+                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
+                    B_y[i, j, k, t] = NaN
                 end
             end
             println("Gradients calculated")
-            
+
+
             # --- Calculate buoyancy production for each 3-day period ---
             println("Calculating buoyancy production for 3-day periods...")
             BP_3day = zeros(Float64, nx, ny, nt3)
             hrs_per_chunk = 3 * 24
-            
+
+
             for t in 1:nt3
                 t_start = (t-1) * hrs_per_chunk + 1
-                t_end = min(t * hrs_per_chunk, nt)
-                
-                # Temporary storage for this 3-day period
+                t_end   = min(t * hrs_per_chunk, nt)
+
+
                 bp_temp = zeros(Float64, nx, ny, t_end - t_start + 1)
-                
+
+
                 for idx in 1:(t_end - t_start + 1)
                     t_actual = t_start + idx - 1
-                    
-                    # Map timestep to corresponding 3-day average period
-                    t_avg = min(div(t_actual - 1, ts) + 1, nt_avg)
-                    
-                    # Get mean fields at this period
+                    t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
+
+
                     n2_val = @view N2_center[:, :, :, t_avg]
-                    B_x_t = @view B_x[:, :, :, t_avg]
-                    B_y_t = @view B_y[:, :, :, t_avg]
-                    
-                    # Get fluctuating fields at this timestep
-                    b_t = @view b[:, :, :, t_actual]
-                    ut  = @view fu[:, :, :, t_actual]
-                    vt  = @view fv[:, :, :, t_actual]
-                    
-                    # Calculate buoyancy production terms
+                    B_x_t  = @view B_x[:, :, :, t_avg]
+                    B_y_t  = @view B_y[:, :, :, t_avg]
+                    b_t    = @view b[:, :, :, t_actual]
+                    ut     = @view fu[:, :, :, t_actual]
+                    vt     = @view fv[:, :, :, t_actual]
+
+
                     temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
                     temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
-                    
-                    # Handle any remaining NaN/Inf from division
+
+
                     temp1[isnan.(temp1)] .= 0.0
                     temp2[isnan.(temp2)] .= 0.0
-                    
-                    # Depth integrate: P^B = -ρ₀ * ∫[...] dz
+
+
                     bp_temp[:, :, idx] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
                 end
-                
-                # Average over this 3-day period
+
+
                 BP_3day[:, :, t] = mean(bp_temp, dims=3)
             end
-            
+
+
             println("Buoyancy production calculation complete")
             println("  BP range: $(extrema(BP_3day[isfinite.(BP_3day)]))")
-            
-            # --- Save outputs ---
+
+
             output_dir = joinpath(base2, "BP_3day")
-            
-            # Save 3-day averaged buoyancy production
             open(joinpath(output_dir, "bp_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(BP_3day))
             end
-            
+
+
             println("Completed tile: $suffix")
             println("Output saved to $output_dir")
         end
     end
-    
+
+
     println("\n=== All tiles processed successfully (3-day) ===")
-    
-else
+
+
+
+
+elseif time_mode == "weekly"
     # ========================================================================
-    # FULL TIME AVERAGE BUOYANCY PRODUCTION WORKFLOW
+    # WEEKLY BUOYANCY PRODUCTION WORKFLOW  (Apr 22 00:00 - Apr 28 23:00)
     # ========================================================================
-    println("Starting buoyancy production calculation for full time average...")
-    
-    mkpath(joinpath(base2, "BP"))
-    
+    println("Starting buoyancy production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
+
+
+    mkpath(joinpath(base2, "BP_weekly"))
+
+
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
             suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-            
-            println("\n--- Processing tile: $suffix ---")
-            
+
+
+            println("\n--- Processing tile: $suffix (weekly) ---")
+
+
             # --- Read grid metrics ---
             hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
             dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-            
+
+
+            # --- Read full density then subset to weekly window ---
+            rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float64)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float64, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)[:, :, :, idx_start:idx_end]
+
+
+            # --- Mask rho to NaN where hFacC is zero ---
+            for t in 1:nt_week
+                for k in 1:nz
+                    mask = hFacC[:, :, k] .== 0
+                    rho[mask, k, t] .= NaN
+                end
+            end
+
+
+            # --- Read N2 (3-day averaged, full record — needed for t_avg mapping) ---
+            N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
+                raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
+                reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
+            end)
+
+
+            # --- Read full buoyancy fluctuations then subset to weekly window ---
+            b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
+                raw = read(io, nx * ny * nz * nt * sizeof(Float32))
+                reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+            end)[:, :, :, idx_start:idx_end]
+
+
+            # --- Read full fluctuating velocities then subset to weekly window ---
+            fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)[:, :, :, idx_start:idx_end]
+
+
+            fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)[:, :, :, idx_start:idx_end]
+
+
+            # --- Adjust N2 to interfaces ---
+            N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
+            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
+            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+
+
+            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
+            for k in 1:nz
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
+            end
+
+
+            N2_threshold = 1.0e-8
+            N2_center[N2_center .< N2_threshold] .= NaN
+
+
+            for i in 1:nx, j in 1:ny, t in 1:nt_avg
+                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
+            end
+
+
+            # --- Calculate cell thicknesses ---
+            DRFfull = hFacC .* DRF3d
+            DRFfull[hFacC .== 0] .= 0.0
+
+
+            # --- Calculate 3-day averaged mean buoyancy field B ---
+            # Uses full rho record mapped via t_avg for B/N2 gradients,
+            # then the weekly-subsetted fluctuating fields for the flux
+            println("Calculating mean buoyancy field...")
+            B = zeros(Float64, nx, ny, nz, nt_avg)
+
+
+            # Re-read full rho for B calculation (already subsetted rho is only weekly)
+            rho_full = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float64)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float64, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
+
+
+            for t in 1:nt
+                for k in 1:nz
+                    mask = hFacC[:, :, k] .== 0
+                    rho_full[mask, k, t] .= NaN
+                end
+            end
+
+
+            for i in 1:nt_avg
+                t_start = (i-1) * ts + 1
+                t_end   = min(i * ts, nt)
+                for x in 1:nx, y in 1:ny, z in 1:nz
+                    rho_slice = rho_full[x, y, z, t_start:t_end]
+                    valid_rho = rho_slice[isfinite.(rho_slice)]
+                    if length(valid_rho) > 0
+                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
+                    else
+                        B[x, y, z, i] = NaN
+                    end
+                end
+            end
+            rho_full = nothing   # free memory
+
+
+            # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
+            println("Calculating buoyancy gradients...")
+            B_x = fill(NaN, nx, ny, nz, nt_avg)
+            B_y = fill(NaN, nx, ny, nz, nt_avg)
+
+
+            for t in 1:nt_avg
+                for k in 1:nz
+                    B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
+                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
+                    B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
+                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
+                end
+            end
+
+
+            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
+                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
+                    B_x[i, j, k, t] = NaN
+                end
+                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
+                    B_y[i, j, k, t] = NaN
+                end
+            end
+            println("Gradients calculated")
+
+
+            # --- Calculate buoyancy production for each hourly step in window ---
+            println("Calculating buoyancy production over weekly window...")
+            bp = zeros(Float64, nx, ny, nt_week)
+
+
+            for idx in 1:nt_week
+                t_actual = idx_start + idx - 1
+                t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
+
+
+                n2_val = @view N2_center[:, :, :, t_avg]
+                B_x_t  = @view B_x[:, :, :, t_avg]
+                B_y_t  = @view B_y[:, :, :, t_avg]
+                b_t    = @view b[:, :, :, idx]
+                ut     = @view fu[:, :, :, idx]
+                vt     = @view fv[:, :, :, idx]
+
+
+                temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
+                temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
+
+
+                temp1[isnan.(temp1)] .= 0.0
+                temp2[isnan.(temp2)] .= 0.0
+
+
+                bp[:, :, idx] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
+            end
+
+
+            println("Buoyancy production calculation complete")
+
+
+            # --- Time average over weekly window ---
+            BP = dropdims(mean(bp, dims=3), dims=3)   # (nx, ny)
+
+
+            println("  BP range: $(extrema(BP[isfinite.(BP)]))")
+
+
+            output_dir = joinpath(base2, "BP_weekly")
+            open(joinpath(output_dir, "bp_weekly_$suffix.bin"), "w") do io
+                write(io, Float32.(BP))
+            end
+
+
+            println("Completed tile: $suffix")
+            println("Output saved to $output_dir")
+        end
+    end
+
+
+    println("\n=== All tiles processed successfully (weekly) ===")
+
+
+
+
+elseif time_mode == "full"
+    # ========================================================================
+    # FULL TIME AVERAGE BUOYANCY PRODUCTION WORKFLOW
+    # ========================================================================
+    println("Starting buoyancy production calculation for full time average...")
+
+
+    mkpath(joinpath(base2, "BP"))
+
+
+    for xn in cfg["xn_start"]:cfg["xn_end"]
+        for yn in cfg["yn_start"]:cfg["yn_end"]
+            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+
+
+            println("\n--- Processing tile: $suffix ---")
+
+
+            # --- Read grid metrics ---
+            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+
+
             # --- Read density field ---
             rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float64)
@@ -296,7 +557,8 @@ else
                 raw_data = reinterpret(Float64, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             # --- Mask rho to NaN where hFacC is zero ---
             for t in 1:nt
                 for k in 1:nz
@@ -304,19 +566,22 @@ else
                     rho[mask, k, t] .= NaN
                 end
             end
-            
+
+
             # --- Read N2 (3-day averaged) ---
             N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
                 raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
                 reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
             end)
-            
+
+
             # --- Read buoyancy fluctuations ---
             b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
                 raw = read(io, nx * ny * nz * nt * sizeof(Float32))
                 reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
             end)
-            
+
+
             # --- Read fluctuating velocities ---
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
@@ -324,157 +589,149 @@ else
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-            
+
+
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
-            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
-            
-            # --- Average to cell centers ---
+            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
+            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+
+
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
-                N2_center[:, :, k, :] .=
-                    0.5 .* (N2_adjusted[:, :, k, :] .+
-                            N2_adjusted[:, :, k+1, :])
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-            
-            # Filter N2: anything below threshold becomes NaN
+
+
             N2_threshold = 1.0e-8
             N2_center[N2_center .< N2_threshold] .= NaN
-            
-            # Linear interpolation to fill NaN values along vertical dimension
+
+
             for i in 1:nx, j in 1:ny, t in 1:nt_avg
                 N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
             end
-            
+
+
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
-            
+
+
             # --- Calculate 3-day averaged mean buoyancy field B ---
             println("Calculating mean buoyancy field...")
             B = zeros(Float64, nx, ny, nz, nt_avg)
-            
+
+
             for i in 1:nt_avg
                 t_start = (i-1) * ts + 1
-                t_end = min(i * ts, nt)
-                
-                # Average density over 3-day window, handling NaN
+                t_end   = min(i * ts, nt)
                 for x in 1:nx, y in 1:ny, z in 1:nz
                     rho_slice = rho[x, y, z, t_start:t_end]
                     valid_rho = rho_slice[isfinite.(rho_slice)]
-                    
                     if length(valid_rho) > 0
-                        rho_avg = mean(valid_rho)
-                        # Calculate buoyancy: B = -g * (ρ - ρ₀) / ρ₀
-                        B[x, y, z, i] = -g * (rho_avg - rho0) / rho0
+                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
                     else
                         B[x, y, z, i] = NaN
                     end
                 end
             end
-            
+
+
             # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
             println("Calculating buoyancy gradients...")
             B_x = fill(NaN, nx, ny, nz, nt_avg)
             B_y = fill(NaN, nx, ny, nz, nt_avg)
-            
-            # X-gradient: ∂B/∂x
+
+
             for t in 1:nt_avg
                 for k in 1:nz
                     B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
-                                            (dx[2:end-1, :] .+ dx[1:end-2, :])
-                end
-            end
-            
-            # Y-gradient: ∂B/∂y
-            for t in 1:nt_avg
-                for k in 1:nz
+                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
                     B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
-                                            (dy[:, 2:end-1] .+ dy[:, 1:end-2])
+                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
                 end
             end
-            
-            for t in 1:nt_avg
-                for k in 1:nz
-                    for j in 2:ny-1
-                        for i in 2:nx-1
-                            # Mask B_x if cell or x-neighbors are not fully valid
-                            if hFacC[i-1, j, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i+1, j, k] != 1
-                                B_x[i, j, k, t] = NaN
-                            end
-                            # Mask B_y if cell or y-neighbors are not fully valid
-                            if hFacC[i, j-1, k] != 1 || hFacC[i, j, k] != 1 || hFacC[i, j+1, k] != 1
-                                B_y[i, j, k, t] = NaN
-                            end
-                        end
-                    end
+
+
+            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
+                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
+                    B_x[i, j, k, t] = NaN
+                end
+                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
+                    B_y[i, j, k, t] = NaN
                 end
             end
             println("Gradients calculated")
-            
+
+
             # --- Initialize output array ---
             bp = zeros(Float64, nx, ny, nt)
-            
-            # --- Calculate buoyancy production: P^B = -ρ₀ ∫[(b/N²)·u·∇B] dz ---
+
+
+            # --- Calculate buoyancy production for each timestep ---
             println("Calculating buoyancy production...")
             for t in 1:nt
-                # Map timestep to corresponding 3-day average period
-                t_avg = min(div(t - 1, ts) + 1, nt_avg)
-                
-                # Get mean fields at this period
+                t_avg  = min(div(t - 1, ts) + 1, nt_avg)
+
+
                 n2_val = @view N2_center[:, :, :, t_avg]
-                B_x_t = @view B_x[:, :, :, t_avg]
-                B_y_t = @view B_y[:, :, :, t_avg]
-                
-                # Get fluctuating fields at this timestep
-                b_t = @view b[:, :, :, t]
-                ut  = @view fu[:, :, :, t]
-                vt  = @view fv[:, :, :, t]
-                
-                # Calculate buoyancy production terms:
-                # (b/N²)·u·∇B = (b/N²)·u·∂B/∂x + (b/N²)·v·∂B/∂y
+                B_x_t  = @view B_x[:, :, :, t_avg]
+                B_y_t  = @view B_y[:, :, :, t_avg]
+                b_t    = @view b[:, :, :, t]
+                ut     = @view fu[:, :, :, t]
+                vt     = @view fv[:, :, :, t]
+
+
                 temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
                 temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
-                
-                # Handle any remaining NaN/Inf from division
+
+
                 temp1[isnan.(temp1)] .= 0.0
                 temp2[isnan.(temp2)] .= 0.0
-                
-                # Depth integrate: P^B = -ρ₀ * ∫[...] dz
+
+
                 bp[:, :, t] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
             end
-            
+
+
             println("Buoyancy production calculation complete")
-            
+
+
             # --- Time average ---
             BP = dropdims(mean(bp, dims=3), dims=3)
-            
+
+
             println("  BP range: $(extrema(BP[isfinite.(BP)]))")
-            
-            # --- Save outputs ---
+
+
             output_dir = joinpath(base2, "BP")
-            
-            # Save time-averaged buoyancy production
             open(joinpath(output_dir, "bp_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end
-            
+
+
             println("Completed tile: $suffix")
             println("Output saved to $output_dir")
         end
     end
-    
+
+
     println("\n=== All tiles processed successfully ===")
-    
+
+
+else
+    error("Unknown time_mode '$time_mode'. Choose \"3day\", \"weekly\", or \"full\".")
+
+
 end
 
 
