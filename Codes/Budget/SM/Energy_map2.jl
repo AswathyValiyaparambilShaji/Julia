@@ -326,8 +326,8 @@ end
 
 
 display(fig)
-save(joinpath(FIGDIR, "Residual_std_Masked_AreaWeighted.png"), fig, px_per_unit=2)
-println("\nSaved: Residual_std_Masked_AreaWeighted.png")
+save(joinpath(FIGDIR, "Residual_std_Masked_AreaWeighted_v1.png"), fig, px_per_unit=2)
+println("\nSaved: Residual_std_Masked_AreaWeighted_v1.png")
 
 
 println("\n==========================================================")
