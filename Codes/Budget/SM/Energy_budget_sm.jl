@@ -161,7 +161,7 @@ PS = SP_H_full .+ SP_V_full
 
 
 # Update residual to include WPI (Dissipation)
-Residual = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .+ ET_full)
+Residual = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
 Residual2 = Conv .- FDiv
 
 
