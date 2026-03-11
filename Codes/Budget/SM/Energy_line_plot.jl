@@ -215,8 +215,8 @@ PE_n = norm_field(PE_full)
 A_n          = U_KE_n .+ U_PE_n
 PS_n         = SP_H_n .+ SP_V_n
 TotalFlux_n  = FDiv_n .+ U_KE_n .+ U_PE_n
-Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
-#Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
+#Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
 
 # Time series (area-weighted)
 Conv_avg     = area_avg(Conv_n,  valid_mask, RAC, total_area)
@@ -240,7 +240,7 @@ println("\nCreating plots...")
 
 
 
-fig = Figure(resolution=(1100, 900), fontsize=14,
+fig = Figure(resolution=(1100, 400), fontsize=14,
             backgroundcolor=:white)
 
 
@@ -318,7 +318,7 @@ lines!(ax1, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",   colo
 axislegend(ax1; position=:rt, leg_style...)
 
 
-# ============================================================
+#= ============================================================
 # Subplot 2: KE and APE only (no tendency)
 # ============================================================
 ax2 = Axis(fig[2, 1];
@@ -337,11 +337,11 @@ axislegend(ax2; position=:rt, leg_style...)
 rowgap!(fig.layout, 1, 24)
 
 # ============================================================
-# Save
+# Save=#
 # ============================================================
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day.png")
+outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v1.png")
 save(outpath, fig, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig)
