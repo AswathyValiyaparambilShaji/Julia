@@ -227,7 +227,7 @@ fig = Figure(resolution=(1200, 800))
 # Color ranges
 crange = (-0.03, 0.03)        # Row 1
 crange2 = (-0.015, 0.015)     # Row 2
-cmap = Reverse(:RdBu)
+cmap = :bwr
 
 
 # Row 1, Column 1: Conversion
