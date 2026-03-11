@@ -270,8 +270,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_v1.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_v1.png"))")
 
 
 
