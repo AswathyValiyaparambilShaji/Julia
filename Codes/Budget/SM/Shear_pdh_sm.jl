@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Impute
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
@@ -18,9 +18,9 @@ base2 = cfg["base_path2"]
 
 # --- TIME MODE CONFIGURATION ---
 # Options:
-#   "3day"   -> buoyancy production for each 3-day period
-#   "weekly" -> buoyancy production mean over Apr 22 00:00 - Apr 28 23:00
-#   "full"   -> buoyancy production mean over full time record
+#   "3day"   -> horizontal shear production for each 3-day period
+#   "weekly" -> horizontal shear production mean over Apr 22 00:00 - Apr 28 23:00
+#   "full"   -> horizontal shear production mean over full time record
 time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
 
 
@@ -81,7 +81,6 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
 rho0 = 999.8
-g    = 9.8
 
 
 
@@ -93,12 +92,12 @@ g    = 9.8
 
 if time_mode == "3day"
     # ========================================================================
-    # 3-DAY BUOYANCY PRODUCTION WORKFLOW
+    # 3-DAY HORIZONTAL SHEAR PRODUCTION WORKFLOW
     # ========================================================================
-    println("Starting buoyancy production calculation for $nt3 3-day periods...")
+    println("Starting horizontal shear production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "BP_3day"))
+    mkpath(joinpath(base2, "SP_H_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -115,35 +114,20 @@ if time_mode == "3day"
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-            # --- Read density field ---
-            rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
+            # --- Read mean velocity fields (3-day averaged) ---
+            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float64, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
             end)
 
 
-            # --- Mask rho to NaN where hFacC is zero ---
-            for t in 1:nt
-                for k in 1:nz
-                    mask = hFacC[:, :, k] .== 0
-                    rho[mask, k, t] .= NaN
-                end
-            end
-
-
-            # --- Read N2 (3-day averaged) ---
-            N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
-            end)
-
-
-            # --- Read buoyancy fluctuations ---
-            b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
             end)
 
 
@@ -164,83 +148,39 @@ if time_mode == "3day"
             end)
 
 
-            # --- Adjust N2 to interfaces ---
-            N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
-
-
-            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
-            for k in 1:nz
-                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
-            end
-
-
-            N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
-
-
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
-
-
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
 
 
-            # --- Calculate 3-day averaged mean buoyancy field B ---
-            println("Calculating mean buoyancy field...")
-            B = zeros(Float64, nx, ny, nz, nt_avg)
+            # --- Calculate horizontal gradients of mean velocities ---
+            println("Calculating horizontal gradients of mean velocities...")
+            U_x = zeros(Float64, nx, ny, nz, nt_avg)
+            U_y = zeros(Float64, nx, ny, nz, nt_avg)
+            V_x = zeros(Float64, nx, ny, nz, nt_avg)
+            V_y = zeros(Float64, nx, ny, nz, nt_avg)
 
 
-            for i in 1:nt_avg
-                t_start = (i-1) * ts + 1
-                t_end   = min(i * ts, nt)
-                for x in 1:nx, y in 1:ny, z in 1:nz
-                    rho_slice = rho[x, y, z, t_start:t_end]
-                    valid_rho = rho_slice[isfinite.(rho_slice)]
-                    if length(valid_rho) > 0
-                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
-                    else
-                        B[x, y, z, i] = NaN
-                    end
-                end
-            end
+            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
+            U_x[2:end-1, :, :, :] = (U[3:end, :, :, :] .- U[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
+            V_x[2:end-1, :, :, :] = (V[3:end, :, :, :] .- V[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
 
 
-            # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
-            println("Calculating buoyancy gradients...")
-            B_x = fill(NaN, nx, ny, nz, nt_avg)
-            B_y = fill(NaN, nx, ny, nz, nt_avg)
+            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
+            U_y[:, 2:end-1, :, :] = (U[:, 3:end, :, :] .- U[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
+            V_y[:, 2:end-1, :, :] = (V[:, 3:end, :, :] .- V[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
 
 
-            for t in 1:nt_avg
-                for k in 1:nz
-                    B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
-                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
-                    B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
-                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
-                end
-            end
+            println("Horizontal gradients calculated")
 
 
-            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
-                    B_x[i, j, k, t] = NaN
-                end
-                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
-                    B_y[i, j, k, t] = NaN
-                end
-            end
-            println("Gradients calculated")
-
-
-            # --- Calculate buoyancy production for each 3-day period ---
-            println("Calculating buoyancy production for 3-day periods...")
-            BP_3day = zeros(Float64, nx, ny, nt3)
+            # --- Calculate horizontal shear production for each 3-day period ---
+            println("Calculating horizontal shear production for 3-day periods...")
+            SP_H_3day = zeros(Float64, nx, ny, nt3)
             hrs_per_chunk = 3 * 24
 
 
@@ -249,7 +189,7 @@ if time_mode == "3day"
                 t_end   = min(t * hrs_per_chunk, nt)
 
 
-                bp_temp = zeros(Float64, nx, ny, t_end - t_start + 1)
+                sp_h_temp = zeros(Float64, nx, ny, t_end - t_start + 1)
 
 
                 for idx in 1:(t_end - t_start + 1)
@@ -257,37 +197,34 @@ if time_mode == "3day"
                     t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
 
 
-                    n2_val = @view N2_center[:, :, :, t_avg]
-                    B_x_t  = @view B_x[:, :, :, t_avg]
-                    B_y_t  = @view B_y[:, :, :, t_avg]
-                    b_t    = @view b[:, :, :, t_actual]
-                    ut     = @view fu[:, :, :, t_actual]
-                    vt     = @view fv[:, :, :, t_actual]
+                    U_x_t = @view U_x[:, :, :, t_avg]
+                    U_y_t = @view U_y[:, :, :, t_avg]
+                    V_x_t = @view V_x[:, :, :, t_avg]
+                    V_y_t = @view V_y[:, :, :, t_avg]
+                    ut    = @view fu[:, :, :, t_actual]
+                    vt    = @view fv[:, :, :, t_actual]
 
 
-                    temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
-                    temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
+                    temp1 = ut .* ut .* U_x_t .* DRFfull
+                    temp2 = ut .* vt .* U_y_t .* DRFfull
+                    temp3 = ut .* vt .* V_x_t .* DRFfull
+                    temp4 = vt .* vt .* V_y_t .* DRFfull
 
 
-                    temp1[isnan.(temp1)] .= 0.0
-                    temp2[isnan.(temp2)] .= 0.0
-
-
-                    bp_temp[:, :, idx] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
+                    sp_h_temp[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
                 end
 
 
-                BP_3day[:, :, t] = mean(bp_temp, dims=3)
+                SP_H_3day[:, :, t] = mean(sp_h_temp, dims=3)
             end
 
 
-            println("Buoyancy production calculation complete")
-            println("  BP range: $(extrema(BP_3day[isfinite.(BP_3day)]))")
+            println("Horizontal shear production calculation complete")
 
 
-            output_dir = joinpath(base2, "BP_3day")
-            open(joinpath(output_dir, "bp_3day_$suffix.bin"), "w") do io
-                write(io, Float32.(BP_3day))
+            output_dir = joinpath(base2, "SP_H_3day")
+            open(joinpath(output_dir, "sp_h_3day_$suffix.bin"), "w") do io
+                write(io, Float32.(SP_H_3day))
             end
 
 
@@ -304,12 +241,12 @@ if time_mode == "3day"
 
 elseif time_mode == "weekly"
     # ========================================================================
-    # WEEKLY BUOYANCY PRODUCTION WORKFLOW  (Apr 22 00:00 - Apr 28 23:00)
+    # WEEKLY HORIZONTAL SHEAR PRODUCTION WORKFLOW  (Apr 22 00:00 - Apr 28 23:00)
     # ========================================================================
-    println("Starting buoyancy production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
+    println("Starting horizontal shear production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "BP_weekly"))
+    mkpath(joinpath(base2, "SP_H_weekly"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -326,36 +263,21 @@ elseif time_mode == "weekly"
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-            # --- Read full density then subset to weekly window ---
-            rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
+            # --- Read mean velocity fields (3-day averaged, full record) ---
+            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float64, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
-
-
-            # --- Mask rho to NaN where hFacC is zero ---
-            for t in 1:nt_week
-                for k in 1:nz
-                    mask = hFacC[:, :, k] .== 0
-                    rho[mask, k, t] .= NaN
-                end
-            end
-
-
-            # --- Read N2 (3-day averaged, full record — needed for t_avg mapping) ---
-            N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
             end)
 
 
-            # --- Read full buoyancy fluctuations then subset to weekly window ---
-            b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
+            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
+            end)
 
 
             # --- Read full fluctuating velocities then subset to weekly window ---
@@ -375,103 +297,39 @@ elseif time_mode == "weekly"
             end)[:, :, :, idx_start:idx_end]
 
 
-            # --- Adjust N2 to interfaces ---
-            N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
-
-
-            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
-            for k in 1:nz
-                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
-            end
-
-
-            N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
-
-
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
-
-
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
 
 
-            # --- Calculate 3-day averaged mean buoyancy field B ---
-            # Uses full rho record mapped via t_avg for B/N2 gradients,
-            # then the weekly-subsetted fluctuating fields for the flux
-            println("Calculating mean buoyancy field...")
-            B = zeros(Float64, nx, ny, nz, nt_avg)
+            # --- Calculate horizontal gradients of mean velocities ---
+            println("Calculating horizontal gradients of mean velocities...")
+            U_x = zeros(Float64, nx, ny, nz, nt_avg)
+            U_y = zeros(Float64, nx, ny, nz, nt_avg)
+            V_x = zeros(Float64, nx, ny, nz, nt_avg)
+            V_y = zeros(Float64, nx, ny, nz, nt_avg)
 
 
-            # Re-read full rho for B calculation (already subsetted rho is only weekly)
-            rho_full = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float64, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)
+            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
+            U_x[2:end-1, :, :, :] = (U[3:end, :, :, :] .- U[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
+            V_x[2:end-1, :, :, :] = (V[3:end, :, :, :] .- V[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
 
 
-            for t in 1:nt
-                for k in 1:nz
-                    mask = hFacC[:, :, k] .== 0
-                    rho_full[mask, k, t] .= NaN
-                end
-            end
+            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
+            U_y[:, 2:end-1, :, :] = (U[:, 3:end, :, :] .- U[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
+            V_y[:, 2:end-1, :, :] = (V[:, 3:end, :, :] .- V[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
 
 
-            for i in 1:nt_avg
-                t_start = (i-1) * ts + 1
-                t_end   = min(i * ts, nt)
-                for x in 1:nx, y in 1:ny, z in 1:nz
-                    rho_slice = rho_full[x, y, z, t_start:t_end]
-                    valid_rho = rho_slice[isfinite.(rho_slice)]
-                    if length(valid_rho) > 0
-                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
-                    else
-                        B[x, y, z, i] = NaN
-                    end
-                end
-            end
-            rho_full = nothing   # free memory
+            println("Horizontal gradients calculated")
 
 
-            # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
-            println("Calculating buoyancy gradients...")
-            B_x = fill(NaN, nx, ny, nz, nt_avg)
-            B_y = fill(NaN, nx, ny, nz, nt_avg)
-
-
-            for t in 1:nt_avg
-                for k in 1:nz
-                    B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
-                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
-                    B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
-                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
-                end
-            end
-
-
-            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
-                    B_x[i, j, k, t] = NaN
-                end
-                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
-                    B_y[i, j, k, t] = NaN
-                end
-            end
-            println("Gradients calculated")
-
-
-            # --- Calculate buoyancy production for each hourly step in window ---
-            println("Calculating buoyancy production over weekly window...")
-            bp = zeros(Float64, nx, ny, nt_week)
+            # --- Calculate horizontal shear production for each hourly step in window ---
+            println("Calculating horizontal shear production over weekly window...")
+            sp_h = zeros(Float64, nx, ny, nt_week)
 
 
             for idx in 1:nt_week
@@ -479,39 +337,34 @@ elseif time_mode == "weekly"
                 t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
 
 
-                n2_val = @view N2_center[:, :, :, t_avg]
-                B_x_t  = @view B_x[:, :, :, t_avg]
-                B_y_t  = @view B_y[:, :, :, t_avg]
-                b_t    = @view b[:, :, :, idx]
-                ut     = @view fu[:, :, :, idx]
-                vt     = @view fv[:, :, :, idx]
+                U_x_t = @view U_x[:, :, :, t_avg]
+                U_y_t = @view U_y[:, :, :, t_avg]
+                V_x_t = @view V_x[:, :, :, t_avg]
+                V_y_t = @view V_y[:, :, :, t_avg]
+                ut    = @view fu[:, :, :, idx]
+                vt    = @view fv[:, :, :, idx]
 
 
-                temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
-                temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
+                temp1 = ut .* ut .* U_x_t .* DRFfull
+                temp2 = ut .* vt .* U_y_t .* DRFfull
+                temp3 = ut .* vt .* V_x_t .* DRFfull
+                temp4 = vt .* vt .* V_y_t .* DRFfull
 
 
-                temp1[isnan.(temp1)] .= 0.0
-                temp2[isnan.(temp2)] .= 0.0
-
-
-                bp[:, :, idx] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
+                sp_h[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
             end
 
 
-            println("Buoyancy production calculation complete")
+            println("Horizontal shear production calculation complete")
 
 
             # --- Time average over weekly window ---
-            BP = dropdims(mean(bp, dims=3), dims=3)   # (nx, ny)
+            SP_H = dropdims(mean(sp_h, dims=3), dims=3)   # (nx, ny)
 
 
-            println("  BP range: $(extrema(BP[isfinite.(BP)]))")
-
-
-            output_dir = joinpath(base2, "BP_weekly")
-            open(joinpath(output_dir, "bp_weekly_$suffix.bin"), "w") do io
-                write(io, Float32.(BP))
+            output_dir = joinpath(base2, "SP_H_weekly")
+            open(joinpath(output_dir, "sp_h_weekly_$suffix.bin"), "w") do io
+                write(io, Float32.(SP_H))
             end
 
 
@@ -528,12 +381,12 @@ elseif time_mode == "weekly"
 
 elseif time_mode == "full"
     # ========================================================================
-    # FULL TIME AVERAGE BUOYANCY PRODUCTION WORKFLOW
+    # FULL TIME AVERAGE HORIZONTAL SHEAR PRODUCTION WORKFLOW
     # ========================================================================
-    println("Starting buoyancy production calculation for full time average...")
+    println("Starting horizontal shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "BP"))
+    mkpath(joinpath(base2, "SP_H"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -550,35 +403,20 @@ elseif time_mode == "full"
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-            # --- Read density field ---
-            rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float64)
+            # --- Read mean velocity fields (3-day averaged) ---
+            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float64, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
             end)
 
 
-            # --- Mask rho to NaN where hFacC is zero ---
-            for t in 1:nt
-                for k in 1:nz
-                    mask = hFacC[:, :, k] .== 0
-                    rho[mask, k, t] .= NaN
-                end
-            end
-
-
-            # --- Read N2 (3-day averaged) ---
-            N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
-            end)
-
-
-            # --- Read buoyancy fluctuations ---
-            b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
-                raw = read(io, nx * ny * nz * nt * sizeof(Float32))
-                reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt_avg)
             end)
 
 
@@ -599,123 +437,74 @@ elseif time_mode == "full"
             end)
 
 
-            # --- Adjust N2 to interfaces ---
-            N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
-
-
-            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
-            for k in 1:nz
-                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
-            end
-
-
-            N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
-
-
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
-
-
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
 
 
-            # --- Calculate 3-day averaged mean buoyancy field B ---
-            println("Calculating mean buoyancy field...")
-            B = zeros(Float64, nx, ny, nz, nt_avg)
+            # --- Calculate horizontal gradients of mean velocities ---
+            println("Calculating horizontal gradients of mean velocities...")
+            U_x = zeros(Float64, nx, ny, nz, nt_avg)
+            U_y = zeros(Float64, nx, ny, nz, nt_avg)
+            V_x = zeros(Float64, nx, ny, nz, nt_avg)
+            V_y = zeros(Float64, nx, ny, nz, nt_avg)
 
 
-            for i in 1:nt_avg
-                t_start = (i-1) * ts + 1
-                t_end   = min(i * ts, nt)
-                for x in 1:nx, y in 1:ny, z in 1:nz
-                    rho_slice = rho[x, y, z, t_start:t_end]
-                    valid_rho = rho_slice[isfinite.(rho_slice)]
-                    if length(valid_rho) > 0
-                        B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0
-                    else
-                        B[x, y, z, i] = NaN
-                    end
-                end
-            end
+            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
+            U_x[2:end-1, :, :, :] = (U[3:end, :, :, :] .- U[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
+            V_x[2:end-1, :, :, :] = (V[3:end, :, :, :] .- V[1:end-2, :, :, :]) ./
+                                      reshape(dx_avg, nx-2, ny, 1, 1)
 
 
-            # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
-            println("Calculating buoyancy gradients...")
-            B_x = fill(NaN, nx, ny, nz, nt_avg)
-            B_y = fill(NaN, nx, ny, nz, nt_avg)
+            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
+            U_y[:, 2:end-1, :, :] = (U[:, 3:end, :, :] .- U[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
+            V_y[:, 2:end-1, :, :] = (V[:, 3:end, :, :] .- V[:, 1:end-2, :, :]) ./
+                                      reshape(dy_avg, nx, ny-2, 1, 1)
 
 
-            for t in 1:nt_avg
-                for k in 1:nz
-                    B_x[2:end-1, :, k, t] .= (B[3:end, :, k, t] .- B[1:end-2, :, k, t]) ./
-                                              (dx[2:end-1, :] .+ dx[1:end-2, :])
-                    B_y[:, 2:end-1, k, t] .= (B[:, 3:end, k, t] .- B[:, 1:end-2, k, t]) ./
-                                              (dy[:, 2:end-1] .+ dy[:, 1:end-2])
-                end
-            end
-
-
-            for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
-                    B_x[i, j, k, t] = NaN
-                end
-                if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
-                    B_y[i, j, k, t] = NaN
-                end
-            end
-            println("Gradients calculated")
+            println("Horizontal gradients calculated")
 
 
             # --- Initialize output array ---
-            bp = zeros(Float64, nx, ny, nt)
+            sp_h = zeros(Float64, nx, ny, nt)
 
 
-            # --- Calculate buoyancy production for each timestep ---
-            println("Calculating buoyancy production...")
+            # --- Calculate horizontal shear production for each timestep ---
+            println("Calculating horizontal shear production...")
             for t in 1:nt
-                t_avg  = min(div(t - 1, ts) + 1, nt_avg)
+                t_avg = min(div(t - 1, ts) + 1, nt_avg)
 
 
-                n2_val = @view N2_center[:, :, :, t_avg]
-                B_x_t  = @view B_x[:, :, :, t_avg]
-                B_y_t  = @view B_y[:, :, :, t_avg]
-                b_t    = @view b[:, :, :, t]
-                ut     = @view fu[:, :, :, t]
-                vt     = @view fv[:, :, :, t]
+                U_x_t = @view U_x[:, :, :, t_avg]
+                U_y_t = @view U_y[:, :, :, t_avg]
+                V_x_t = @view V_x[:, :, :, t_avg]
+                V_y_t = @view V_y[:, :, :, t_avg]
+                ut    = @view fu[:, :, :, t]
+                vt    = @view fv[:, :, :, t]
 
 
-                temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
-                temp2 = (b_t ./ n2_val) .* vt .* B_y_t .* DRFfull
+                temp1 = ut .* ut .* U_x_t .* DRFfull
+                temp2 = ut .* vt .* U_y_t .* DRFfull
+                temp3 = ut .* vt .* V_x_t .* DRFfull
+                temp4 = vt .* vt .* V_y_t .* DRFfull
 
 
-                temp1[isnan.(temp1)] .= 0.0
-                temp2[isnan.(temp2)] .= 0.0
-
-
-                bp[:, :, t] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
+                sp_h[:, :, t] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
             end
 
 
-            println("Buoyancy production calculation complete")
+            println("Horizontal shear production calculation complete")
 
 
             # --- Time average ---
-            BP = dropdims(mean(bp, dims=3), dims=3)
+            SP_H = dropdims(mean(sp_h, dims=3), dims=3)
 
 
-            println("  BP range: $(extrema(BP[isfinite.(BP)]))")
-
-
-            output_dir = joinpath(base2, "BP")
-            open(joinpath(output_dir, "bp_mean_$suffix.bin"), "w") do io
-                write(io, Float32.(BP))
+            output_dir = joinpath(base2, "SP_H")
+            open(joinpath(output_dir, "sp_h_mean_$suffix.bin"), "w") do io
+                write(io, Float32.(SP_H))
             end
 
 
