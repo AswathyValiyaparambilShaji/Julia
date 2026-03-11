@@ -221,12 +221,12 @@ println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
 # ==========================================================
 
 
-fig = Figure(resolution=(1400, 900))
+fig = Figure(resolution=(1200, 800))
 
 
 # Color ranges
 crange = (-0.03, 0.03)        # Row 1
-crange2 = (-0.01, 0.01)     # Row 2
+crange2 = (-0.015, 0.015)     # Row 2
 cmap = Reverse(:RdBu)
 
 
@@ -352,7 +352,7 @@ FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "EnergyBudget_with_WPI.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_v2.png"))")
 
 
 

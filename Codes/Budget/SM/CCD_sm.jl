@@ -138,22 +138,22 @@ if time_mode == "full"
 
 
     # Create visualization
-    fig = Figure(resolution=(1200, 400))
+    fig = Figure(resolution=(900, 400))
 
 
     ax1 = Axis(fig[1, 1], title="Conversion  (W/m²)", xlabel="Longitude[°]", ylabel="Latitude[°]")
     ax1.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
+    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.03, 0.03), colormap=:bwr)
 
 
-    ax2 = Axis(fig[1, 2], title="∇.F (W/m²)", xlabel="Longitude[°]")
+    ax2 = Axis(fig[1, 2], title="∇.F (W/m²)", xlabel="Longitude[°]",yticklabelsvisible=false)
     ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
+    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.03, 0.03), colormap=:bwr)
 
 
-    ax3 = Axis(fig[1, 3], title="Dissipation (W/m²)", xlabel="Longitude[°]")
+    ax3 = Axis(fig[1, 3], title="Dissipation (W/m²)", xlabel="Longitude[°]",yticklabelsvisible=false)
     ax3.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.04, 0.04), colormap=:bwr)
+    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.03, 0.03), colormap=:bwr)
 
 
     Colorbar(fig[1, 4], hm2, label=" (W/m²)")
@@ -223,22 +223,22 @@ elseif time_mode == "weekly"
 
 
     # Create visualization
-    fig = Figure(resolution=(1200, 400))
+    fig = Figure(resolution=(1150, 400))
 
 
     ax1 = Axis(fig[1, 1], title="Conversion  (W/m²)", xlabel="Longitude[°]", ylabel="Latitude[°]")
     ax1.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm = CairoMakie.heatmap!(ax1, lon, lat, Conv; interpolate=false, colorrange=(-0.03, 0.03), colormap=Reverse(:RdBu))
 
 
-    ax2 = Axis(fig[1, 2], title="∇.F (W/m²)", xlabel="Longitude[°]")
+    ax2 = Axis(fig[1, 2], title="∇.F (W/m²)", xlabel="Longitude[°]",yticklabelsvisible=false )
     ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm1 = CairoMakie.heatmap!(ax2, lon, lat, FDiv; interpolate=false, colorrange=(-0.03, 0.03), colormap=Reverse(:RdBu))
 
 
-    ax3 = Axis(fig[1, 3], title="Dissipation (W/m²)", xlabel="Longitude[°]")
+    ax3 = Axis(fig[1, 3], title="Dissipation (W/m²)", xlabel="Longitude[°]",yticklabelsvisible=false )
     ax3.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
-    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.05, 0.05), colormap=Reverse(:RdBu))
+    hm2 = CairoMakie.heatmap!(ax3, lon, lat, DS; interpolate=false, colorrange=(-0.03, 0.03), colormap=Reverse(:RdBu))
 
 
     Colorbar(fig[1, 4], hm2, label=" (W/m²)")
