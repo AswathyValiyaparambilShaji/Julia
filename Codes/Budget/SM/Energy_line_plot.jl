@@ -312,7 +312,7 @@ lines!(ax1, time_days, FDiv_avg     .* sc; label="⟨∇·F⟩  Flux divergence"
 lines!(ax1, time_days, PS_avg       .* sc; label="⟨Pₛ⟩  Shear production",     color=c_ps,   linewidth=1.8)
 lines!(ax1, time_days, BP_avg       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",       color=c_bp,   linewidth=1.8)
 lines!(ax1, time_days, A_avg        .* sc; label="⟨A⟩  Advection",             color=c_a,    linewidth=1.8)
-lines!(ax1, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",          color=c_et,   linewidth=2.0, linestyle=:dashdot)
+#lines!(ax1, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",          color=c_et,   linewidth=2.0, linestyle=:dashdot)
 lines!(ax1, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",   color=c_res,  linewidth=1.8)
 
 axislegend(ax1; position=:rt, leg_style...)
@@ -341,7 +341,7 @@ rowgap!(fig.layout, 1, 24)
 # ============================================================
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v1.png")
+outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v2.png")
 save(outpath, fig, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig)
