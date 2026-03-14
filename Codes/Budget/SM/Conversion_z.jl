@@ -1,15 +1,11 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
-
-
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
-
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg  = TOML.parsefile(config_file)
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
-
 
 # --- Tile & grid ---
 buf    = 3
@@ -18,12 +14,10 @@ nx     = tx + 2 * buf
 ny     = ty + 2 * buf
 nz     = 88
 
-
 # --- Time ---
 dto  = 144
 Tts  = 366192
 nt   = div(Tts, dto)
-
 
 # --- Thickness ---
 thk    = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
@@ -34,14 +28,11 @@ rho0 = 998.0
 g = 9.8
 T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 
-
 mkpath(joinpath(base2, "Conv_z_dI"))
-
 
 # ============================================================================
 # MAIN LOOP OVER ALL TILES
 # ============================================================================
-
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -116,19 +107,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # --- z and d ---
         d = depth
         z = -cumsum(DRFfull, dims=3)
+        d2d = dropdims(d, dims=3)    
 
 
         # --- Term 1: -div(d * U_DA) ---
         dU = dropdims(d, dims=3) .* UDA
         dV = dropdims(d, dims=3) .* VDA
-
-
-        term1 = .-(
-            (dU[3:nx,   2:ny-1, :] .- dU[1:nx-2, 2:ny-1, :]) ./
-            (dx[2:nx-1, 2:ny-1]    .+ dx[1:nx-2, 2:ny-1])     .+
-            (dV[2:nx-1, 3:ny,   :] .- dV[2:nx-1, 1:ny-2, :]) ./
-            (dy[2:nx-1, 2:ny-1]    .+ dy[2:nx-1, 1:ny-2])
-        )
 
 
         # --- Term 2: div(U_DA) ---
@@ -139,15 +123,33 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             (dy[2:nx-1,  2:ny-1]    .+ dy[2:nx-1,  1:ny-2])
         )
 
+        # --- ∇d  (depth gradient, time-independent, same CFD stencil) ---
+        dddx = (d2d[3:nx,   2:ny-1] .- d2d[1:nx-2, 2:ny-1]) ./
+            (dx[2:nx-1, 2:ny-1]  .+ dx[1:nx-2,  2:ny-1])   # (nx-2, ny-2)
+
+
+        dddy = (d2d[2:nx-1, 3:ny  ] .- d2d[2:nx-1, 1:ny-2]) ./
+            (dy[2:nx-1, 2:ny-1]  .+ dy[2:nx-1,  1:ny-2])   # (nx-2, ny-2)
+
+        # --- U_H·∇d  (barotropic flow advecting depth, time-varying) ---
+        UDA_int = UDA[2:nx-1, 2:ny-1, :]   # (nx-2, ny-2, nt)
+        VDA_int = VDA[2:nx-1, 2:ny-1, :]   # (nx-2, ny-2, nt)
+
+
+        UdotGradD = UDA_int .* reshape(dddx, nx-2, ny-2, 1) .+
+                    VDA_int .* reshape(dddy, nx-2, ny-2, 1)   # (nx-2, ny-2, nt)
+
 
         z_int = z[2:nx-1, 2:ny-1, :]
+        d_int = d2d[2:nx-1, 2:ny-1] 
 
 
-        # --- Wz: vertical velocity from continuity ---
-        Wz = reshape(term1,  nx-2, ny-2, 1,  nt) .-
-             reshape(z_int,  nx-2, ny-2, nz, 1)  .*
-             reshape(divUDA, nx-2, ny-2, 1,  nt)
+        zpd = reshape(z_int, nx-2, ny-2, nz, 1) .+
+            reshape(d_int, nx-2, ny-2, 1,  1)  # (z + d) >= 0  size: (nx-2, ny-2, nz, 1)
 
+        # --- W(z) = −(z+d)·∇·U_H − U_H·∇d ---
+        Wz = .- zpd .* reshape(divUDA,    nx-2, ny-2, 1,  nt) .-
+                reshape(UdotGradD, nx-2, ny-2, 1, nt)
 
         # --- 4D arrays ---
         DRFfull4D = repeat(DRFfull, 1, 1, 1, nt)
@@ -155,14 +157,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Baroclinic density anomaly ---
-        rho_prime = fr .- rho0
+        rho_prime = fr 
         rho_int   = rho_prime[2:nx-1, 2:ny-1, :, :]
 
 
         # --- Depth-scaled conversion ---
-        d_int = d[2:nx-1, 2:ny-1, :]
-        sc    = z_int ./ d_int
-        Cz    = rho_int .* g .* Wz .* reshape(sc, nx-2, ny-2, nz, 1)
+        Cz    = rho_int .* g .* Wz 
 
 
         # --- Depth-integrate ---
@@ -192,7 +192,3 @@ end  # xn
 
 
 println("All tiles done.")
-
-
-
-
