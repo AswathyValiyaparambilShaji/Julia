@@ -89,7 +89,7 @@ ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 hm = CairoMakie.heatmap!(ax, lon, lat, Conv_z;
     interpolate = false,
-    colorrange  = (-0.10, 0.10),
+    colorrange  = (-0.050, 0.050),
     colormap    = Reverse(:RdBu))
 
 
@@ -101,7 +101,7 @@ display(fig)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "ConvZ_map_v1.png"), fig)
+save(joinpath(FIGDIR, "ConvZ_map_v2.png"), fig)
 println("Figure saved: $(joinpath(FIGDIR, "ConvZ_map_v1.png"))")
 
 

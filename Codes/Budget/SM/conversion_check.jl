@@ -156,13 +156,11 @@ z_p_d = z[:,:,:] .+ d
 
 zpd = reshape(z_int, nx-2, ny-2, nz, 1) .+
       reshape(d_int, nx-2, ny-2, 1,  1)  # (z + d) >= 0  size: (nx-2, ny-2, nz, 1)
-println(z_p_d[20,31,:])
 # --- W(z) = −(z+d)·∇·U_H − U_H·∇d ---
 Wz = .- zpd .* reshape(divUDA,    nx-2, ny-2, 1,  nt) .-
         reshape(UdotGradD, nx-2, ny-2, 1, nt)
 # broadcast: (nx-2, ny-2, nz, nt)
-maximum(Wz)
-println(UDA_int[19,35,20])
+
 # --- Density perturbation (bandpass filtered) ---
 rho_prime = fr
 rho_int   = rho_prime[2:nx-1, 2:ny-1, :, :]   # (nx-2, ny-2, nz, nt)
