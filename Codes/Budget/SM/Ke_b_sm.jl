@@ -169,6 +169,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         println("Completed tile: $suffix")
+        GC.safepoint()
+        GC.gc(true)
     end
 end
 
