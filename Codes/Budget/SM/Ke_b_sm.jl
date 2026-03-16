@@ -135,7 +135,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # Perturbation KE = 0.5 * rho0 * (u'^2 + v'^2)
         # Purely baroclinic, consistent with flux F = p'u'
         # ----------------------------------------------------------------
-        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2+ wp_3d )        # (nx, ny, nz, nt)
+        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2+ wp_3d.^2 )        # (nx, ny, nz, nt)
         ke[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
 
 
