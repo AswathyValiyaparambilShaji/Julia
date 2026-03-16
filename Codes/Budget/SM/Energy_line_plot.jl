@@ -215,8 +215,8 @@ PE_n = norm_field(PE_full)
 A_n          = U_KE_n .+ U_PE_n
 PS_n         = SP_H_n .+ SP_V_n
 TotalFlux_n  = FDiv_n .+ U_KE_n .+ U_PE_n
-#Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
-Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
+Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+#Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
 
 # Time series (area-weighted)
 Conv_avg     = area_avg(Conv_n,  valid_mask, RAC, total_area)
