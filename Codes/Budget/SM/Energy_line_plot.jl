@@ -76,7 +76,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # ---- KE (full temporal resolution, nx×ny×nz×nt, Float32) ----
        println("  Reading KE...")
-       ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+       ke_raw = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz * nt * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
        end)
