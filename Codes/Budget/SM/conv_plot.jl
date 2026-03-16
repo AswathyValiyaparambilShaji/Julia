@@ -40,13 +40,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
-        fpath   = joinpath(base2, "Conv", "Conv_$suffix2.bin")
+        fpath   = joinpath(base2, "Conv_eta", "Conv_eta_$suffix2.bin")
 
 
-        if !isfile(fpath)
-            @warn "Missing tile, skipping: $fpath"
-            continue
-        end
+      
 
 
         # Read tile (nx-2) x (ny-2) Float32
@@ -81,12 +78,12 @@ fig = Figure(resolution = (700, 500))
 
 
 ax = Axis(fig[1, 1],
-    title   = "Conversion  (W/m²)",
+    title   = "Conversion Eta (W/m²)",
     xlabel  = "Longitude [°]",
     ylabel  = "Latitude [°]")
 ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
-
+println(Conv_z[1,10])
 hm = CairoMakie.heatmap!(ax, lon, lat, Conv_z;
     interpolate = false,
     colorrange  = (-0.050, 0.050),
@@ -101,8 +98,8 @@ display(fig)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "Conv_map_v1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Conv_map_v1.png"))")
+save(joinpath(FIGDIR, "Conv_map_eta_v1.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Conv_map_eta_v1.png"))")
 
 
 
