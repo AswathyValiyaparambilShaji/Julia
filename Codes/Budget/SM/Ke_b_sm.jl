@@ -47,10 +47,6 @@ rho0  = 999.8
 
 # --- Filter parameters (9-15 day bandpass, 1 step sampling) ---
 T1, T2, delt, N = 9.0, 15.0, 1.0, 4
-fcutlow  = 1 / T2
-fcuthigh = 1 / T1
-fnq      = 1 / delt
-bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs=fnq)
 
 
 # --- Loop over tiles ---
@@ -64,9 +60,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # --- Read density (Float64) ---
         rho = open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
-            nbytes   = nx * ny * nz * nt * sizeof(Float64)
-            raw_data = reinterpret(Float64, read(io, nbytes))
-            Float64.(reshape(raw_data, nx, ny, nz, nt))
+            Float64.(reshape(reinterpret(Float64, read(io, nx*ny*nz*nt*sizeof(Float64))), nx, ny, nz, nt))
         end
 
 
@@ -75,97 +69,75 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Build thickness arrays ---
-        DRFfull = hFacC .* DRF3d                        # (nx, ny, nz)
-        depth   = sum(DRFfull, dims=3)                  # (nx, ny, 1)
+        DRFfull = hFacC .* DRF3d
+        depth   = sum(DRFfull, dims=3)
         DRFfull[hFacC .== 0] .= 0.0
+        mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
 
 
-        # --- 4D land mask & 4D thickness/depth ---
-        mask4D    = reshape(hFacC .== 0, nx, ny, nz, 1)
-        DRFfull4D = repeat(DRFfull, 1, 1, 1, nt)       # (nx, ny, nz, nt)
-        depth4D   = repeat(depth,   1, 1, 1, nt)       # (nx, ny,  1, nt)
+        # --- Bandpass filter density, free rho immediately ---
+        fr  = bandpassfilter(rho, T1, T2, delt, N, nt)
+        rho = nothing; GC.gc()
 
 
-        # --- Read bandpass-filtered velocities (Float32 on disk) ---
-        fu = open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
-            nbytes   = nx * ny * nz * nt * sizeof(Float32)
-            raw_data = reinterpret(Float32, read(io, nbytes))
-            Float64.(reshape(raw_data, nx, ny, nz, nt))
+        # --- Read fu, compute baroclinic u', free fu ---
+        fu     = open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+            Float64.(reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt))
         end
+        ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+        up_3d  = fu .- ucA
+        up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        fu = ucA = nothing; GC.gc()
 
 
-        fv = open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
-            nbytes   = nx * ny * nz * nt * sizeof(Float32)
-            raw_data = reinterpret(Float32, read(io, nbytes))
-            Float64.(reshape(raw_data, nx, ny, nz, nt))
+        # --- Read fv, compute baroclinic v', free fv ---
+        fv     = open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+            Float64.(reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt))
         end
-
-        fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
-            # Calculate the number of bytes needed
-            nbytes = nx * ny * nz *nt * sizeof(Float32)
-            # Read the raw bytes
-            raw_bytes = read(io, nbytes)
-            # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshaped_data = reshape(raw_data, nx, ny, nz, nt)
-        end)
-
-        # --- Bandpass filter density ---
-        fr = bandpassfilter(rho, T1, T2, delt, N, nt)
+        vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+        vp_3d  = fv .- vcA
+        vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        fv = vcA = nothing; GC.gc()
 
 
-        # ----------------------------------------------------------------
-        # Perturbation velocities (baroclinic = bandpassed - depth-mean)
-        # Removes barotropic component, consistent with flux code
-        # ∫u' dz = 0,  ∫v' dz = 0
-        # ----------------------------------------------------------------
-        ucA_3d = sum(fu .* DRFfull4D, dims=3) ./ depth4D   # barotropic u (nx,ny,1,nt)
-        up_3d  = fu .- ucA_3d                               # baroclinic u'(nx,ny,nz,nt)
-        up_3d[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
+        # --- Read fw, compute baroclinic w', free fw ---
+        fw     = open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
+            Float64.(reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt))
+        end
+        wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+        wp_3d  = fw .- wcA
+        wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        fw = wcA = nothing; GC.gc()
 
 
-        vcA_3d = sum(fv .* DRFfull4D, dims=3) ./ depth4D   # barotropic v (nx,ny,1,nt)
-        vp_3d  = fv .- vcA_3d                               # baroclinic v'(nx,ny,nz,nt)
-        vp_3d[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
-
-        wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw .- wcA_3d
-        wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0
-        # ----------------------------------------------------------------
-        # Perturbation KE = 0.5 * rho0 * (u'^2 + v'^2)
-        # Purely baroclinic, consistent with flux F = p'u'
-        # ----------------------------------------------------------------
-        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2+ wp_3d.^2 )        # (nx, ny, nz, nt)
-        ke[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
-
-
-        # ----------------------------------------------------------------
-        # Baroclinic density perturbation
-        # fr = bandpassed rho (wave band only)
-        # subtract depth-mean to enforce ∫rho' dz = 0
-        # same operation as velocity — removes barotropic density signal
-        # Required for APE consistency in baroclinic IT energy equation:
-        #   d/dt(KE + APE) = -∇·F + sources/sinks
-        # ----------------------------------------------------------------
-        #rhoA_3d   = sum(fr .* DRFfull4D, dims=3) ./ depth4D  # barotropic rho (nx,ny,1,nt)
-        rho_prime = fr #.- rhoA_3d                             # baroclinic rho'(nx,ny,nz,nt)
-        rho_prime[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
+        # --- Perturbation KE = 0.5 * rho0 * (u'^2 + v'^2 + w'^2) ---
+        ke = 0.5 .* rho0 .* (up_3d.^2 .+ vp_3d.^2 .+ wp_3d.^2)
+        ke[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        up_3d = vp_3d = wp_3d = nothing; GC.gc()
 
 
         # --- Baroclinic buoyancy b = -g * rho' / rho0 ---
-        b = (-g .* rho_prime) ./ rho0                         # (nx, ny, nz, nt)
-        b[repeat(mask4D, 1, 1, 1, nt)] .= 0.0
+        rho_prime = fr
+        rho_prime[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        fr = nothing
+
+
+        b = (-g ./ rho0) .* rho_prime
+        b[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+        rho_prime = nothing; GC.gc()
 
 
         # --- Save outputs ---
         open(joinpath(base2, "KE", "ke_$suffix.bin"), "w") do io
             write(io, Float32.(ke))
         end
+        ke = nothing
 
 
         open(joinpath(base2, "b", "b_$suffix.bin"), "w") do io
             write(io, Float32.(b))
         end
+        b = nothing
 
 
         println("Completed tile: $suffix")
