@@ -92,7 +92,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # ---- Read KE ----
         println("  Reading KE...")
-        ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+        ke_raw = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
         end)
@@ -181,7 +181,7 @@ lat_vec = collect(lat)
 # ============================================================
 # 0.25° latitude binning  (area-weighted)
 # ============================================================
-bin_width   = 1
+bin_width   = 0.9
 bin_edges   = collect(minlat : bin_width : maxlat)
 bin_centers = bin_edges[1:end-1] .+ bin_width / 2
 nbins       = length(bin_centers)
@@ -277,7 +277,7 @@ mkpath(joinpath(base2, "EnergyRatio"))
 # ============================================================
 fig1 = Figure(resolution=(900, 560), backgroundcolor=:white)
 ax1  = Axis(fig1[1, 1],
-    title     = "Zonal-Mean, Time-Mean, Depth-Integrated KE & APE  (0.25° bins)",
+    title     = "Zonal-Mean, Time-Mean, Depth-Integrated KE & APE  (0.9° bins)",
     xlabel    = "Latitude (°N)",
     ylabel    = "Energy  (J m⁻²)",
     titlesize = 16, xlabelsize = 13, ylabelsize = 13)
@@ -288,8 +288,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v1.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v1.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v2.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v2.png")
 display(fig1)
 
 
@@ -301,11 +301,11 @@ display(fig1)
 # ============================================================
 fig2 = Figure(resolution=(600, 800), backgroundcolor=:white)
 ax2  = Axis(fig2[1, 1],
-    title     = "Zonal-Mean, Time-Mean, Depth-Integrated  KE / APE  (0.25° bins)",
+    title     = "Zonal-Mean, Time-Mean, Depth-Integrated  KE / APE  (0.9° bins)",
     xlabel    = "KE / APE  (dimensionless)",
     ylabel    = "Latitude (°N)",
     titlesize = 14, xlabelsize = 12, ylabelsize = 12,
-    limits    = ((0, 20), (minlat, maxlat)))
+    limits    = ((0, 6), (minlat, maxlat)))
 
 
 # Shaded band between 9-hr and 15-hr theoretical curves
@@ -340,8 +340,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v1.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v1.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v2.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v2.png")
 display(fig2)
 
 
