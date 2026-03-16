@@ -132,7 +132,7 @@ if time_mode == "3day"
 
 
             # --- Read kinetic energy (full temporal resolution) ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
@@ -263,7 +263,7 @@ elseif time_mode == "weekly"
 
 
             # --- Read full ke_t then subset to weekly window ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
@@ -385,7 +385,7 @@ elseif time_mode == "full"
 
 
             # --- Read kinetic energy (full temporal resolution) ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
