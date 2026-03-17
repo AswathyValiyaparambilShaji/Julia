@@ -82,7 +82,7 @@ yn = 1
         # --- Bandpass filter density ---
         fr = bandpassfilter(rho, T1, T2, delt, N, nt)
         rhoA = sum(fr .* DRFfull, dims=3) ./ depth
-        rho_prime = fr .-rhoA
+        rho_prime = fr 
         println("fr loaded: size=$(size(fr)), range=[$(minimum(fr)), $(maximum(fr))]")
 
 

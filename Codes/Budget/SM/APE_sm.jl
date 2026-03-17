@@ -124,7 +124,7 @@
 
 
         # --- Read buoyancy ---
-        b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
+        b = Float64.(open(joinpath(base2, "b", "b_$suffix.bin"), "r") do io
             raw = read(io, nx * ny * nz * nt * sizeof(Float32))
             reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
         end)
