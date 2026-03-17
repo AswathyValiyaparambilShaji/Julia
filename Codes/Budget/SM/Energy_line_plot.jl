@@ -216,7 +216,7 @@ A_n          = U_KE_n .+ U_PE_n
 PS_n         = SP_H_n .+ SP_V_n
 TotalFlux_n  = FDiv_n .+ U_KE_n .+ U_PE_n
 Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
-#Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
+Residual_n1   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
 
 # Time series (area-weighted)
 Conv_avg     = area_avg(Conv_n,  valid_mask, RAC, total_area)
@@ -226,6 +226,7 @@ BP_avg       = area_avg(BP_n,    valid_mask, RAC, total_area)
 A_avg        = area_avg(A_n,     valid_mask, RAC, total_area)
 ET_avg       = area_avg(ET_n,    valid_mask, RAC, total_area)
 Residual_avg = area_avg(Residual_n, valid_mask, RAC, total_area)
+Residual_avg1 = area_avg(Residual_n1, valid_mask, RAC, total_area)
 KE_avg       = area_avg(KE_n,    valid_mask, RAC, total_area)
 PE_avg       = area_avg(PE_n,    valid_mask, RAC, total_area)
 
@@ -313,7 +314,7 @@ lines!(ax1, time_days, PS_avg       .* sc; label="⟨Pₛ⟩  Shear production",
 lines!(ax1, time_days, BP_avg       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",       color=c_bp,   linewidth=1.8)
 lines!(ax1, time_days, A_avg        .* sc; label="⟨A⟩  Advection",             color=c_a,    linewidth=1.8)
 #lines!(ax1, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",          color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax1, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",   color=c_res,  linewidth=1.8)
+lines!(ax1, time_days, Residual_avg1 .* sc; label="⟨R⟩  Residual (D)",   color=c_res,  linewidth=1.8)
 
 axislegend(ax1; position=:rt, leg_style...)
 
