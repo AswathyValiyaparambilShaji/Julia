@@ -17,7 +17,7 @@ base2 = cfg["base_path2"]
 
 # --- TIME AVERAGING CONFIGURATION ---
 # Set to true for 3-day averaging, false for full time period averaging
-use_3day = false  # Change this to true for 3-day averaging
+use_3day = true  # Change this to true for 3-day averaging
 
 
 NX, NY = 288, 468
@@ -77,7 +77,7 @@ if use_3day
             end)
             
             # --- Read KE ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)

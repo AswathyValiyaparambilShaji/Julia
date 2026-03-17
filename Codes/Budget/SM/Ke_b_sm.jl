@@ -117,7 +117,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Baroclinic buoyancy b = -g * rho' / rho0 ---
-        rho_prime = fr
+        rhoA = sum(fr .* DRFfull, dims=3) ./ depth
+        rho_prime = fr .-rhoA
         rho_prime[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         fr = nothing
 
