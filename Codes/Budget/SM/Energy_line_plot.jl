@@ -342,7 +342,7 @@ rowgap!(fig.layout, 1, 24)
 # ============================================================
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v4.png")
+outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v5.png")
 save(outpath, fig, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig)
@@ -451,7 +451,7 @@ rowgap!(fig.layout, 1, 24)
 # ============================================================
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v3.png")
+outpath = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v4.png")
 save(outpath, fig, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig)
