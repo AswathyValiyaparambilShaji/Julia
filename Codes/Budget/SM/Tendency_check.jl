@@ -288,8 +288,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v2.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v2.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v3.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v3.png")
 display(fig1)
 
 
@@ -340,8 +340,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v2.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v2.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v3.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v3.png")
 display(fig2)
 
 
