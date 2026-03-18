@@ -117,8 +117,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Baroclinic buoyancy b = -g * rho' / rho0 ---
-        rhoA = sum(fr .* DRFfull, dims=3) ./ depth
-        rho_prime = fr .-rhoA
+        rho_prime = fr 
         rho_prime[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         fr = nothing
 
@@ -129,13 +128,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Save outputs ---
-        open(joinpath(base2, "KE", "ke_$suffix.bin"), "w") do io
+        open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "w") do io
             write(io, Float32.(ke))
         end
         ke = nothing
 
 
-        open(joinpath(base2, "b", "b_$suffix.bin"), "w") do io
+        open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "w") do io
             write(io, Float32.(b))
         end
         b = nothing

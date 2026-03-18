@@ -77,7 +77,7 @@ if use_3day
             end)
             
             # --- Read KE ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
@@ -164,7 +164,7 @@ else
             end)
             
             # --- Read KE ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
+            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
