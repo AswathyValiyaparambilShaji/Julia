@@ -1,5 +1,3 @@
-
-
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
 
 
@@ -39,20 +37,20 @@ nt  = div(Tts, dto)
 nt3 = div(nt, 3*24)
 
 
-thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
-DRF  = thk[1:nz]
+thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
 # --- Global arrays ---
-Conv_3day  = zeros(NX, NY, nt3)
-FDiv_3day  = zeros(NX, NY, nt3)
-U_KE_3day  = zeros(NX, NY, nt3)
-U_PE_3day  = zeros(NX, NY, nt3)
-SP_H_3day  = zeros(NX, NY, nt3)
-SP_V_3day  = zeros(NX, NY, nt3)
-BP_3day    = zeros(NX, NY, nt3)
-ET_3day    = zeros(NX, NY, nt3)
+Conv_3day = zeros(NX, NY, nt3)
+FDiv_3day = zeros(NX, NY, nt3)
+U_KE_3day = zeros(NX, NY, nt3)
+U_PE_3day = zeros(NX, NY, nt3)
+SP_H_3day = zeros(NX, NY, nt3)
+SP_V_3day = zeros(NX, NY, nt3)
+BP_3day   = zeros(NX, NY, nt3)
+ET_3day   = zeros(NX, NY, nt3)
 FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
 
@@ -134,16 +132,16 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         ye = ys + ty + (2 * buf) - 1
 
 
-        Conv_3day[xs+2:xe-2, ys+2:ye-2, :]  .= C[2:end-1, 2:end-1, :]
-        FDiv_3day[xs+2:xe-2, ys+2:ye-2, :]  .= fxD[2:end-1, 2:end-1, :]
-        U_KE_3day[xs+2:xe-2, ys+2:ye-2, :]  .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        U_PE_3day[xs+2:xe-2, ys+2:ye-2, :]  .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_H_3day[xs+2:xe-2, ys+2:ye-2, :]  .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_V_3day[xs+2:xe-2, ys+2:ye-2, :]  .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        BP_3day[xs+2:xe-2, ys+2:ye-2, :]    .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        ET_3day[xs+2:xe-2, ys+2:ye-2, :]    .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        FH[xs+2:xe-2, ys+2:ye-2]            .= depth[buf:nx-buf+1, buf:ny-buf+1]
-        RAC[xs+2:xe-2, ys+2:ye-2]           .= rac[buf:nx-buf+1, buf:ny-buf+1]
+        Conv_3day[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
+        FDiv_3day[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
+        U_KE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        U_PE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        SP_H_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        SP_V_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        BP_3day[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        ET_3day[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        FH[xs+2:xe-2, ys+2:ye-2]           .= depth[buf:nx-buf+1, buf:ny-buf+1]
+        RAC[xs+2:xe-2, ys+2:ye-2]          .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
 
         println("Completed tile $suffix")
@@ -151,11 +149,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-println("\nCalculating residual timeseries...")
+println("\nCalculating residual timeseries + spatial variance...")
 
 
 # ==========================================================
-# AREA-WEIGHTED MEAN (valid points only)
+# HELPER FUNCTIONS
 # ==========================================================
 
 
@@ -165,64 +163,75 @@ function area_weighted_mean(field, area)
 end
 
 
-# ==========================================================
-# 3-DAY TIMESERIES: normalize by ρ₀·H pointwise, then area-average
-# ==========================================================
-
-
-R1_ts = zeros(nt3)
-R2_ts = zeros(nt3)
-R3_ts = zeros(nt3)
-R4_ts = zeros(nt3)
-R5_ts = zeros(nt3)
-
-
-for t in 1:nt3
-    norm = rho0 .* FH   # spatially varying ρ₀·H(x,y)
-
-
-    C_tn  = Conv_3day[:,:,t]  ./ norm
-    Fd_tn = FDiv_3day[:,:,t]  ./ norm
-    A_tn  = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
-    PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
-    BP_tn = BP_3day[:,:,t]    ./ norm
-    ET_tn = ET_3day[:,:,t]    ./ norm
-
-
-    R1_ts[t] = area_weighted_mean(-(C_tn .- Fd_tn),                                      RAC)
-    R2_ts[t] = area_weighted_mean(-(C_tn .- Fd_tn .- A_tn),                              RAC)
-    R3_ts[t] = area_weighted_mean(-(C_tn .- Fd_tn .- A_tn .+ PS_tn),                     RAC)
-    R4_ts[t] = area_weighted_mean(-(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn),            RAC)
-    R5_ts[t] = area_weighted_mean(-(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn .- ET_tn),   RAC)
+function area_weighted_var(field, area, weighted_mean)
+    valid_mask = .!(isnan.(field) .| isinf.(field)) .& (area .> 0.0)
+    w = area[valid_mask]
+    f = field[valid_mask]
+    return sum(w .* (f .- weighted_mean).^2) / sum(w)
 end
 
 
-println("Residual timeseries computed (nt3 = $nt3 points)")
-
-
 # ==========================================================
-# PLOT
+# 3-DAY TIMESERIES: mean + spatial variance
 # ==========================================================
 
 
-sc        = 1e8
-t_axis    = collect(1:nt3) .* 3   # time in days
+R1_ts = zeros(nt3);  R1_var = zeros(nt3)
+R2_ts = zeros(nt3);  R2_var = zeros(nt3)
+R3_ts = zeros(nt3);  R3_var = zeros(nt3)
+R4_ts = zeros(nt3);  R4_var = zeros(nt3)
+R5_ts = zeros(nt3);  R5_var = zeros(nt3)
 
 
-tick_col  = RGBf(0.20, 0.20, 0.20)
-grid_col  = RGBAf(0.75, 0.75, 0.75, 0.6)
+for t in 1:nt3
+    norm  = rho0 .* FH
+
+
+    C_tn  = Conv_3day[:,:,t] ./ norm
+    Fd_tn = FDiv_3day[:,:,t] ./ norm
+    A_tn  = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
+    PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
+    BP_tn = BP_3day[:,:,t]   ./ norm
+    ET_tn = ET_3day[:,:,t]   ./ norm
+
+
+    r1 = -(C_tn .- Fd_tn)
+    r2 = -(C_tn .- Fd_tn .- A_tn)
+    r3 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn)
+    r4 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn)
+    r5 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn .- ET_tn)
+
+
+    R1_ts[t] = area_weighted_mean(r1, RAC);  R1_var[t] = area_weighted_var(r1, RAC, R1_ts[t])
+    R2_ts[t] = area_weighted_mean(r2, RAC);  R2_var[t] = area_weighted_var(r2, RAC, R2_ts[t])
+    R3_ts[t] = area_weighted_mean(r3, RAC);  R3_var[t] = area_weighted_var(r3, RAC, R3_ts[t])
+    R4_ts[t] = area_weighted_mean(r4, RAC);  R4_var[t] = area_weighted_var(r4, RAC, R4_ts[t])
+    R5_ts[t] = area_weighted_mean(r5, RAC);  R5_var[t] = area_weighted_var(r5, RAC, R5_ts[t])
+end
+
+
+println("Done. nt3 = $nt3 periods")
+
+
+# ==========================================================
+# PLOT: spatial variance — 5 lines
+# ==========================================================
+
+
+sc2    = 1e16          # variance units: (×10⁻⁸)² → scale by 1e16
+t_axis = collect(1:nt3) .* 3
+
+
+tick_col = RGBf(0.20, 0.20, 0.20)
+grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
 
 
 axis_theme = (
     backgroundcolor   = :white,
-    xgridcolor        = grid_col,
-    ygridcolor        = grid_col,
-    xgridwidth        = 0.6,
-    ygridwidth        = 0.6,
-    xtickcolor        = tick_col,
-    ytickcolor        = tick_col,
-    xticklabelcolor   = tick_col,
-    yticklabelcolor   = tick_col,
+    xgridcolor        = grid_col,   ygridcolor        = grid_col,
+    xgridwidth        = 0.6,        ygridwidth        = 0.6,
+    xtickcolor        = tick_col,   ytickcolor        = tick_col,
+    xticklabelcolor   = tick_col,   yticklabelcolor   = tick_col,
     xlabelcolor       = RGBf(0.10, 0.10, 0.10),
     ylabelcolor       = RGBf(0.10, 0.10, 0.10),
     titlecolor        = RGBf(0.05, 0.05, 0.05),
@@ -249,13 +258,32 @@ leg_style = (
 )
 
 
+cols = [
+    RGBf(0.10, 0.40, 0.75),
+    RGBf(0.80, 0.50, 0.00),
+    RGBf(0.10, 0.60, 0.30),
+    RGBf(0.60, 0.10, 0.70),
+    RGBf(0.00, 0.00, 0.00),
+]
+
+
+labels = [
+    "Var(R1) = -(C - ∇·F)",
+    "Var(R2) = -(C - ∇·F - A)",
+    "Var(R3) = -(C - ∇·F - A + Pₛ)",
+    "Var(R4) = -(C - ∇·F - A + Pₛ + Pᵦ)",
+    "Var(R5) = -(C - ∇·F - A + Pₛ + Pᵦ - ∂E/∂t)",
+]
+
+
+vars = [R1_var, R2_var, R3_var, R4_var, R5_var]
+
+
 fig_ts = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
-
-
-ax_ts = Axis(fig_ts[1, 1];
-    title  = "Cumulative Residual Timeseries (3-day averages, normalized by ρ₀H)",
+ax_ts  = Axis(fig_ts[1, 1];
+    title  = "Spatial Variance of Residuals (3-day averages)",
     xlabel = "Time  [days]",
-    ylabel = "Area-averaged residual  [×10⁻⁸ W kg⁻¹]",
+    ylabel = "Spatial variance  [×10⁻¹⁶ W² kg⁻²]",
     axis_theme...
 )
 
@@ -263,11 +291,10 @@ ax_ts = Axis(fig_ts[1, 1];
 hlines!(ax_ts, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 
 
-lines!(ax_ts, t_axis, R1_ts .* sc; label="R1 = -(C - ∇·F)",                          color=RGBf(0.10,0.40,0.75), linewidth=1.8)
-lines!(ax_ts, t_axis, R2_ts .* sc; label="R2 = -(C - ∇·F - A)",                      color=RGBf(0.80,0.50,0.00), linewidth=1.8)
-lines!(ax_ts, t_axis, R3_ts .* sc; label="R3 = -(C - ∇·F - A + Pₛ)",                 color=RGBf(0.10,0.60,0.30), linewidth=1.8)
-lines!(ax_ts, t_axis, R4_ts .* sc; label="R4 = -(C - ∇·F - A + Pₛ + Pᵦ)",           color=RGBf(0.60,0.10,0.70), linewidth=1.8)
-lines!(ax_ts, t_axis, R5_ts .* sc; label="R5 = -(C - ∇·F - A + Pₛ + Pᵦ - ∂E/∂t)",  color=:black,               linewidth=2.0)
+for (i, (v, c, lbl)) in enumerate(zip(vars, cols, labels))
+    lw = i == 5 ? 2.0 : 1.8
+    lines!(ax_ts, t_axis, v .* sc2; color=c, linewidth=lw, label=lbl)
+end
 
 
 axislegend(ax_ts; position=:rt, leg_style...)
@@ -275,9 +302,11 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_Timeseries_3day_normalized.png")
+outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
+
+
 
 

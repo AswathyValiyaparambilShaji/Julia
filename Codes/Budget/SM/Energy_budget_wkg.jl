@@ -140,15 +140,7 @@ if use_3day
             rac = dx .* dy
             H = depth
             
-            # Horizontal gradients for roughness
-            dHdx = zeros(nx, ny)
-            dHdx[2:end-1, :] .= (H[3:end, :] .- H[1:end-2, :]) ./ (dx[2:end-1, :] .+ dx[3:end, :])
-            
-            dHdy = zeros(nx, ny)
-            dHdy[:, 2:end-1] .= (H[:, 3:end] .- H[:, 1:end-2]) ./ (dy[:, 2:end-1] .+ dy[:, 3:end])
-            
-            gh = sqrt.(dHdx.^2 .+ dHdy.^2)
-            
+        
             # Calculate tile positions in global grid
             xs = (xn - 1) * tx + 1
             xe = xs + tx + (2 * buf) - 1
@@ -167,8 +159,7 @@ if use_3day
             BP_full[xs+2:xe-2, ys+2:ye-2, :] .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
             ET_full[xs+2:xe-2, ys+2:ye-2, :] .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
             
-            # Static fields (use first time slice or mean)
-            ∇H[xs+2:xe-2, ys+2:ye-2] .= gh[buf:nx-buf+1, buf:ny-buf+1]
+           
             FH[xs+2:xe-2, ys+2:ye-2] .= H[buf:nx-buf+1, buf:ny-buf+1]
             RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
             
