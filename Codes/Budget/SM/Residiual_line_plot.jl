@@ -11,7 +11,6 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-# --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
@@ -19,7 +18,6 @@ lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
 
-# --- Tile parameters ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
@@ -42,7 +40,6 @@ DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
-# --- Global arrays ---
 Conv_3day = zeros(NX, NY, nt3)
 FDiv_3day = zeros(NX, NY, nt3)
 U_KE_3day = zeros(NX, NY, nt3)
@@ -56,11 +53,6 @@ RAC = zeros(NX, NY)
 
 
 println("Loading energy budget terms...")
-
-
-# ==========================================================
-# LOAD ALL TERMS
-# ==========================================================
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -82,44 +74,30 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-
-
         C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-
-
         u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
         u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
         sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
         sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
         bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
         te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
@@ -149,7 +127,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-println("\nCalculating residual timeseries + spatial variance...")
+# ==========================================================
+# DEPTH MASK: keep only points deeper than 3000 m
+# ==========================================================
+
+
+println("\nApplying depth mask (> 3000 m)...")
+depth_mask = FH .> 3000.0
+RAC_masked = RAC .* depth_mask
+println("Deep points (>3000m): $(sum(depth_mask)) / $(length(depth_mask))")
 
 
 # ==========================================================
@@ -172,8 +158,11 @@ end
 
 
 # ==========================================================
-# 3-DAY TIMESERIES: mean + spatial variance
+# 3-DAY TIMESERIES: mean + spatial variance (deep points only)
 # ==========================================================
+
+
+println("Calculating residual timeseries + spatial variance...")
 
 
 R1_ts = zeros(nt3);  R1_var = zeros(nt3)
@@ -195,18 +184,19 @@ for t in 1:nt3
     ET_tn = ET_3day[:,:,t]   ./ norm
 
 
-    r1 = -(C_tn .- Fd_tn)
-    r2 = -(C_tn .- Fd_tn .- A_tn)
-    r3 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn)
-    r4 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn)
-    r5 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn .- ET_tn)
+    # Compute residuals and apply depth mask explicitly
+    r1 = -(C_tn .- Fd_tn)                                    .* depth_mask
+    r2 = -(C_tn .- Fd_tn .- A_tn)                            .* depth_mask
+    r3 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn)                   .* depth_mask
+    r4 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn)          .* depth_mask
+    r5 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn .- ET_tn) .* depth_mask
 
 
-    R1_ts[t] = area_weighted_mean(r1, RAC);  R1_var[t] = area_weighted_var(r1, RAC, R1_ts[t])
-    R2_ts[t] = area_weighted_mean(r2, RAC);  R2_var[t] = area_weighted_var(r2, RAC, R2_ts[t])
-    R3_ts[t] = area_weighted_mean(r3, RAC);  R3_var[t] = area_weighted_var(r3, RAC, R3_ts[t])
-    R4_ts[t] = area_weighted_mean(r4, RAC);  R4_var[t] = area_weighted_var(r4, RAC, R4_ts[t])
-    R5_ts[t] = area_weighted_mean(r5, RAC);  R5_var[t] = area_weighted_var(r5, RAC, R5_ts[t])
+    R1_ts[t] = area_weighted_mean(r1, RAC_masked);  R1_var[t] = area_weighted_var(r1, RAC_masked, R1_ts[t])
+    R2_ts[t] = area_weighted_mean(r2, RAC_masked);  R2_var[t] = area_weighted_var(r2, RAC_masked, R2_ts[t])
+    R3_ts[t] = area_weighted_mean(r3, RAC_masked);  R3_var[t] = area_weighted_var(r3, RAC_masked, R3_ts[t])
+    R4_ts[t] = area_weighted_mean(r4, RAC_masked);  R4_var[t] = area_weighted_var(r4, RAC_masked, R4_ts[t])
+    R5_ts[t] = area_weighted_mean(r5, RAC_masked);  R5_var[t] = area_weighted_var(r5, RAC_masked, R5_ts[t])
 end
 
 
@@ -218,7 +208,7 @@ println("Done. nt3 = $nt3 periods")
 # ==========================================================
 
 
-sc2    = 1e16          # variance units: (×10⁻⁸)² → scale by 1e16
+sc2    = 1e16
 t_axis = collect(1:nt3) .* 3
 
 
@@ -281,7 +271,7 @@ vars = [R1_var, R2_var, R3_var, R4_var, R5_var]
 
 fig_ts = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
 ax_ts  = Axis(fig_ts[1, 1];
-    title  = "Spatial Variance of Residuals (3-day averages)",
+    title  = "Spatial Variance of Residuals — deep points only (H > 3000 m, 3-day averages)",
     xlabel = "Time  [days]",
     ylabel = "Spatial variance  [×10⁻¹⁶ W² kg⁻²]",
     axis_theme...
@@ -302,7 +292,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day.png")
+outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
