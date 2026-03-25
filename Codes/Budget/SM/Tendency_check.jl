@@ -100,7 +100,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # ---- Read APE ----
         println("  Reading APE...")
-        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
         end)
