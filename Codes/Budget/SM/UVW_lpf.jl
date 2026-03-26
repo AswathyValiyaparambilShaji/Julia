@@ -2,7 +2,8 @@ using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, lowhighpass_butter
+include(joinpath(@__DIR__, "..","..","..", "functions", "butter_filters.jl"))
+using .FluxUtils: read_bin
 
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
