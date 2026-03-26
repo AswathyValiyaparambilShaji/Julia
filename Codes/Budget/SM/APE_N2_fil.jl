@@ -1,18 +1,29 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
-include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, lowhighpass_butter
+include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..","..","..", "functions", "butter_filters.jl"))
+using .FluxUtils: read_bin, bandpassfilter
 
 
-config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
+config_file = get(ENV, "JULIA_CONFIG",
+            joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
+
+
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
-mkpath(joinpath(base2, "UVW_LP"))
 
 
 # --- Domain & grid ---
+NX, NY = 288, 468
+minlat, maxlat = 24.0, 31.91
+minlon, maxlon = 193.0, 199.0
+lat = range(minlat, maxlat, length=NY)
+lon = range(minlon, maxlon, length=NX)
+
+
+# --- Tile & time ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
@@ -20,87 +31,147 @@ ny = ty + 2*buf
 nz = 88
 
 
-dto  = 144
-Tts  = 366192
-nt   = div(Tts, dto)
+dt  = 1       # hourly output, dt = 1 hr
+dto = 144
+Tts = 366192
+nt  = div(Tts, dto)   # ~2543 hourly timesteps
 
 
-# --- Low-pass filter parameters ---
-delt  = 1.0    # hourly sampling [hr]
-Tcut  = 36.0   # low-pass cutoff [hr]
-N_ord = 4
+# --- Thickness & constants ---
+thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF   = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+rho0  = 999.8
+
+
+# --- N2 threshold ---
+N2_threshold = 1.0e-8
+
+
+# --- Output directories ---
+mkpath(joinpath(base2, "APE"))
+mkpath(joinpath(base2, "pe"))
+
+
+# ==========================================================
+# ====================== MAIN LOOP =========================
+# ==========================================================
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
+for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        println("Processing tile: $suffix")
+    suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+    println("Processing tile: $suffix")
 
 
-        # --- 1. Read raw U, V, W ---
-        U = Float64.(read_bin(joinpath(base, "U", "U_$suffix.bin"), (nx, ny, nz, nt)))
-        V = Float64.(read_bin(joinpath(base, "V", "V_$suffix.bin"), (nx, ny, nz, nt)))
-        W = Float64.(read_bin(joinpath(base, "W", "W_$suffix.bin"), (nx, ny, nz, nt)))
+    # ----------------------------------------------------------
+    # 1. Read raw hourly N2  (nx, ny, nz, nt)
+    # ----------------------------------------------------------
+    N2_raw = Float64.(read_bin(joinpath(base, "N2", "N2_$suffix.bin"),
+                               (nx, ny, nz, nt)))
+    println("  N2 raw range: ", extrema(filter(isfinite, N2_raw)))
 
 
-        # --- 2. C-grid to cell centers ---
-        uc = 0.5 .* (U[1:end-1, :, :, :] .+ U[2:end,   :, :, :])
-        vc = 0.5 .* (V[:, 1:end-1, :, :] .+ V[:, 2:end, :, :])
-        wc = 0.5 .* (W[:, :, 1:end-1, :] .+ W[:, :, 2:end, :])
+    # ----------------------------------------------------------
+    # 2. Low-pass filter N2 along time (36 hr cutoff, order 4)
+    #    filtfilt operates along dim-1, so reshape to (nt, nx*ny*nz)
+    # ----------------------------------------------------------
+    println("  Low-pass filtering N2 (Tcut=36 hr)...")
+    N2_2d = permutedims(N2_raw, (4, 1, 2, 3))          # (nt, nx, ny, nz)
+    N2_2d = reshape(N2_2d, nt, nx*ny*nz)                # (nt, nx*ny*nz)
 
 
-        ucc = cat(uc, zeros(1,  ny, nz, nt); dims=1)
-        vcc = cat(vc, zeros(nx, 1,  nz, nt); dims=2)
-        wcc = cat(wc, zeros(nx, ny, 1,  nt); dims=3)
+    N2_filt_2d = lowhighpass_butter(N2_2d, 36.0, dt, 4, "low")  # (nt, nx*ny*nz)
 
 
-        # --- 3. Reshape to (nt, nx*ny*nz) --- same as N2 pattern ---
-        u_2d = reshape(permutedims(ucc, (4,1,2,3)), nt, nx*ny*nz)
-        v_2d = reshape(permutedims(vcc, (4,1,2,3)), nt, nx*ny*nz)
-        w_2d = reshape(permutedims(wcc, (4,1,2,3)), nt, nx*ny*nz)
+    N2_filt = reshape(N2_filt_2d, nt, nx, ny, nz)       # (nt, nx, ny, nz)
+    N2_filt = permutedims(N2_filt, (2, 3, 4, 1))        # (nx, ny, nz, nt)
 
 
-        # --- 4. Low-pass filter at 36 hr --- same as N2 ---
-        println("  Low-pass filtering U (Tcut=$(Tcut) hr)...")
-        u_lp_2d = lowhighpass_butter(u_2d, Tcut, delt, N_ord, "low")
+    # ----------------------------------------------------------
+    # 3. Adjust filtered N2 to interfaces then average to centers
+    #    (same approach as APE script for consistency)
+    # ----------------------------------------------------------
+    N2_adjusted = zeros(Float64, nx, ny, nz+1, nt)
+    N2_adjusted[:, :, 1,      :] = N2_filt[:, :, 1,      :]
+    N2_adjusted[:, :, 2:nz,   :] = N2_filt[:, :, 1:nz-1, :]
+    N2_adjusted[:, :, nz+1,   :] = N2_filt[:, :, nz-1,   :]
 
 
-        println("  Low-pass filtering V (Tcut=$(Tcut) hr)...")
-        v_lp_2d = lowhighpass_butter(v_2d, Tcut, delt, N_ord, "low")
-
-
-        println("  Low-pass filtering W (Tcut=$(Tcut) hr)...")
-        w_lp_2d = lowhighpass_butter(w_2d, Tcut, delt, N_ord, "low")
-
-
-        # --- 5. Reshape back to (nx, ny, nz, nt) --- same as N2 ---
-        u_lp = permutedims(reshape(u_lp_2d, nt, nx, ny, nz), (2,3,4,1))
-        v_lp = permutedims(reshape(v_lp_2d, nt, nx, ny, nz), (2,3,4,1))
-        w_lp = permutedims(reshape(w_lp_2d, nt, nx, ny, nz), (2,3,4,1))
-
-
-        println("  u_lp range: ", extrema(filter(isfinite, u_lp)))
-        println("  v_lp range: ", extrema(filter(isfinite, v_lp)))
-        println("  w_lp range: ", extrema(filter(isfinite, w_lp)))
-
-
-        # --- 6. Save ---
-        open(joinpath(base2, "UVW_LP", "u_lp_$suffix.bin"), "w") do io
-            write(io, Float32.(u_lp))
-        end
-        open(joinpath(base2, "UVW_LP", "v_lp_$suffix.bin"), "w") do io
-            write(io, Float32.(v_lp))
-        end
-        open(joinpath(base2, "UVW_LP", "w_lp_$suffix.bin"), "w") do io
-            write(io, Float32.(w_lp))
-        end
-
-
-        println("Completed tile: $suffix")
+    N2_center = zeros(Float64, nx, ny, nz, nt)
+    for k in 1:nz
+        N2_center[:, :, k, :] .=
+            0.5 .* (N2_adjusted[:, :, k,   :] .+
+                    N2_adjusted[:, :, k+1,  :])
     end
+
+
+    # ----------------------------------------------------------
+    # 4. Apply physical threshold
+    # ----------------------------------------------------------
+    n_filtered = sum(N2_center .< N2_threshold)
+    n_total    = length(N2_center)
+    println("  Filtering $(n_filtered) / $(n_total) values below threshold $(N2_threshold) ",
+            "($(round(100*n_filtered/n_total, digits=2))%)")
+    N2_center[N2_center .< N2_threshold] .= N2_threshold
+    println("  N2_filtered range after threshold: ", extrema(N2_center))
+
+
+    # ----------------------------------------------------------
+    # 5. Read hFacC and buoyancy b
+    # ----------------------------------------------------------
+    hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+
+
+    DRFfull = hFacC .* DRF3d
+    DRFfull[hFacC .== 0] .= 0.0
+
+
+    b = Float64.(open(joinpath(base2, "b", "b_t_sm_$suffix.bin"), "r") do io
+        raw = read(io, nx * ny * nz * nt * sizeof(Float32))
+        reshape(reinterpret(Float32, raw), nx, ny, nz, nt)
+    end)
+
+
+    # ----------------------------------------------------------
+    # 6. Compute APE — fully vectorized, no time loop
+    #    APE = 0.5 * rho0 * b² / N2   shape: (nx, ny, nz, nt)
+    # ----------------------------------------------------------
+    println("  Computing APE...")
+    APE = 0.5 .* rho0 .* (b .^ 2) ./ N2_center
+
+
+    println("  APE range:          ", extrema(filter(isfinite, APE)))
+    println("  APE finite values:  ", sum(isfinite.(APE)))
+    println("  APE Inf values:     ", sum(isinf.(APE)))
+    println("  APE NaN values:     ", sum(isnan.(APE)))
+
+
+    # --- pe (unchanged) ---
+    pe = 0.5 .* b .^ 2
+
+
+    # ----------------------------------------------------------
+    # 7. Save
+    # ----------------------------------------------------------
+    open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "w") do io
+        write(io, Float32.(APE))
+    end
+
+
+    open(joinpath(base2, "pe", "pe_tn_sm_$suffix.bin"), "w") do io
+        write(io, Float32.(pe))
+    end
+
+
+    println("  Completed tile: $suffix\n")
 end
+end
+
+
+println("\nAll tiles processed successfully!")
 
 
 
