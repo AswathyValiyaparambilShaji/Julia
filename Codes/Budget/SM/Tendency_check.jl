@@ -91,7 +91,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # ---- Read KE ----
-        println("  Reading KE...")
+        println("  Readig KE...")
         ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
@@ -99,11 +99,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # ---- Read APE ----
-        println("  Reading APE...")
         ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
-        end)
+          nbytes = nx * ny * nz * nt * sizeof(Float32)
+          reshape(reinterpret(Float32, read(io, nbytes)),
+                  nx, ny, nz, nt)
+      end)
 
 
         # ---- Depth-integrate KE (weighted by DRFfull) ----
@@ -170,7 +170,6 @@ PE_tmean = dropdims(mean(PE_full, dims=3), dims=3)   # NX x NY
 
 
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
-println("\nValid points: $(sum(valid_mask)) / $(length(valid_mask))")
 
 
 lat_vec = collect(lat)
@@ -223,13 +222,6 @@ end
 
 # KE/APE ratio from binned profiles
 ratio_binned = KE_binned ./ PE_binned
-
-
-println("\nBin summary (first 5):")
-for b in 1:min(5, nbins)
-    @printf("  [%.2f–%.2f°N]  KE=%.4e  APE=%.4e  ratio=%.3f\n",
-        bin_edges[b], bin_edges[b+1], KE_binned[b], PE_binned[b], ratio_binned[b])
-end
 
 
 
@@ -288,8 +280,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v3.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v3.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v4.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v4.png")
 display(fig1)
 
 
@@ -340,8 +332,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v3.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v3.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v4.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v4.png")
 display(fig2)
 
 
