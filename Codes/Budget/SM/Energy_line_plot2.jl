@@ -114,7 +114,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
 
-        ke_di = open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
+        ke_di = open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             ke_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
             # depth-integrate in Float32, widen result to Float64
