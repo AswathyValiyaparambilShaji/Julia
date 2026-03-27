@@ -473,7 +473,7 @@ axislegend(ax2a; position=:rt, leg_style...)
 
 # --- Subplot 2: Buoyancy production and vertical shear production ---
 ax2b = Axis(fig2[2, 1];
-    title  = "Buoyancy Production and Vertical Shear Production",
+    title  = "Buoyancy Production and Horizontal Shear Production",
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W kg⁻¹]",
     axis_theme...)
@@ -483,7 +483,8 @@ ax2b = Axis(fig2[2, 1];
 
 hlines!(ax2b, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 lines!(ax2b, time_days, BP_avg   .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",     color=c_bp,  linewidth=2.0)
-lines!(ax2b, time_days, SP_V_avg .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.", color=c_psv, linewidth=2.0)
+#lines!(ax2b, time_days, SP_V_avg .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.", color=c_psv, linewidth=2.0)
+lines!(ax2b, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
 axislegend(ax2b; position=:rt, leg_style...)
 
 
