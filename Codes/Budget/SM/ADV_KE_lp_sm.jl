@@ -80,10 +80,13 @@ mkpath(joinpath(base2, "U_KE_timeseries"))
 # ============================================================================
 
 
+println("=== Starting advective KE flux | mode: $time_mode ===")
+
+
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        println("\n--- Processing tile: $suffix ($time_mode) ---")
+        println("Processing tile: $suffix")
 
 
         # --- Read grid metrics ---
@@ -92,7 +95,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         dy    = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-        # --- Read low-pass filtered U, V ---
+        # --- Cell thicknesses ---
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        hFacC = nothing
+        GC.gc()
+
+
+        # --- Read low-pass filtered U, V as Float64 ---
         u_lp = Float64.(open(joinpath(base2, "UVW_LP", "u_lp_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             raw_bytes = read(io, nbytes)
@@ -109,18 +119,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        # --- Read kinetic energy ---
+        # --- Read kinetic energy as Float64 ---
         ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx, ny, nz, nt)
         end)
-
-
-        # --- Cell thicknesses ---
-        DRFfull = hFacC .* DRF3d
-        DRFfull[hFacC .== 0] .= 0.0
 
 
         # --- KE gradients ---
@@ -138,16 +143,30 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
                                   reshape(dy_avg, nx, ny-2, 1, 1)
 
 
+        # --- Free ke_t and grid metrics after gradients ---
+        ke_t   = nothing
+        dx     = nothing
+        dy     = nothing
+        dx_avg = nothing
+        dy_avg = nothing
+        GC.gc()
 
 
         # ---------------------------------------------------------------
         # Compute depth-averaged U_KE at every timestep -> (nx, ny, nt)
-        # u_lp, v_lp, ke_x, ke_y all (nx, ny, nz, nt) Float64
-        # DRFfull (nx, ny, nz) broadcasts over nt automatically
-        # Kept in Float64 throughout — cast only at save
+        # Float64 throughout — cast only at save
         # ---------------------------------------------------------------
         U_KE_ts = dropdims(
             sum((u_lp .* ke_x .+ v_lp .* ke_y) .* DRFfull, dims=3), dims=3)
+
+
+        # --- Free large intermediates after U_KE_ts is computed ---
+        u_lp    = nothing
+        v_lp    = nothing
+        ke_x    = nothing
+        ke_y    = nothing
+        DRFfull = nothing
+        GC.gc()
 
 
         # ---------------------------------------------------------------
@@ -159,6 +178,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
                 write(io, Float32.(U_KE_ts))
             end
             println("  Saved: u_ke_ts_$suffix.bin  shape=(nx, ny, nt)")
+            U_KE_ts = nothing
+            GC.gc()
 
 
         elseif time_mode == "3day"
@@ -170,32 +191,44 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
                 t_end   = min(t * hrs_per_chunk, nt)
                 U_KE_3day[:, :, t] = mean(U_KE_ts[:, :, t_start:t_end], dims=3)
             end
+            U_KE_ts = nothing
+            GC.gc()
             println("  U_KE_3day range: ", extrema(filter(isfinite, U_KE_3day)))
             open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(U_KE_3day))
             end
             println("  Saved: u_ke_3day_$suffix.bin  shape=(nx, ny, nt3)")
+            U_KE_3day = nothing
+            GC.gc()
 
 
         elseif time_mode == "weekly"
             # --- Subset to weekly window then time-average -> (nx, ny) ---
             u_ke_weekly = dropdims(
                 mean(U_KE_ts[:, :, idx_start:idx_end], dims=3), dims=3)
+            U_KE_ts = nothing
+            GC.gc()
             println("  u_ke_weekly range: ", extrema(filter(isfinite, u_ke_weekly)))
             open(joinpath(base2, "U_KE_weekly", "u_ke_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(u_ke_weekly))
             end
             println("  Saved: u_ke_weekly_$suffix.bin  shape=(nx, ny)")
+            u_ke_weekly = nothing
+            GC.gc()
 
 
         elseif time_mode == "full"
             # --- Time-average over full record -> (nx, ny) ---
             u_ke_mean = dropdims(mean(U_KE_ts, dims=3), dims=3)
+            U_KE_ts = nothing
+            GC.gc()
             println("  u_ke_mean range: ", extrema(filter(isfinite, u_ke_mean)))
             open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_ke_mean))
             end
             println("  Saved: u_ke_mean_$suffix.bin  shape=(nx, ny)")
+            u_ke_mean = nothing
+            GC.gc()
 
 
         else
