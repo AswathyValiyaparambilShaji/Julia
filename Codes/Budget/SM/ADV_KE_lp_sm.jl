@@ -96,9 +96,17 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Cell thicknesses ---
-        DRFfull = hFacC .* DRF3d
+        DRFfull = hFacC .* DRF3d          # (nx, ny, nz)
         DRFfull[hFacC .== 0] .= 0.0
         hFacC = nothing
+        GC.gc()
+
+
+        # --- Pre-compute dx_avg, dy_avg as Float64 ---
+        dx_avg = Float64.(dx[2:end-1, :] .+ dx[1:end-2, :])   # (nx-2, ny)
+        dy_avg = Float64.(dy[:, 2:end-1] .+ dy[:, 1:end-2])   # (nx, ny-2)
+        dx = nothing
+        dy = nothing
         GC.gc()
 
 
@@ -128,44 +136,44 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        # --- KE gradients ---
-        ke_x = zeros(Float64, nx, ny, nz, nt)
-        ke_y = zeros(Float64, nx, ny, nz, nt)
-
-
-        dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
-        ke_x[2:end-1, :, :, :] = (ke_t[3:end, :, :, :] .- ke_t[1:end-2, :, :, :]) ./
-                                  reshape(dx_avg, nx-2, ny, 1, 1)
-
-
-        dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
-        ke_y[:, 2:end-1, :, :] = (ke_t[:, 3:end, :, :] .- ke_t[:, 1:end-2, :, :]) ./
-                                  reshape(dy_avg, nx, ny-2, 1, 1)
-
-
-        # --- Free ke_t and grid metrics after gradients ---
-        ke_t   = nothing
-        dx     = nothing
-        dy     = nothing
-        dx_avg = nothing
-        dy_avg = nothing
-        GC.gc()
-
-
         # ---------------------------------------------------------------
-        # Compute depth-averaged U_KE at every timestep -> (nx, ny, nt)
-        # Float64 throughout — cast only at save
+        # Accumulate depth-integrated U_KE level by level -> (nx, ny, nt)
+        # This avoids allocating full (nx, ny, nz, nt) ke_x and ke_y arrays.
+        # At each level k only (nx, ny, nt) slices are in memory.
+        # Peak simultaneous large arrays: u_lp + v_lp + ke_t + U_KE_ts
         # ---------------------------------------------------------------
-        U_KE_ts = dropdims(
-            sum((u_lp .* ke_x .+ v_lp .* ke_y) .* DRFfull, dims=3), dims=3)
+        U_KE_ts = zeros(Float64, nx, ny, nt)
 
 
-        # --- Free large intermediates after U_KE_ts is computed ---
+        for k in 1:nz
+            drf_k = DRFfull[:, :, k]           # (nx, ny)
+
+
+            # x-gradient at level k
+            ke_x_k = zeros(Float64, nx, ny, nt)
+            ke_x_k[2:end-1, :, :] = (ke_t[3:end, :, k, :] .- ke_t[1:end-2, :, k, :]) ./
+                                     reshape(dx_avg, nx-2, ny, 1)
+
+
+            # y-gradient at level k
+            ke_y_k = zeros(Float64, nx, ny, nt)
+            ke_y_k[:, 2:end-1, :] = (ke_t[:, 3:end, k, :] .- ke_t[:, 1:end-2, k, :]) ./
+                                     reshape(dy_avg, nx, ny-2, 1)
+
+
+            # Accumulate depth-integrated flux
+            U_KE_ts .+= (u_lp[:, :, k, :] .* ke_x_k .+
+                         v_lp[:, :, k, :] .* ke_y_k) .* reshape(drf_k, nx, ny, 1)
+        end
+
+
+        # --- Free all large arrays ---
         u_lp    = nothing
         v_lp    = nothing
-        ke_x    = nothing
-        ke_y    = nothing
+        ke_t    = nothing
         DRFfull = nothing
+        dx_avg  = nothing
+        dy_avg  = nothing
         GC.gc()
 
 
