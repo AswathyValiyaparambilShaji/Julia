@@ -118,7 +118,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read PE (full temporal resolution) ---
-        pe = Float64.(open(joinpath(base2, "pe", "pe_$suffix.bin"), "r") do io
+        pe = Float64.(open(joinpath(base2, "pe", "pe_tn_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
