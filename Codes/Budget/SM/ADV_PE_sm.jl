@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> PE flux for each 3-day period
 #   "weekly" -> PE flux mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> PE flux mean over full time record
-time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
+time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -246,7 +246,7 @@ if time_mode == "3day"
             println("Flux calculation complete")
 
 
-            output_dir = joinpath(base2, "U_PE_3day")
+            output_dir = joinpath(base2, "U_PE_3dayold")
             open(joinpath(output_dir, "u_pe_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(U_PE_3day))
             end
@@ -270,7 +270,7 @@ elseif time_mode == "weekly"
     println("Starting PE flux calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "U_PE_weekly"))
+    mkpath(joinpath(base2, "U_PE_weeklyold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -410,7 +410,7 @@ elseif time_mode == "weekly"
             u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_PE_weekly")
+            output_dir = joinpath(base2, "U_PE_weeklyold")
             open(joinpath(output_dir, "u_pe_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end
@@ -434,7 +434,7 @@ elseif time_mode == "full"
     println("Starting PE flux calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "U_PE"))
+    mkpath(joinpath(base2, "U_PE_old"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -574,7 +574,7 @@ elseif time_mode == "full"
             u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_PE")
+            output_dir = joinpath(base2, "U_PE_old")
             open(joinpath(output_dir, "u_pe_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end

@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> horizontal shear production for each 3-day period
 #   "weekly" -> horizontal shear production mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> horizontal shear production mean over full time record
-time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
+time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -97,7 +97,7 @@ if time_mode == "3day"
     println("Starting horizontal shear production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "SP_H_3day"))
+    mkpath(joinpath(base2, "SP_H_3dayold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -222,7 +222,7 @@ if time_mode == "3day"
             println("Horizontal shear production calculation complete")
 
 
-            output_dir = joinpath(base2, "SP_H_3day")
+            output_dir = joinpath(base2, "SP_H_3dayold")
             open(joinpath(output_dir, "sp_h_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H_3day))
             end
@@ -246,7 +246,7 @@ elseif time_mode == "weekly"
     println("Starting horizontal shear production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "SP_H_weekly"))
+    mkpath(joinpath(base2, "SP_H_weeklyold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -362,7 +362,7 @@ elseif time_mode == "weekly"
             SP_H = dropdims(mean(sp_h, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "SP_H_weekly")
+            output_dir = joinpath(base2, "SP_H_weeklyold")
             open(joinpath(output_dir, "sp_h_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H))
             end
@@ -386,7 +386,7 @@ elseif time_mode == "full"
     println("Starting horizontal shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "SP_H"))
+    mkpath(joinpath(base2, "SP_H_old"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -502,7 +502,7 @@ elseif time_mode == "full"
             SP_H = dropdims(mean(sp_h, dims=3), dims=3)
 
 
-            output_dir = joinpath(base2, "SP_H")
+            output_dir = joinpath(base2, "SP_H_old")
             open(joinpath(output_dir, "sp_h_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H))
             end
