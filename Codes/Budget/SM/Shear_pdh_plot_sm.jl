@@ -44,7 +44,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read time-averaged horizontal shear production
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_old", "sp_h_mean_$suffix.bin"), "r") do io
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -87,7 +87,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, SP_H_full;
                        interpolate=false,
                        colormap=Reverse(:RdBu),
-                       colorrange=(-0.05, 0.05))
+                       colorrange=(-0.01, 0.01))
 
 
 Colorbar(fig[1, 2], hm, label="Horizontal Shear Production [W/m²]")
@@ -98,7 +98,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "SP_H_production_v2_o.png"), fig)
+save(joinpath(FIGDIR, "SP_H_production_v3_n.png"), fig)
 
 
 
