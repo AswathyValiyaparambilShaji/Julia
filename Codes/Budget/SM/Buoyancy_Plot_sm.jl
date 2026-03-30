@@ -88,7 +88,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, BP_full;
                         interpolate=false,
                         colormap=Reverse(:RdBu),
-                        colorrange=(-0.05, 0.05))
+                        colorrange=(-0.01, 0.01))
 
 
 Colorbar(fig[1, 2], hm, label="Buoyancy Production [W/m²]")
@@ -99,7 +99,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "BP_production_v2.png"), fig)
+save(joinpath(FIGDIR, "BP_production_v3_n.png"), fig)
 
 
 
