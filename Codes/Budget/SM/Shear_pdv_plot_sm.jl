@@ -44,7 +44,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read time-averaged vertical shear production
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_old", "sp_v_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
