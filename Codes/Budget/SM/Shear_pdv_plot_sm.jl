@@ -87,7 +87,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, SP_V_full;
                        interpolate=false,
                        colormap=Reverse(:RdBu),
-                       colorrange=(-0.05, 0.05))
+                       colorrange=(-0.01, 0.01))
 
 
 Colorbar(fig[1, 2], hm, label="Vertical Shear Production [W/m²]")
@@ -98,7 +98,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "SP_V_production_v2_o.png"), fig)
+save(joinpath(FIGDIR, "SP_V_production_v3_o.png"), fig)
 
 
 
