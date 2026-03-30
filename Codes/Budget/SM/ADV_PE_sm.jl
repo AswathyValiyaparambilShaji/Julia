@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> PE flux for each 3-day period
 #   "weekly" -> PE flux mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> PE flux mean over full time record
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -93,7 +93,7 @@ if time_mode == "3day"
     println("Starting PE flux calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "U_PE_3dayold"))
+    mkpath(joinpath(base2, "U_PE_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
