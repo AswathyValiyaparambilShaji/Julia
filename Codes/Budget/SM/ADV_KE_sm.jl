@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> KE flux for each 3-day period
 #   "weekly" -> KE flux mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> KE flux mean over full time record
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 

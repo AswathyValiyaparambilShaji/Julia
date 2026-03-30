@@ -20,7 +20,7 @@ base2 = cfg["base_path2"]
 #   "weekly"     -> depth-averaged KE flux mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"       -> depth-averaged KE flux mean over full time record
 #   "timeseries" -> depth-averaged KE flux saved at every timestep (nx, ny, nt)
-time_mode = "3day"   # <-- change to "3day", "weekly", "full", or "timeseries"
+time_mode = "full"   # <-- change to "3day", "weekly", "full", or "timeseries"
 
 
 # --- Domain & grid ---
