@@ -38,11 +38,7 @@ TauX_all = zeros(NX, NY, nt)
 TauY_all = zeros(NX, NY, nt)
 
 
-# ============================================================================
-# LOAD AND ASSEMBLE TILES  (unchanged from original)
-# ============================================================================
-
-
+# Load and process tiles
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
@@ -61,7 +57,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        # Center from Arakawa C-grid
+        # Center from Arakawa C-grid - ALL TIME STEPS AT ONCE
         taux_ext = zeros(nx+1, ny, nt)
         taux_ext[1:nx, :, :] .= taux
         taux_ext[end, :, :]  .= taux[end, :, :]
@@ -94,7 +90,7 @@ end
 
 
 # ============================================================================
-# SETUP CROPPED DOMAIN
+# CROP TO VALID REGION (REMOVE BUFFER ZONES)
 # ============================================================================
 
 
@@ -106,13 +102,14 @@ NX_crop  = length(lon_crop)
 NY_crop  = length(lat_crop)
 
 
-println("\nCropped domain: $(NX_crop) × $(NY_crop)")
+println("Cropped domain:")
 println("  Lon: $(minimum(lon_crop))° to $(maximum(lon_crop))°")
 println("  Lat: $(minimum(lat_crop))° to $(maximum(lat_crop))°")
+println("  Size: $(NX_crop) × $(NY_crop)")
 
 
 # ============================================================================
-# GLOBAL COLOR RANGE  (single pass — needed for consistent colorbar)
+# GLOBAL COLOR RANGE (single pass for consistent colorbar)
 # ============================================================================
 
 
@@ -131,87 +128,19 @@ println("  Global max |τ| = $(@sprintf("%.4e", clim_max)) N/m²")
 # ============================================================================
 
 
-# Set frame_step > 1 to skip timesteps (e.g. 6 → every 6th step ≈ 1 frame/day)
-frame_step = 1          # change as needed
-framerate  = 24         # output frames per second
+frame_step = 1    # set > 1 to skip steps
+framerate  = 24
 
 
-frames = 1:frame_step:nt
+frames = collect(1:frame_step:nt)
 println("\nFrames to render: $(length(frames))  (step=$frame_step, fps=$framerate)")
 
 
 # Arrow parameters (identical to original)
-QUIVER_STEP       = 20
+QUIVER_STEP        = 20
 ARROW_LENGTH_SCALE = 0.6
-ARROW_HEAD_SIZE   = 10
-ARROW_LINE_WIDTH  = 2.0
-
-
-# Pre-compute fixed quiver grid positions
-qi_flat = [i for i in 1:QUIVER_STEP:NX_crop for _ in 1:QUIVER_STEP:NY_crop]
-qj_flat = [j for _ in 1:QUIVER_STEP:NX_crop for j in 1:QUIVER_STEP:NY_crop]
-qpos    = [Point2f(lon_crop[i], lat_crop[j]) for (i, j) in zip(qi_flat, qj_flat)]
-
-
-# Arrow scale: fixed so that the global-max vector spans one quiver cell
-cell_x       = (maximum(lon_crop) - minimum(lon_crop)) / NX_crop
-cell_y       = (maximum(lat_crop) - minimum(lat_crop)) / NY_crop
-target_length = min(cell_x, cell_y) * QUIVER_STEP * ARROW_LENGTH_SCALE
-arrow_scale  = target_length / max(clim_max, 1e-12)
-
-
-# ============================================================================
-# BUILD FIGURE WITH OBSERVABLES
-# ============================================================================
-
-
-t_idx = Observable(frames[1])
-
-
-# Magnitude field for heatmap
-mag_obs = @lift begin
-    sqrt.(TauX_all[valid_x, valid_y, $t_idx].^2 .+
-          TauY_all[valid_x, valid_y, $t_idx].^2)
-end
-
-
-# Arrow vectors (scaled)
-vec_obs = @lift begin
-    [Vec2f(arrow_scale * TauX_all[valid_x[i], valid_y[j], $t_idx],
-           arrow_scale * TauY_all[valid_x[i], valid_y[j], $t_idx])
-     for (i, j) in zip(qi_flat, qj_flat)]
-end
-
-
-# Title showing current time step
-title_obs = @lift @sprintf("Wind Stress — step %d / %d", $t_idx, nt)
-
-
-fig = Figure(size=(900, 700))
-ax  = Axis(fig[1, 1],
-    title      = title_obs,
-    xlabel     = "Longitude [°]",
-    ylabel     = "Latitude [°]",
-    xlabelsize = 20,
-    ylabelsize = 20,
-    titlesize  = 24,
-)
-
-
-hm = heatmap!(ax, lon_crop, lat_crop, mag_obs,
-    colorrange = (0, clim_max),
-    colormap   = :Spectral_9,
-)
-
-
-arrows!(ax, qpos, vec_obs,
-    color     = :black,
-    arrowsize = ARROW_HEAD_SIZE,
-    linewidth = ARROW_LINE_WIDTH,
-)
-
-
-Colorbar(fig[1, 2], hm, label = "[N/m²]")
+ARROW_HEAD_SIZE    = 10
+ARROW_LINE_WIDTH   = 2.0
 
 
 # ============================================================================
@@ -219,14 +148,77 @@ Colorbar(fig[1, 2], hm, label = "[N/m²]")
 # ============================================================================
 
 
-FIGDIR      = cfg["fig_base"]
+FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
 output_file = joinpath(FIGDIR, "WindStress_movie.mp4")
 
 
 println("\nRecording movie → $output_file")
+
+
+fig = Figure(size=(900, 700))
+
+
 record(fig, output_file, frames; framerate=framerate) do t
-    t_idx[] = t          # updating the Observable redraws everything
+
+
+    empty!(fig)   # clear previous frame content
+
+
+    ax = Axis(fig[1, 1],
+        title      = @sprintf("Wind Stress — step %d / %d", t, nt),
+        xlabel     = "Longitude [°]",
+        ylabel     = "Latitude [°]",
+        ylabelsize = 20,
+        xlabelsize = 20,
+        titlesize  = 24,
+    )
+
+
+    TauX_t  = TauX_all[valid_x, valid_y, t]
+    TauY_t  = TauY_all[valid_x, valid_y, t]
+    Tau_mag = sqrt.(TauX_t.^2 .+ TauY_t.^2)
+
+
+    hm = heatmap!(ax, lon_crop, lat_crop, Tau_mag,
+        colorrange = (0, clim_max),
+        colormap   = :Spectral_9,
+    )
+
+
+    # Build arrows exactly as in the original
+    pos = Point2f[]
+    vec = Vec2f[]
+
+
+    for i in 1:QUIVER_STEP:NX_crop, j in 1:QUIVER_STEP:NY_crop
+        u, v = TauX_t[i, j], TauY_t[i, j]
+        if isfinite(u) && isfinite(v)
+            push!(pos, Point2f(lon_crop[i], lat_crop[j]))
+            push!(vec, Vec2f(u, v))
+        end
+    end
+
+
+    if !isempty(vec)
+        maxm = maximum(norm, vec)
+        if maxm > 0
+            cell_x = (maximum(lon_crop) - minimum(lon_crop)) / NX_crop
+            cell_y = (maximum(lat_crop) - minimum(lat_crop)) / NY_crop
+            target_length = min(cell_x, cell_y) * QUIVER_STEP * ARROW_LENGTH_SCALE
+            scale = target_length / maxm
+
+
+            arrows!(ax, pos, scale .* vec,
+                color     = :black,
+                arrowsize = ARROW_HEAD_SIZE,
+                linewidth = ARROW_LINE_WIDTH,
+            )
+        end
+    end
+
+
+    Colorbar(fig[1, 2], hm, label = "[N/m²]")
 end
 
 
