@@ -333,8 +333,9 @@ lines!(ax2a, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",      
 axislegend(ax2a; position=:rt, leg_style...)
 
 
+display(fig1)
 
-rowgap!(fig2.layout, 1, 24)
+#rowgap!(fig2.layout, 1, 24)
 
 
 outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wn_v4.png")
