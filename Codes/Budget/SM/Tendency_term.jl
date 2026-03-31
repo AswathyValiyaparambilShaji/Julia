@@ -62,7 +62,7 @@ if use_3day
     # ========================================================================
     println("Starting energy tendency calculation for $nt3 3-day periods...")
     
-    mkpath(joinpath(base2, "TE_t_3day"))
+    mkpath(joinpath(base2, "TE_tn_3day"))
     
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -71,7 +71,7 @@ if use_3day
             println("\n--- Processing tile: $suffix (3-day) ---")
             
             # --- Read APE ---
-            APE = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+            APE = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
             end)
@@ -129,10 +129,10 @@ if use_3day
             println("3-day averaging complete")
             
             # --- Save output ---
-            output_dir = joinpath(base2, "TE_t_3day")
+            output_dir = joinpath(base2, "TE_tn_3day")
             
             # Save 3-day averaged energy tendency
-            open(joinpath(output_dir, "te_t_3day_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "te_tn_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(dEdt_3day))
             end
             
@@ -149,7 +149,7 @@ else
     # ========================================================================
     println("Starting energy tendency calculation for full time average...")
     
-    mkpath(joinpath(base2, "TE_t"))
+    mkpath(joinpath(base2, "TE_tn"))
     
     for xn in cfg["xn_start"]:cfg["xn_end"]
         for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -158,7 +158,7 @@ else
             println("\n--- Processing tile: $suffix ---")
             
             # --- Read APE ---
-            APE = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+            APE = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
             end)
@@ -205,10 +205,10 @@ else
             dEdt_time_avg[:, :] = mean(dEdt_depth_int[:, :, :], dims=3)
             
             # --- Save output ---
-            output_dir = joinpath(base2, "TE_t")
+            output_dir = joinpath(base2, "TE_tn")
             
             # Save time-averaged, depth-integrated tendency
-            open(joinpath(output_dir, "te_t_mean_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "te_tn_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(dEdt_time_avg))
             end
             

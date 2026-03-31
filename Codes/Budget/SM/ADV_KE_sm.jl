@@ -91,7 +91,7 @@ if time_mode == "3day"
     println("Starting KE flux calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "U_KE_3day"))
+    mkpath(joinpath(base2, "U_KE_3dayold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -222,7 +222,7 @@ elseif time_mode == "weekly"
     println("Starting KE flux calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "U_KE_weekly"))
+    mkpath(joinpath(base2, "U_KE_weeklyold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -344,7 +344,7 @@ elseif time_mode == "full"
     println("Starting KE flux calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "U_KE"))
+    mkpath(joinpath(base2, "U_KE_old"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -442,7 +442,7 @@ elseif time_mode == "full"
             u_ke_mean = dropdims(mean(U_KE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_KE")
+            output_dir = joinpath(base2, "U_KE_old")
             open(joinpath(output_dir, "u_ke_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_ke_mean))
             end
