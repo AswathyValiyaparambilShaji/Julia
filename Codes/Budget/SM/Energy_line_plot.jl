@@ -87,41 +87,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # ---- KE: read as Float32, depth-integrate immediately, then widen ----
         # Avoids holding a Float64 copy of the full nx×ny×nz×nt array in memory.
-        println("  Reading KE...")
         DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))   # Float32 weights
-
-
-        ke_di = open(joinpath(base2, "KE", "ke_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float32)
-            ke_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
-            # depth-integrate in Float32, widen result to Float64
-            Float64.(dropdims(sum(ke_raw .* DRFfull4_f32, dims=3), dims=3))   # nx×ny×nt
-        end  # ke_raw freed here
-
-
-        # ---- APE: same pattern ----
-        println("  Reading APE...")
-        DRF3d4_f32 = Float32.(reshape(DRF3d, nx, ny, nz, 1))
-
-
-        pe_di = open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float32)
-            ape_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
-            ape_raw[isnan.(ape_raw)] .= 0f0
-            Float64.(dropdims(sum(ape_raw .* DRF3d4_f32, dims=3), dims=3))   # nx×ny×nt
-        end  # ape_raw freed here
-
-
-        # ---- Average into 3-day periods ----
-        ke_3day = zeros(nx, ny, nt3)
-        pe_3day = zeros(nx, ny, nt3)
-        for t in 1:nt3
-            t_start = (t-1)*ts + 1
-            t_end   = min(t*ts, nt)
-            ke_3day[:, :, t] = mean(ke_di[:, :, t_start:t_end], dims=3)
-            pe_3day[:, :, t] = mean(pe_di[:, :, t_start:t_end], dims=3)
-        end
-
 
         # ---- Budget terms (already 3-day averaged) ----
         fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
@@ -152,7 +118,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
+        te_3day = Float64.(open(joinpath(base2, "TE_tn_3day", "te_tn_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
@@ -177,9 +143,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
 
-
-        KE_full[xs+2:xe-2, ys+2:ye-2, :] .= ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        PE_full[xs+2:xe-2, ys+2:ye-2, :] .= pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
 
 
         # Static fields
@@ -231,11 +194,6 @@ BP_n    = norm_field(BP_full)
 ET_n    = norm_field(ET_full)
 
 
-# KE and PE: already depth-integrated (J/m²); normalise by ρ₀·H → J/kg
-KE_n = norm_field(KE_full)
-PE_n = norm_field(PE_full)
-
-
 # Derived budget terms
 A_n          = U_KE_n .+ U_PE_n
 PS_n         = SP_H_n .+ SP_V_n
@@ -253,8 +211,6 @@ A_avg         = area_avg(A_n,        valid_mask, RAC, total_area)
 ET_avg        = area_avg(ET_n,       valid_mask, RAC, total_area)
 Residual_avg  = area_avg(Residual_n, valid_mask, RAC, total_area)
 Residual_avg1 = area_avg(Residual_n1,valid_mask, RAC, total_area)
-KE_avg        = area_avg(KE_n,       valid_mask, RAC, total_area)
-PE_avg        = area_avg(PE_n,       valid_mask, RAC, total_area)
 
 
 # Time axis
@@ -271,8 +227,6 @@ c_ps   = RGBf(0.10, 0.60, 0.30)   # forest green
 c_bp   = RGBf(0.80, 0.40, 0.00)   # burnt amber
 c_a    = RGBf(0.50, 0.15, 0.75)   # violet
 c_et   = RGBf(0.55, 0.40, 0.05)   # dark gold
-c_ke   = RGBf(0.00, 0.50, 0.70)   # teal
-c_pe   = RGBf(0.75, 0.10, 0.55)   # magenta
 
 
 tick_col = RGBf(0.20, 0.20, 0.20)
@@ -356,8 +310,8 @@ display(fig1)
 # ============================================================
 # Figure 2: Budget terms WITH tendency + KE/APE panel (1100×800)
 # ============================================================
-println("\nCreating Figure 2 (with tendency + KE/APE)...")
-fig2 = Figure(resolution=(1100, 800), fontsize=14, backgroundcolor=:white)
+println("\nCreating Figure 2 (with tendency )...")
+fig2 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
 
 
 # --- Subplot 1: all budget terms including tendency ---
@@ -379,24 +333,11 @@ lines!(ax2a, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",      
 axislegend(ax2a; position=:rt, leg_style...)
 
 
-# --- Subplot 2: KE and APE ---
-ax2b = Axis(fig2[2, 1];
-    title  = "Kinetic Energy and Available Potential Energy",
-    xlabel = "Time  [days]",
-    ylabel = "Energy  [×10⁻⁸ J kg⁻¹]",
-    axis_theme...)
-
-
-hlines!(ax2b, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
-lines!(ax2b, time_days, KE_avg .* sc; label="⟨KE⟩  Kinetic energy",     color=c_ke, linewidth=2.0)
-lines!(ax2b, time_days, PE_avg .* sc; label="⟨APE⟩  Avail. pot. energy", color=c_pe, linewidth=2.0)
-axislegend(ax2b; position=:rt, leg_style...)
-
 
 rowgap!(fig2.layout, 1, 24)
 
 
-outpath2 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v4.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wn_v4.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
