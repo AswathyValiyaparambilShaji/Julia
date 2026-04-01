@@ -1,13 +1,6 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
-
-
-
-
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
-
-
-
 
 # Load configuration
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
@@ -15,18 +8,12 @@ cfg = TOML.parsefile(config_file)
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
-
-
-
 # --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
-
-
-
 
 # --- Tile & time parameters ---
 buf  = 3
@@ -42,31 +29,13 @@ ts  = 72                     # timesteps per 3-day period (3*24)
 nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
 nt3 = div(nt, 3*24)
 
-
-
-
 rho0 = 999.8
-
-
-
 
 # --- Thickness ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF  = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 println("Computing area-averaged KE and PE for $nt3 3-day periods...")
-
-
-
-
-# ============================================================
-# Global accumulators (NX×NY grids)
-# ============================================================
-KE_full   = zeros(NX, NY, nt3)
-PE_full   = zeros(NX, NY, nt3)
-
-
-
 
 # Budget terms (from existing 3-day files)
 Conv_full  = zeros(NX, NY, nt3)
@@ -80,9 +49,6 @@ ET_full    = zeros(NX, NY, nt3)
 FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
 
-
-
-
 # ============================================================
 # Loop over tiles
 # ============================================================
@@ -91,9 +57,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
         println("\n--- Tile $suffix ---")
-
-
-
 
         # ---- Grid metrics ----
         hFacC  = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
@@ -104,15 +67,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         DRFfull[hFacC .== 0] .= 0.0
         rac = dx .* dy
 
-
-
-
         # ---- KE: read as Float32, depth-integrate immediately, then widen ----
         println("  Reading KE...")
         DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))   # Float32 weights
-
-
-
 
         ke_di = open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
@@ -121,38 +78,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             Float64.(dropdims(sum(ke_raw .* DRFfull4_f32, dims=3), dims=3))   # nx×ny×nt
         end  # ke_raw freed here
 
-
-
-
         # ---- APE: same pattern ----
         println("  Reading APE...")
         DRF3d4_f32 = Float32.(reshape(DRF3d, nx, ny, nz, 1))
-
-
-
-
-        pe_di = open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nz * nt * sizeof(Float32)
-            ape_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
-            ape_raw[isnan.(ape_raw)] .= 0f0
-            Float64.(dropdims(sum(ape_raw .* DRF3d4_f32, dims=3), dims=3))   # nx×ny×nt
-        end  # ape_raw freed here
-
-
-
-
-        # ---- Average into 3-day periods ----
-        ke_3day = zeros(nx, ny, nt3)
-        pe_3day = zeros(nx, ny, nt3)
-        for t in 1:nt3
-            t_start = (t-1)*ts + 1
-            t_end   = min(t*ts, nt)
-            ke_3day[:, :, t] = mean(ke_di[:, :, t_start:t_end], dims=3)
-            pe_3day[:, :, t] = mean(pe_di[:, :, t_start:t_end], dims=3)
-        end
-
-
-
 
         # ---- Budget terms (already 3-day averaged) ----
         fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
@@ -183,13 +111,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
+        te_3day = Float64.(open(joinpath(base2, "TE_tn_3day", "te_tn_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
-
 
         # ---- Tile position in global grid ----
         xs = (xn - 1) * tx + 1
@@ -197,15 +122,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
 
-
-
-
         # ---- Update global arrays (remove buffer zones) ----
         Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
         FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
-
-
-
 
         U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         U_PE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
@@ -214,28 +133,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
 
-
-
-
-        KE_full[xs+2:xe-2, ys+2:ye-2, :] .= ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        PE_full[xs+2:xe-2, ys+2:ye-2, :] .= pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-
-
-
-
         # Static fields
         FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
         RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
-
-
-
         println("  Done.")
     end
 end
-
-
-
 
 # ============================================================
 # Area-weighted averages
@@ -243,9 +147,6 @@ end
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
 println("\nValid points: $(sum(valid_mask)) / $(length(valid_mask))")
 total_area = sum(RAC[valid_mask])
-
-
-
 
 # helper: area-weighted average of a 3D (NX×NY×nt3) field over valid points
 function area_avg(F, vmask, RAC, total_area)
@@ -257,9 +158,6 @@ function area_avg(F, vmask, RAC, total_area)
     return out
 end
 
-
-
-
 # Normalise budget terms by ρ₀·H (→ W/kg)
 norm_field(F) = begin
     Fn = zeros(size(F))
@@ -268,9 +166,6 @@ norm_field(F) = begin
     end
     Fn
 end
-
-
-
 
 Conv_n  = norm_field(Conv_full)
 FDiv_n  = norm_field(FDiv_full)
@@ -281,25 +176,12 @@ SP_V_n  = norm_field(SP_V_full)
 BP_n    = norm_field(BP_full)
 ET_n    = norm_field(ET_full)
 
-
-
-
-# KE and PE: already depth-integrated (J/m²); normalise by ρ₀·H → J/kg
-KE_n = norm_field(KE_full)
-PE_n = norm_field(PE_full)
-
-
-
-
 # Derived budget terms
 A_n          = U_KE_n .+ U_PE_n
 PS_n         = SP_H_n .+ SP_V_n
 TotalFlux_n  = FDiv_n .+ U_KE_n .+ U_PE_n
 Residual_n   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
 Residual_n1  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
-
-
-
 
 # Time series (area-weighted)
 Conv_avg      = area_avg(Conv_n,     valid_mask, RAC, total_area)
@@ -312,17 +194,9 @@ A_avg         = area_avg(A_n,        valid_mask, RAC, total_area)
 ET_avg        = area_avg(ET_n,       valid_mask, RAC, total_area)
 Residual_avg  = area_avg(Residual_n, valid_mask, RAC, total_area)
 Residual_avg1 = area_avg(Residual_n1,valid_mask, RAC, total_area)
-KE_avg        = area_avg(KE_n,       valid_mask, RAC, total_area)
-PE_avg        = area_avg(PE_n,       valid_mask, RAC, total_area)
-
-
-
 
 # Time axis
 time_days = collect(1:nt3) .* 3
-
-
-
 
 # ============================================================
 # Shared theme helpers
@@ -335,17 +209,9 @@ c_psv  = RGBf(0.00, 0.78, 0.65)   # teal-green      — vertical shear
 c_bp   = RGBf(0.80, 0.40, 0.00)   # burnt amber     — buoyancy production
 c_a    = RGBf(0.50, 0.15, 0.75)   # violet          — advection
 c_et   = RGBf(0.55, 0.40, 0.05)   # dark gold       — tendency
-c_ke   = RGBf(0.00, 0.50, 0.70)   # teal            — KE
-c_pe   = RGBf(0.75, 0.10, 0.55)   # magenta         — PE
-
-
-
 
 tick_col = RGBf(0.20, 0.20, 0.20)
 grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
-
-
-
 
 axis_theme = (
     backgroundcolor   = :white,
@@ -371,15 +237,7 @@ axis_theme = (
     leftspinecolor    = tick_col,
     bottomspinecolor  = tick_col,
 )
-
-
-
-
 sc = 1e8   # scale factor for display
-
-
-
-
 leg_style = (
     framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
     backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
@@ -388,9 +246,6 @@ leg_style = (
     rowgap          = 3,
     patchsize       = (22, 2),
 )
-
-
-
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
@@ -473,7 +328,7 @@ axislegend(ax2a; position=:rt, leg_style...)
 
 # --- Subplot 2: Buoyancy production and vertical shear production ---
 ax2b = Axis(fig2[2, 1];
-    title  = "Buoyancy Production and Horizontal Shear Production",
+    title  = "Buoyancy Production and Veretical Shear Production",
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W kg⁻¹]",
     axis_theme...)
@@ -483,14 +338,14 @@ ax2b = Axis(fig2[2, 1];
 
 hlines!(ax2b, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 lines!(ax2b, time_days, BP_avg   .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",     color=c_bp,  linewidth=2.0)
-#lines!(ax2b, time_days, SP_V_avg .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.", color=c_psv, linewidth=2.0)
-lines!(ax2b, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
+lines!(ax2b, time_days, SP_V_avg .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.", color=c_psv, linewidth=2.0)
+#lines!(ax2b, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
 axislegend(ax2b; position=:rt, leg_style...)
 
 
 
 
-rowgap!(fig2.layout, 1, 24)
+#rowgap!(fig2.layout, 1, 24)
 
 
 

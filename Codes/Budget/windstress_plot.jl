@@ -114,11 +114,13 @@ println("  Size: $(NX_crop) × $(NY_crop)")
 
 
 println("\nComputing global magnitude range over $nt steps...")
-clim_max = 0.0
-for t in 1:nt
-    mag_t = sqrt.(TauX_all[valid_x, valid_y, t].^2 .+
-                  TauY_all[valid_x, valid_y, t].^2)
-    clim_max = max(clim_max, maximum(mag_t))
+clim_max = let cmax = 0.0
+    for t in 1:nt
+        mag_t = sqrt.(TauX_all[valid_x, valid_y, t].^2 .+
+                      TauY_all[valid_x, valid_y, t].^2)
+        cmax = max(cmax, maximum(mag_t))
+    end
+    cmax
 end
 println("  Global max |τ| = $(@sprintf("%.4e", clim_max)) N/m²")
 
