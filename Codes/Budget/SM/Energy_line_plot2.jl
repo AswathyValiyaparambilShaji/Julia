@@ -285,7 +285,7 @@ axislegend(ax1; position=:rt, leg_style...)
 
 
 
-outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v5.png")
+outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v6_n.png")
 save(outpath1, fig1, px_per_unit=2)
 println("Figure 1 saved → $outpath1")
 display(fig1)
@@ -350,7 +350,7 @@ axislegend(ax2b; position=:rt, leg_style...)
 
 
 
-outpath2 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v4.png")
+outpath2 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v5_n.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
