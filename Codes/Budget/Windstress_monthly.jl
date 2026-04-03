@@ -146,7 +146,8 @@ mkpath(FIGDIR)
 # ============================================================================
 
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure(size = (1200, 900))
+hm  = nothing
 for mi in 1:4
     row = (mi - 1) ÷ 2 + 1
     col = (mi - 1) % 2 + 1
@@ -155,20 +156,19 @@ for mi in 1:4
     mag = sqrt.(TauX_monthly[:, :, mi].^2 .+ TauY_monthly[:, :, mi].^2)
     hm  = heatmap!(ax, lon_crop, lat_crop, mag,
                    colorrange = (0.0, 0.4), colormap = :jet)
-    #Colorbar(fig[row, col+2], hm, label = "|τ| [N/m²]")
 end
-    Colorbar(fig[1:2, 3], hm, label = "|τ| [N/m²]")
-
+Colorbar(fig[1:2, 3], hm, label = "|τ| [N/m²]")
 save(joinpath(FIGDIR, "WindStress_Magnitude_monthly.png"), fig)
 println("Saved WindStress_Magnitude_monthly.png")
-display(fig)
+
 
 # ============================================================================
 # PLOT 2 — Zonal Wind Stress τx
 # ============================================================================
 
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure(size = (1200, 900))
+hm  = nothing
 for mi in 1:4
     row = (mi - 1) ÷ 2 + 1
     col = (mi - 1) % 2 + 1
@@ -176,12 +176,10 @@ for mi in 1:4
                xlabel = "Longitude [°]", ylabel = "Latitude [°]")
     hm  = heatmap!(ax, lon_crop, lat_crop, TauX_monthly[:, :, mi],
                    colorrange = (-0.2, 0.3), colormap = :jet)
-    #Colorbar(fig[row, col+2], hm, label = "τx [N/m²]")
 end
- Colorbar(fig[1:2, 3], hm, label = "τx [N/m²]")
+Colorbar(fig[1:2, 3], hm, label = "τx [N/m²]")
 save(joinpath(FIGDIR, "WindStress_TauX_monthly.png"), fig)
 println("Saved WindStress_TauX_monthly.png")
-display(fig)
 
 
 # ============================================================================
@@ -189,7 +187,8 @@ display(fig)
 # ============================================================================
 
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure(size = (1200, 900))
+hm  = nothing
 for mi in 1:4
     row = (mi - 1) ÷ 2 + 1
     col = (mi - 1) % 2 + 1
@@ -197,13 +196,10 @@ for mi in 1:4
                xlabel = "Longitude [°]", ylabel = "Latitude [°]")
     hm  = heatmap!(ax, lon_crop, lat_crop, TauY_monthly[:, :, mi],
                    colorrange = (-0.2, 0.3), colormap = :jet)
-    #Colorbar(fig[row, col+2], hm, label = "τy [N/m²]")
 end
-    Colorbar(fig[1:2, 3], hm, label = "τy [N/m²]")
-
+Colorbar(fig[1:2, 3], hm, label = "τy [N/m²]")
 save(joinpath(FIGDIR, "WindStress_TauY_monthly.png"), fig)
 println("Saved WindStress_TauY_monthly.png")
-display(fig)
 
 
 println("Done!")
