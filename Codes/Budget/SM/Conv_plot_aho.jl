@@ -144,6 +144,35 @@ mkpath(FIGDIR)
 save(joinpath(FIGDIR, "ConvZ_Ah0_map.png"), fig)
 println("Figure saved: $(joinpath(FIGDIR, "ConvZ_Ah0_map.png"))")
 
+# ============================================================================
+# PLOT 2  — Ah0 only
+# ============================================================================
+
+clim2 = (-0.000050, 0.000050)
+fig2 = Figure(size = (700, 500))
 
 
+ax2 = Axis(fig2[1, 1],
+    title  = "Barotropic Reynolds Stress Ah0  (W/m²)",
+    xlabel = "Longitude [°]",
+    ylabel = "Latitude [°]")
+ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
+
+CairoMakie.heatmap!(ax2, lonv, latv, Ah0;
+    interpolate = false,
+    colorrange  = clim2,
+    colormap    = cmap)
+
+
+Colorbar(fig2[1, 2];
+    colormap   = cmap,
+    colorrange = clim2,
+    label      = "W/m²")
+
+
+display(fig2)
+
+
+save(joinpath(FIGDIR, "Ah0_map.png"), fig2)
+println("Figure saved: $(joinpath(FIGDIR, "Ah0_map.png"))")
