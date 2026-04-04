@@ -99,7 +99,7 @@ lonv = collect(lon)
 latv = collect(lat)
 
 
-fig = Figure(resolution = (1600, 500))
+fig = Figure(size = (1600, 500))
 
 
 titles = ["Vertical Conversion Cz  (W/m²)",
@@ -108,7 +108,6 @@ titles = ["Vertical Conversion Cz  (W/m²)",
 fields = [Conv_z, Ah0, Conv_net]
 
 
-hm_last = nothing  # will hold the last heatmap object for the shared colorbar
 for (col, (title, field)) in enumerate(zip(titles, fields))
     ax = Axis(fig[1, col],
         title  = title,
@@ -117,15 +116,19 @@ for (col, (title, field)) in enumerate(zip(titles, fields))
     ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 
-    hm_last = CairoMakie.heatmap!(ax, lonv, latv, field;
+    CairoMakie.heatmap!(ax, lonv, latv, field;
         interpolate = false,
         colorrange  = clim,
         colormap    = cmap)
 end
 
 
-# Single shared colorbar to the right of all three panels
-Colorbar(fig[1, 4], hm_last, label = "W/m²")
+# Single shared colorbar built directly from colorrange + colormap
+# — does not depend on the heatmap object at all
+Colorbar(fig[1, 4];
+    colormap   = cmap,
+    colorrange = clim,
+    label      = "W/m²")
 
 
 println("Conv_z   sample: $(Conv_z[10,10])")
