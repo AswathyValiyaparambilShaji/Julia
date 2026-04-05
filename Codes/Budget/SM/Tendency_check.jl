@@ -1,8 +1,6 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
 
 
-
-
 if !isdefined(Main, :FluxUtils)
     include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 end
@@ -19,16 +17,12 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-
-
 # --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
-
-
 
 
 # --- Tile & time parameters ---
@@ -49,14 +43,10 @@ dt_output = dt * dto       # seconds per output interval = 3600 s
 rho0 = 999.8
 
 
-
-
 # --- Thickness ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF  = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-
-
 
 
 # ============================================================
@@ -67,8 +57,6 @@ PE_full   = zeros(NX, NY, nt3)
 TE_t_full = zeros(NX, NY, nt3)   # 3-day tendency of TE
 FH        = zeros(NX, NY)
 RAC       = zeros(NX, NY)
-
-
 
 
 # ============================================================
@@ -100,10 +88,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # ---- Read APE ----
         ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
-          nbytes = nx * ny * nz * nt * sizeof(Float32)
-          reshape(reinterpret(Float32, read(io, nbytes)),
-                  nx, ny, nz, nt)
-      end)
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)),
+                    nx, ny, nz, nt)
+        end)
 
 
         # ---- Depth-integrate KE (weighted by DRFfull) ----
@@ -160,8 +148,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-
-
 # ============================================================
 # Time-mean KE and PE
 # ============================================================
@@ -173,8 +159,6 @@ valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
 
 
 lat_vec = collect(lat)
-
-
 
 
 # ============================================================
@@ -224,8 +208,6 @@ end
 ratio_binned = KE_binned ./ PE_binned
 
 
-
-
 # ============================================================
 # Theoretical (ω²+f²)/(ω²-f²) for semidiurnal band (9–15 hr)
 # evaluated at bin centres
@@ -254,14 +236,10 @@ for b in 1:nbins
 end
 
 
-
-
 # ============================================================
 # Output directory
 # ============================================================
 mkpath(joinpath(base2, "EnergyRatio"))
-
-
 
 
 # ============================================================
@@ -281,10 +259,8 @@ axislegend(ax1, position=:rt)
 
 
 save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v4.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v4.png")
+println("Saved: KE_APE_zonal_binned_v5.png")
 display(fig1)
-
-
 
 
 # ============================================================
@@ -300,14 +276,18 @@ ax2  = Axis(fig2[1, 1],
     limits    = ((0, 6), (minlat, maxlat)))
 
 
-# Shaded band between 9-hr and 15-hr theoretical curves
+# ---- Shaded band between 9-hr and 15-hr theoretical curves ----
+# direction=:y is required because latitude is on the Y-axis and
+# ratio is on the X-axis: band! fills between x_left and x_right
+# at each y value (latitude).
 valid_band = isfinite.(theory_lo) .& isfinite.(theory_hi)
 if any(valid_band)
     band!(ax2,
-        bin_centers[valid_band],
-        theory_lo[valid_band],
-        theory_hi[valid_band],
-        color = (:darkorange, 0.20))
+        bin_centers[valid_band],   # y values  (latitude)
+        theory_lo[valid_band],     # x left  boundary (15-hr curve, larger ratio)
+        theory_hi[valid_band],     # x right boundary (9-hr  curve, smaller ratio)
+        direction = :y,            # <-- THIS was missing: fills along Y, spans X
+        color = (:darkorange, 0.25))
 end
 
 
@@ -320,7 +300,7 @@ lines!(ax2, theory_M2, bin_centers,
 # Observed KE/APE ratio
 lines!(ax2, ratio_binned, bin_centers,
     color=:royalblue, linewidth=2.5,
-    label="KE / APE  (observed, 0.25° bins)")
+    label="KE / APE  (observed, 0.9° bins)")
 
 
 # KE = APE reference line
@@ -333,10 +313,8 @@ axislegend(ax2, position=:rt, labelsize=11)
 
 
 save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v4.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v4.png")
+println("Saved: KE_APE_ratio_zonal_binned_v5.png")
 display(fig2)
-
-
 
 
 println("\nDone!")
