@@ -106,16 +106,17 @@ plot_dir = joinpath(base, "Figures")
 EKE_max = maximum(EKE_mean[EKE_mean .> 0])
 
 
-fig = Figure(size=(1000, 800))
+fig = Figure(resolution=(700, 600))
 ax  = Axis(fig[1, 1],
     xlabel  = "Longitude (°E)",
     ylabel  = "Latitude (°N)",
     title   = "Time-Mean Surface EKE",
-    aspect  = DataAspect())
+)
+    #aspect  = DataAspect())
 
 
 hm = CairoMakie.heatmap!(ax, lon, lat, EKE_mean,
-    colormap   = :thermal,
+    colormap   = :jet,
     colorrange = (0, EKE_max))
 
 
