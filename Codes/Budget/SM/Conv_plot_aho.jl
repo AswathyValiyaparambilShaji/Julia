@@ -148,7 +148,7 @@ println("Figure saved: $(joinpath(FIGDIR, "ConvZ_Ah0_map.png"))")
 # PLOT 2  — Ah0 only
 # ============================================================================
 
-clim2 = (-0.000050, 0.000050)
+clim2 = (-0.50, 0.50)
 fig2 = Figure(size = (700, 500))
 
 
@@ -159,7 +159,7 @@ ax2 = Axis(fig2[1, 1],
 ax2.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 
-CairoMakie.heatmap!(ax2, lonv, latv, Ah0;
+CairoMakie.heatmap!(ax2, lonv, latv, Ah0.*100000;
     interpolate = false,
     colorrange  = clim2,
     colormap    = cmap)
@@ -168,11 +168,11 @@ CairoMakie.heatmap!(ax2, lonv, latv, Ah0;
 Colorbar(fig2[1, 2];
     colormap   = cmap,
     colorrange = clim2,
-    label      = "W/m²")
+    label=rich("[x 10",superscript("-5"),"W/m²]"))
 
 
 display(fig2)
 
 
-save(joinpath(FIGDIR, "Ah0_map.png"), fig2)
-println("Figure saved: $(joinpath(FIGDIR, "Ah0_map.png"))")
+save(joinpath(FIGDIR, "Ah0_map_v1.png"), fig2)
+println("Figure saved: $(joinpath(FIGDIR, "Ah0_map_v1.png"))")
