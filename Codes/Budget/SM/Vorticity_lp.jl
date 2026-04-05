@@ -146,7 +146,7 @@ ax  = Axis(fig[1, 1],
 
 hm = CairoMakie.heatmap!(ax, lon, lat, VT_global,
     colormap   = :RdBu,
-    colorrange = (-clim, clim))
+    colorrange = (-0.5, 0.5))
 
 
 Colorbar(fig[1, 2], hm, label = "ζ/f")
