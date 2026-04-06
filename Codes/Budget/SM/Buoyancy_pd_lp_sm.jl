@@ -153,7 +153,8 @@ function process_tile(suffix, base, base2, nx, ny, nz, nt, nt3,
     N2_raw = Float64.(read_bin(joinpath(base, "N2", "N2_$suffix.bin"),
                                (nx, ny, nz, nt)))
 
-
+    nan_mask = isnan.(N2_raw)
+    N2_raw[nan_mask] .= 0.0
     N2_2d = reshape(permutedims(N2_raw, (4,1,2,3)), nt, nx*ny*nz)
     N2_raw = nothing
     GC.gc()
@@ -167,7 +168,8 @@ function process_tile(suffix, base, base2, nx, ny, nz, nt, nt3,
     N2_filt = permutedims(reshape(N2_filt_2d, nt, nx, ny, nz), (2,3,4,1))  # (nx, ny, nz, nt)
     N2_filt_2d = nothing
     GC.gc()
-
+    N2_filt[nan_mask] .= NaN
+    nan_mask = nothing; GC.gc()
 
     # --- Adjust N2 to nz+1 levels (interfaces) then average to centers ---
     N2_adjusted = zeros(Float64, nx, ny, nz+1, nt)
