@@ -189,7 +189,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         temp = (u_lp .* pe_x .+ v_lp .* pe_y) ./ N2_center
         temp[isnan.(temp)] .= 0.0
         U_PE_ts = rho0 .* dropdims(sum(temp .* DRFfull, dims=3), dims=3)
-
+        pe_x,pe_y,temp,N2_center,N2_adjusted,N2_filt,N2_2d,N2_filt_2d,N2_raw = nothing; GC.gc()
 
         # --- Save based on time_mode — cast to Float32 only here ---
         if time_mode == "timeseries"
