@@ -7,7 +7,7 @@ using .FluxUtils: read_bin, bandpassfilter
 
 
 config_file = get(ENV, "JULIA_CONFIG",
-            joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+           joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 
 
@@ -31,10 +31,10 @@ ny = ty + 2*buf
 nz = 88
 
 
-dt  = 1       # hourly output, dt = 1 hr
+dt  = 1
 dto = 144
 Tts = 366192
-nt  = div(Tts, dto)   # ~2543 hourly timesteps
+nt  = div(Tts, dto)
 
 
 # --- Thickness & constants ---
@@ -72,32 +72,49 @@ for yn in cfg["yn_start"]:cfg["yn_end"]
     N2_raw = Float64.(read_bin(joinpath(base, "N2", "N2_$suffix.bin"),
                                (nx, ny, nz, nt)))
     println("  N2 raw range: ", extrema(filter(isfinite, N2_raw)))
+    println("  NaN count in N2_raw: ", sum(isnan.(N2_raw)))
 
 
     # ----------------------------------------------------------
-    # 2. Low-pass filter N2 along time (36 hr cutoff, order 4)
-    #    filtfilt operates along dim-1, so reshape to (nt, nx*ny*nz)
+    # 2. Replace NaNs with 0 before filtering, store mask
+    # ----------------------------------------------------------
+    nan_mask = isnan.(N2_raw)
+    N2_raw[nan_mask] .= 0.0
+
+
+    # ----------------------------------------------------------
+    # 3. Low-pass filter N2 along time (36 hr cutoff, order 4)
     # ----------------------------------------------------------
     println("  Low-pass filtering N2 (Tcut=36 hr)...")
-    N2_2d = permutedims(N2_raw, (4, 1, 2, 3))          # (nt, nx, ny, nz)
-    N2_2d = reshape(N2_2d, nt, nx*ny*nz)                # (nt, nx*ny*nz)
+    N2_2d      = permutedims(N2_raw, (4, 1, 2, 3))          # (nt, nx, ny, nz)
+    N2_2d      = reshape(N2_2d, nt, nx*ny*nz)
+    N2_raw     = nothing; GC.gc()
 
 
-    N2_filt_2d = lowhighpass_butter(N2_2d, 36.0, dt, 4, "low")  # (nt, nx*ny*nz)
+    N2_filt_2d = lowhighpass_butter(N2_2d, 36.0, dt, 4, "low")
+    N2_2d      = nothing; GC.gc()
 
 
-    N2_filt = reshape(N2_filt_2d, nt, nx, ny, nz)       # (nt, nx, ny, nz)
-    N2_filt = permutedims(N2_filt, (2, 3, 4, 1))        # (nx, ny, nz, nt)
+    N2_filt    = reshape(N2_filt_2d, nt, nx, ny, nz)
+    N2_filt_2d = nothing; GC.gc()
+    N2_filt    = permutedims(N2_filt, (2, 3, 4, 1))         # (nx, ny, nz, nt)
 
 
     # ----------------------------------------------------------
-    # 3. Adjust filtered N2 to interfaces then average to centers
-    #    (same approach as APE script for consistency)
+    # 4. Restore NaNs after filtering
+    # ----------------------------------------------------------
+    N2_filt[nan_mask] .= NaN
+    nan_mask = nothing; GC.gc()
+
+
+    # ----------------------------------------------------------
+    # 5. Adjust filtered N2 to interfaces then average to centers
     # ----------------------------------------------------------
     N2_adjusted = zeros(Float64, nx, ny, nz+1, nt)
-    N2_adjusted[:, :, 1,      :] = N2_filt[:, :, 1,      :]
-    N2_adjusted[:, :, 2:nz,   :] = N2_filt[:, :, 1:nz-1, :]
-    N2_adjusted[:, :, nz+1,   :] = N2_filt[:, :, nz-1,   :]
+    N2_adjusted[:, :, 1,    :] = N2_filt[:, :, 1,    :]
+    N2_adjusted[:, :, 2:nz, :] = N2_filt[:, :, 1:nz-1, :]
+    N2_adjusted[:, :, nz+1, :] = N2_filt[:, :, nz-1, :]
+    N2_filt = nothing; GC.gc()
 
 
     N2_center = zeros(Float64, nx, ny, nz, nt)
@@ -106,21 +123,19 @@ for yn in cfg["yn_start"]:cfg["yn_end"]
             0.5 .* (N2_adjusted[:, :, k,   :] .+
                     N2_adjusted[:, :, k+1,  :])
     end
+    N2_adjusted = nothing; GC.gc()
 
 
     # ----------------------------------------------------------
-    # 4. Apply physical threshold
+    # 6. Apply physical threshold
     # ----------------------------------------------------------
     n_filtered = sum(N2_center .< N2_threshold)
     n_total    = length(N2_center)
-    println("  Filtering $(n_filtered) / $(n_total) values below threshold $(N2_threshold) ",
-            "($(round(100*n_filtered/n_total, digits=2))%)")
     N2_center[N2_center .< N2_threshold] .= N2_threshold
-    println("  N2_filtered range after threshold: ", extrema(N2_center))
 
 
     # ----------------------------------------------------------
-    # 5. Read hFacC and buoyancy b
+    # 7. Read hFacC and buoyancy b
     # ----------------------------------------------------------
     hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
@@ -136,25 +151,17 @@ for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
     # ----------------------------------------------------------
-    # 6. Compute APE — fully vectorized, no time loop
-    #    APE = 0.5 * rho0 * b² / N2   shape: (nx, ny, nz, nt)
+    # 8. Compute APE
     # ----------------------------------------------------------
     println("  Computing APE...")
     APE = 0.5 .* rho0 .* (b .^ 2) ./ N2_center
 
 
-    println("  APE range:          ", extrema(filter(isfinite, APE)))
-    println("  APE finite values:  ", sum(isfinite.(APE)))
-    println("  APE Inf values:     ", sum(isinf.(APE)))
-    println("  APE NaN values:     ", sum(isnan.(APE)))
-
-
-    # --- pe (unchanged) ---
     pe = 0.5 .* b .^ 2
 
 
     # ----------------------------------------------------------
-    # 7. Save
+    # 9. Save
     # ----------------------------------------------------------
     open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "w") do io
         write(io, Float32.(APE))
