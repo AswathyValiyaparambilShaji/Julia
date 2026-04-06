@@ -122,7 +122,46 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
+        println("  Readig KE...")
+        ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+        end)
 
+
+        # ---- Read APE ----
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)),
+                    nx, ny, nz, nt)
+        end)
+
+        # ---- Depth-integrate KE (weighted by DRFfull) ----
+        DRFfull4 = reshape(DRFfull, nx, ny, nz, 1)
+        ke_di    = dropdims(sum(ke_raw .* DRFfull4, dims=3), dims=3)   # nx x ny x nt
+
+
+        # ---- Depth-integrate APE (NaN-safe, using DRFfull) ----
+        DRF3d4    = reshape(DRF3d, nx, ny, nz, 1)
+        ape_clean = replace(ape_raw, NaN => 0.0)
+        pe_di     = dropdims(sum(ape_clean .* DRFfull4, dims=3), dims=3)  # nx x ny x nt
+
+
+        # ---- Total energy depth-integrated ----
+        te_di = ke_di .+ pe_di   # nx x ny x nt
+
+
+        # ---- 3-day mean of KE and PE ----
+        ke_3day = zeros(nx, ny, nt3)
+        pe_3day = zeros(nx, ny, nt3)
+        for t in 1:nt3
+            t_start = (t-1)*ts + 1
+            t_end   = min(t*ts, nt)
+            ke_3day[:, :, t] = mean(ke_di[:, :, t_start:t_end], dims=3)
+            pe_3day[:, :, t] = mean(pe_di[:, :, t_start:t_end], dims=3)
+        end
+
+        
 
         # ---- Tile position in global grid ----
         xs = (xn - 1) * tx + 1
@@ -142,7 +181,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-
+        KE_full[xs+2:xe-2,   ys+2:ye-2, :] .= ke_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
+        PE_full[xs+2:xe-2,   ys+2:ye-2, :] .= pe_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
 
 
         # Static fields
@@ -192,7 +232,8 @@ SP_H_n  = norm_field(SP_H_full)
 SP_V_n  = norm_field(SP_V_full)
 BP_n    = norm_field(BP_full)
 ET_n    = norm_field(ET_full)
-
+KE_n    = norm_field(KE_full)
+PE_n    = norm_field(PE_full)
 
 # Derived budget terms
 A_n          = U_KE_n .+ U_PE_n
@@ -211,6 +252,8 @@ A_avg         = area_avg(A_n,        valid_mask, RAC, total_area)
 ET_avg        = area_avg(ET_n,       valid_mask, RAC, total_area)
 Residual_avg  = area_avg(Residual_n, valid_mask, RAC, total_area)
 Residual_avg1 = area_avg(Residual_n1,valid_mask, RAC, total_area)
+Ke_avg      = area_avg(KE_n,     valid_mask, RAC, total_area)
+Pe_avg      = area_avg(PE_n,     valid_mask, RAC, total_area)
 
 
 # Time axis
@@ -280,7 +323,7 @@ mkpath(FIGDIR)
 # Figure 1: Budget terms WITHOUT tendency (single panel, 1100×400)
 # ============================================================
 println("\nCreating Figure 1 (no tendency)...")
-fig1 = Figure(resolution=(1100, 400), fontsize=14, backgroundcolor=:white)
+fig1 = Figure(resolution=(1200, 800), fontsize=14, backgroundcolor=:white)
 
 
 ax1 = Axis(fig1[1, 1];
@@ -300,6 +343,16 @@ lines!(ax1, time_days, A_avg         .* sc; label="⟨A⟩  Advection",         
 lines!(ax1, time_days, Residual_avg1 .* sc; label="⟨R⟩  Residual (D)",       color=c_res,  linewidth=1.8)
 axislegend(ax1; position=:rt, leg_style...)
 
+ax2 = Axis(fig1[2, 1];
+    title  = "Kinetic & Available Potential energy",
+    xlabel = "Time  [days]",
+    ylabel = "Energy (W.s)",
+    axis_theme...)
+
+
+lines!(ax2, time_days, Ke_avg      .* sc; label="KE",        color=:red, linewidth=1.8)
+lines!(ax2, time_days, Pe_avg      .* sc; label="APE",  color=:blue, linewidth=1.8)
+axislegend(ax2; position=:rt, leg_style...)
 
 outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v5.png")
 save(outpath1, fig1, px_per_unit=2)
@@ -311,7 +364,7 @@ display(fig1)
 # Figure 2: Budget terms WITH tendency + KE/APE panel (1100×800)
 # ============================================================
 println("\nCreating Figure 2 (with tendency )...")
-fig2 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
+fig2 = Figure(resolution=(1200, 800), fontsize=14, backgroundcolor=:white)
 
 
 # --- Subplot 1: all budget terms including tendency ---
@@ -332,8 +385,17 @@ lines!(ax2a, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",  
 lines!(ax2a, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",       color=c_res,  linewidth=1.8)
 axislegend(ax2a; position=:rt, leg_style...)
 
+ax2b = Axis(fig2[2, 1];
+    title  = "Kinetic & Available Potential energy",
+    xlabel = "Time  [days]",
+    ylabel = "Energy (W.s)",
+    axis_theme...)
 
-display(fig1)
+
+lines!(ax2b, time_days, Ke_avg      .* sc; label="KE",        color=:red, linewidth=1.8)
+lines!(ax2b, time_days, Pe_avg      .* sc; label="APE",  color=:blue, linewidth=1.8)
+axislegend(ax2b; position=:rt, leg_style...)
+
 
 #rowgap!(fig2.layout, 1, 24)
 
