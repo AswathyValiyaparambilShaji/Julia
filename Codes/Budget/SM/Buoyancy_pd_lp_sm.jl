@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "weekly"     -> buoyancy production mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"       -> buoyancy production mean over full time record
 #   "timeseries" -> buoyancy production saved at every timestep (nx, ny, nt)
-time_mode = "full"   # <-- change to "3day", "weekly", "full", or "timeseries"
+time_mode = "3day"   # <-- change to "3day", "weekly", "full", or "timeseries"
 
 
 # --- Domain & grid ---
