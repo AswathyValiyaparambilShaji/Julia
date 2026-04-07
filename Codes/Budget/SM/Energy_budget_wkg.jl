@@ -341,7 +341,7 @@ else
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
             end)
             
-            te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
+            te_mean = Float64.(open(joinpath(base2, "TE_tn", "te_tn_mean_$suffix.bin"), "r") do io
                 nbytes = nx * ny * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
             end)
@@ -496,8 +496,8 @@ else
     
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v3.png"), fig)
-    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v3.png"))")
+    save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v4.png"), fig)
+    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v4.png"))")
     
 end
 
