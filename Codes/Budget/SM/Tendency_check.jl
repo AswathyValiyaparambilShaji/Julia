@@ -87,7 +87,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # ---- Read APE ----
-        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)),
                     nx, ny, nz, nt)
@@ -258,8 +258,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v4.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v5.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v6.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v6.png")
 display(fig1)
 
 
@@ -312,8 +312,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v4.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v5.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v6.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v6.png")
 display(fig2)
 
 

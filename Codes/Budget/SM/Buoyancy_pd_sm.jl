@@ -286,7 +286,7 @@ if time_mode == "3day"
 
 
             output_dir = joinpath(base2, "BP_3day")
-            open(joinpath(output_dir, "bp_3day_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "bp_uf_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(BP_3day))
             end
 
@@ -510,7 +510,7 @@ elseif time_mode == "weekly"
 
 
             output_dir = joinpath(base2, "BP_weekly")
-            open(joinpath(output_dir, "bp_weekly_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "bp_uf_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end
 
@@ -714,7 +714,7 @@ elseif time_mode == "full"
 
 
             output_dir = joinpath(base2, "BP")
-            open(joinpath(output_dir, "bp_mean_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "bp_uf_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end
 
