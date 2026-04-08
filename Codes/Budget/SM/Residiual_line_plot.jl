@@ -292,7 +292,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep.png")
+outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep_v2.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
