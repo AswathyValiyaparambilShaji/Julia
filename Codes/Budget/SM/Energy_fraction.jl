@@ -41,54 +41,68 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         dy  = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         rac = dx .* dy
 
+# Avoids holding a Float64 copy of the full nx×ny×nz×nt array in memory.
+        DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))   # Float32 weights
 
-        # Flux Divergence
-        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-            reshape(reinterpret(Float32, read(io, (nx-2)*(ny-2)*sizeof(Float32))), nx-2, ny-2)
+        # ---- Budget terms (already 3-day averaged) ----
+        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-
-
-        # Conversion
-        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-            reshape(reinterpret(Float32, read(io, (nx-2)*(ny-2)*sizeof(Float32))), nx-2, ny-2)
+        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-
-
-        # Horizontal Shear Production
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_old", "sp_h_mean_$suffix.bin"), "r") do io
-            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
+        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
-        # Vertical Shear Production
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_old", "sp_v_mean_$suffix.bin"), "r") do io
-            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
+        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-
-
-        # Buoyancy Production
-        bp_mean = Float64.(open(joinpath(base2, "BP_old", "bp_mean_$suffix.bin"), "r") do io
-            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
+        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
+        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        
 
 
-        # Tile positions in global grid
+        # ---- Tile position in global grid ----
         xs = (xn - 1) * tx + 1
-        xe = xs + tx + 2*buf - 1
+        xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
-        ye = ys + ty + 2*buf - 1
+        ye = ys + ty + (2 * buf) - 1
 
 
-        # FDiv and Conv (suffix2 files: strip 1 cell on each side)
-        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
-        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
+        # ---- Update global arrays (remove buffer zones) ----
+        Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
+        FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
 
 
-        # buf-stripped terms
-        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-        BP_full[xs+2:xe-2, ys+2:ye-2]   .= bp_mean[buf:nx-buf+1, buf:ny-buf+1]
-        RAC[xs+2:xe-2, ys+2:ye-2]       .= rac[buf:nx-buf+1, buf:ny-buf+1]
+        U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        U_PE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        SP_H_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+    
+
+        # Static fields
+        FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
+        RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
 
         println("  Completed tile $suffix")
