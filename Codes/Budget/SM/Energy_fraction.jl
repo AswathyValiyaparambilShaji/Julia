@@ -42,41 +42,57 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         rac = dx .* dy
 
 # Avoids holding a Float64 copy of the full nx×ny×nz×nt array in memory.
-        DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))   # Float32 weights
-
-        # ---- Budget terms (already 3-day averaged) ----
-        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+# --- Read Flux Divergence ---
+        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+            raw_bytes = read(io, nbytes)
+            raw_data = reinterpret(Float32, raw_bytes)
+            reshape(raw_data, nx-2, ny-2)
         end)
-        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+        
+        # --- Read Conversion ---
+        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+            raw_bytes = read(io, nbytes)
+            raw_data = reinterpret(Float32, raw_bytes)
+            reshape(raw_data, nx-2, ny-2)
         end)
-        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        # --- Read KE Advection ---
+        u_ke_mean = Float64.(open(joinpath(base2, "U_KE_old", "u_ke_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        # --- Read PE Advection ---
+        u_pe_mean = Float64.(open(joinpath(base2, "U_PE_old", "u_pe_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        # --- Read Shear Production ---
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_old", "sp_h_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        # Read time-averaged energy tendency
+        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_old", "sp_v_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        
+        # --- Read Buoyancy Production ---
+        bp_mean = Float64.(open(joinpath(base2, "BP_old", "bp_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
+        
         
 
 
