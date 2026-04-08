@@ -301,50 +301,39 @@ else
             depth = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
             
-            # --- Read full time average data ---
-            fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-                nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx-2, ny-2)
-            end)
-            
-            C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-                nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx-2, ny-2)
-            end)
-            
-            u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-            
-            u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-            
-            sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-            
-            sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-            
-            bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-            
-            te_mean = Float64.(open(joinpath(base2, "TE_tn", "te_tn_mean_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
+        # ---- Budget terms (already 3-day averaged) ----
+        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+        end)
+        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+        end)
+        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_uf_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_uf_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
+        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+        end)
             
             dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
             dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))

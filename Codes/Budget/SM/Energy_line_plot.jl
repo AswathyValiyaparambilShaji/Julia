@@ -98,27 +98,27 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
+        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
+        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_uf_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
+        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
+        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
+        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_uf_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        te_3day = Float64.(open(joinpath(base2, "TE_tn_3day", "te_tn_3day_$suffix.bin"), "r") do io
+        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
@@ -130,7 +130,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # ---- Read APE ----
-        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)),
                     nx, ny, nz, nt)
