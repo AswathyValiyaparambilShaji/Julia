@@ -164,10 +164,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
         
         # --- Read 3-DAY KE Advection ---
-        u_ke_3day_tile = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
-            nbytes = nx * ny * nt3 * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
+       
         u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
