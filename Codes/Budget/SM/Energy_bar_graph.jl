@@ -147,50 +147,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # ============ LOAD 3-DAY TIME SERIES ======================
         # ==========================================================
         
-        # --- Read 3-DAY Flux Divergence ---
-        fxD_3day_tile = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * nt3 * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2, nt3)
-        end)
-        
-        # --- Read 3-DAY Conversion ---
-        C_3day_tile = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * nt3 * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2, nt3)
-        end)
-        
-        # --- Read 3-DAY KE Advection ---
-       
-        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_$suffix.bin"), "r") do io
-            nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-        end)
-        
-        
         dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
         dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         
@@ -241,18 +197,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         RAC[xs+2:xe-2, ys+2:ye-2] .= rac_interior
         ET_full[xs+2:xe-2, ys+2:ye-2] .= te_interior
         
-        # Update global arrays for 3-DAY TIME SERIES
-        Conv_3day[xs+2:xe-2, ys+2:ye-2, :] .= C_3day_tile[2:end-1, 2:end-1, :]
-        FDiv_3day[xs+2:xe-2, ys+2:ye-2, :] .= fxD_3day_tile[2:end-1, 2:end-1, :]
-        
-        # Extract interior regions for 3-DAY
-        U_KE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        U_PE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_H_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_V_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        BP_3day[xs+2:xe-2, ys+2:ye-2, :] .= bp_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        ET_3day[xs+2:xe-2, ys+2:ye-2, :] .= te_3day_tile[buf:nx-buf+1, buf:ny-buf+1, :]
-        
+     
         println("Completed tile $suffix")
     end
 end
