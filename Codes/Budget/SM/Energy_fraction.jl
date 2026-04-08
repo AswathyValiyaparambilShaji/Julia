@@ -41,84 +41,54 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         dy  = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
         rac = dx .* dy
 
-# Avoids holding a Float64 copy of the full nx×ny×nz×nt array in memory.
-# --- Read Flux Divergence ---
+
+        # Flux Divergence
         fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
+            reshape(reinterpret(Float32, read(io, (nx-2)*(ny-2)*sizeof(Float32))), nx-2, ny-2)
         end)
-        
-        # --- Read Conversion ---
+
+
+        # Conversion
         C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
-            nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-            raw_bytes = read(io, nbytes)
-            raw_data = reinterpret(Float32, raw_bytes)
-            reshape(raw_data, nx-2, ny-2)
+            reshape(reinterpret(Float32, read(io, (nx-2)*(ny-2)*sizeof(Float32))), nx-2, ny-2)
         end)
-        
-        # --- Read KE Advection ---
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE_old", "u_ke_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read PE Advection ---
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE_old", "u_pe_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
-        # --- Read Shear Production ---
+
+
+        # Horizontal Shear Production
         sp_h_mean = Float64.(open(joinpath(base2, "SP_H_old", "sp_h_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
         end)
-        
-        # Read time-averaged energy tendency
-        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-        
+
+
+        # Vertical Shear Production
         sp_v_mean = Float64.(open(joinpath(base2, "SP_V_old", "sp_v_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
         end)
-        
-        # --- Read Buoyancy Production ---
+
+
+        # Buoyancy Production
         bp_mean = Float64.(open(joinpath(base2, "BP_old", "bp_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+            reshape(reinterpret(Float32, read(io, nx*ny*sizeof(Float32))), nx, ny)
         end)
-        
-        
 
 
-        # ---- Tile position in global grid ----
+        # Tile positions in global grid
         xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
+        xe = xs + tx + 2*buf - 1
         ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
+        ye = ys + ty + 2*buf - 1
 
 
-        # ---- Update global arrays (remove buffer zones) ----
-        Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
-        FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
+        # FDiv and Conv (suffix2 files: strip 1 cell on each side)
+        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
+        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
 
 
-        U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        U_PE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_H_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-    
-
-        # Static fields
-        FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
-        RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
+        # buf-stripped terms
+        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+        BP_full[xs+2:xe-2, ys+2:ye-2]   .= bp_mean[buf:nx-buf+1, buf:ny-buf+1]
+        RAC[xs+2:xe-2, ys+2:ye-2]       .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
 
         println("  Completed tile $suffix")
@@ -135,13 +105,19 @@ valid_mask = RAC .> 0.0
 total_area = sum(RAC[valid_mask])
 
 
-wmean(F) = sum(F[valid_mask] .* RAC[valid_mask]) / total_area
+# Area-weighted mean: sum(F * dA) / sum(dA)
+# Each grid point is weighted by its cell area (dx*dy),
+# so larger cells contribute more to the domain average.
+function area_weighted_mean(F::Array{Float64,2}, RAC::Array{Float64,2},
+                             mask::BitMatrix, total_area::Float64)
+    return sum(F[mask] .* RAC[mask]) / total_area
+end
 
 
-mean_C    = wmean(Conv)
-mean_FDiv = wmean(FDiv)
-mean_Ps   = wmean(SP_H_full .+ SP_V_full)
-mean_Pb   = wmean(BP_full)
+mean_C    = area_weighted_mean(Conv,                   RAC, valid_mask, total_area)
+mean_FDiv = area_weighted_mean(FDiv,                   RAC, valid_mask, total_area)
+mean_Ps   = area_weighted_mean(SP_H_full .+ SP_V_full, RAC, valid_mask, total_area)
+mean_Pb   = area_weighted_mean(BP_full,                RAC, valid_mask, total_area)
 
 
 frac_FDiv = (mean_FDiv / mean_C) * 100.0
