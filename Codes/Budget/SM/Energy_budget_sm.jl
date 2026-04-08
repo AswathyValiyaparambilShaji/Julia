@@ -92,7 +92,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
         
         # Read time-averaged energy tendency
-        te_mean = Float64.(open(joinpath(base2, "TE_t_old", "te_t_mean_$suffix.bin"), "r") do io
+        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
