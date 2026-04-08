@@ -114,7 +114,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_uf_3day_$suffix.bin"), "r") do io
+        bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
@@ -354,7 +354,7 @@ lines!(ax2, time_days, Ke_avg      .* sc; label="KE",        color=:red, linewid
 lines!(ax2, time_days, Pe_avg      .* sc; label="APE",  color=:blue, linewidth=1.8)
 axislegend(ax2; position=:rt, leg_style...)
 
-outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v5.png")
+outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v6.png")
 save(outpath1, fig1, px_per_unit=2)
 println("Figure 1 saved → $outpath1")
 display(fig1)
@@ -400,7 +400,7 @@ axislegend(ax2b; position=:rt, leg_style...)
 #rowgap!(fig2.layout, 1, 24)
 
 
-outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wn_v4.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wn_v5.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
