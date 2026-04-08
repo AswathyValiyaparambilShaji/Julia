@@ -99,7 +99,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "BP_production_v3_n.png"), fig)
+save(joinpath(FIGDIR, "BP_production_v4.png"), fig)
 
 
 

@@ -243,7 +243,7 @@ if time_mode == "3day"
 
 
             output_dir = joinpath(base2, "U_PE_3dayold")
-            open(joinpath(output_dir, "u_pe_3day_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "u_pe_uf_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(U_PE_3day))
             end
 
@@ -406,7 +406,7 @@ elseif time_mode == "weekly"
             u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_PE_weeklyold")
+            output_dir = joinpath(base2, "U_PE_uf_weeklyold")
             open(joinpath(output_dir, "u_pe_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end
@@ -571,7 +571,7 @@ elseif time_mode == "full"
 
 
             output_dir = joinpath(base2, "U_PE_old")
-            open(joinpath(output_dir, "u_pe_mean_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "u_pe_uf_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end
 
