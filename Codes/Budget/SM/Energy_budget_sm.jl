@@ -349,10 +349,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WPI_v4.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WPI_v5.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_v4.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_v5.png"))")
 
 
 
