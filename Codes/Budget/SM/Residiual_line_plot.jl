@@ -94,7 +94,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        bp_3day = Float64.(open(joinpath(base2, "BPold_3day", "bp_3day_$suffix.bin"), "r") do io
+        bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
