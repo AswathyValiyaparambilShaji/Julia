@@ -309,8 +309,10 @@ std_D = temporal_std_of_area_mean(D_3day_wkg, RAC)
 
 f1 = -mean_FDiv/mean_Conv
 f2 = (mean_PS+mean_BP)/mean_Conv
+f3 = (mean_D)/mean_Conv
 println("f1 = $f1")
 println("f2 = $f2")
+println("f3 = $f3")
 
 
 # ==========================================================
