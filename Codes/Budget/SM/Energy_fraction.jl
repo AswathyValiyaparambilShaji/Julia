@@ -118,9 +118,11 @@ mean_C    = area_weighted_mean(Conv,                   RAC, valid_mask, total_ar
 mean_FDiv = area_weighted_mean(FDiv,                   RAC, valid_mask, total_area)
 mean_Ps   = area_weighted_mean(SP_H_full .+ SP_V_full, RAC, valid_mask, total_area)
 mean_Pb   = area_weighted_mean(BP_full,                RAC, valid_mask, total_area)
+mean_Pb   = area_weighted_mean(BP_full,                RAC, valid_mask, total_area)
 
 
 frac_FDiv = (mean_FDiv / mean_C) * 100.0
+frac_PsPb = ((mean_Ps + mean_Pb) / mean_C) * 100.0
 frac_PsPb = ((mean_Ps + mean_Pb) / mean_C) * 100.0
 
 
