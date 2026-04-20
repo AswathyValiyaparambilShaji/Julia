@@ -359,7 +359,7 @@ elseif time_mode == "weekly"
 
     fig = Figure(resolution = (700, 600))
     ax  = Axis(fig[1, 1],
-        title      = "MITgcm Flux - Weekly Mean Apr 22-28",
+        title      = "MITgcm Flux ",
         xlabel     = "Longitude [°]",
         ylabel     = "Latitude [°]",
         ylabelsize = 22,
@@ -398,7 +398,7 @@ elseif time_mode == "weekly"
     Colorbar(fig[1, 2], hm, label = "(kW/m)")
 
 
-    png_file = joinpath(FIGDIR, "Flux_weekly.png")
+    png_file = joinpath(FIGDIR, "Flux_phc.png")
     save(png_file, fig)
     display(fig)
     println("PNG saved: $png_file")
