@@ -2,6 +2,8 @@
 
 base_path = "/nobackup/avaliyap/Box56/"
 base_path2 = "/nobackup/avaliyap/Box56/SM_I/"
+base_path_nt = "/nobackup/avaliyap/Box56/NT/"
+
 fig_base = "/nobackup/avaliyap/Figure/Box56/"
 
 
