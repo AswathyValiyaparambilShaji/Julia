@@ -134,20 +134,27 @@ elseif time_mode == "weekly"
             hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
 
-            fx = Float64.(open(joinpath(base2, "xflux", "xflx_weekly_$suffix.bin"), "r") do io
+            fx =Float64.(open(joinpath(base2, "xflux_corr", "xflx_$suffix.bin"), "r") do io
+            raw = read(io, nx*ny*nz*sizeof(Float32))
+            reshape(reinterpret(Float32, raw), nx, ny,nz)
+        end) #=Float64.(open(joinpath(base2, "xflux", "xflx_weekly_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz)
-            end)
+            end)=#
 
 
-            fy = Float64.(open(joinpath(base2, "yflux", "yflx_weekly_$suffix.bin"), "r") do io
+            fy = Float64.(open(joinpath(base2, "yflux_corr", "yflx_$suffix.bin"), "r") do io
+            raw = read(io, nx*ny*nz*sizeof(Float32))
+            reshape(reinterpret(Float32, raw), nx, ny,nz)
+        end)
+#=Float64.(open(joinpath(base2, "yflux", "yflx_weekly_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * sizeof(Float32)
                 raw_bytes = read(io, nbytes)
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz)
-            end)
+            end)=#
 
 
             DRFfull = hFacC .* DRF3d
