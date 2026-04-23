@@ -137,7 +137,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         for t in 1:nt        # ← correct
             rho1 = rho[:, :, :, t]
-            rho1[hFacC .== 0] .= 0.0
+            rho1[hFacC .== 0] .= NaN
             rho[:, :, :, t] = rho1
         end
 
