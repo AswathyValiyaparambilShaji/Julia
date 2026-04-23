@@ -43,10 +43,14 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 # BEAM POINTS
 # ============================================================================
 beam_lons = [193.3000, 193.6278, 193.9556, 194.2833, 194.6111,
-             194.9389, 195.2667, 195.5944, 195.9222, 196.2500]
+             194.9389, 195.2667, 195.5944, 195.9222, 196.2500,
+             196.5600, 196.6200, 196.6300, 196.6500, 196.7100,
+             197.1000, 197.5500, 197.9500, 198.3500, 198.7000]
 beam_lats = [ 24.2000,  24.5667,  24.9333,  25.3000,  25.6667,
-              26.0333,  26.4000,  26.7667,  27.1333,  27.5000]
-N_beam = 10
+              26.0333,  26.4000,  26.7667,  27.1333,  27.5000,
+              27.9500,  28.5000,  28.9500,  29.3500,  29.8500,
+              30.2000,  30.5800,  30.8500,  31.2500,  31.5500]
+N_beam = 20
 
 
 # ============================================================================
@@ -127,18 +131,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end
 
 
-
-
         # --- hFacC & DRFfull ---
         hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
         DRFfull = hFacC .* DRF3d    # (nx, ny, nz)
-        for t in 1:nt
-            rho1 = rho[:,:,:,t]
-            rho1[hFacC .== 0] .= NaN
-            rho[:,:,:,t] = rho1
-        end
-
-         
 
 
         # --- Extract each beam point from this tile ---
@@ -204,11 +199,11 @@ NCDatasets.Dataset(ncfile, "c") do ds
         attrib = Dict("units" => "m", "long_name" => "hFacC-weighted layer thickness at beam points"))
 
 
-    ds.attrib["title"]      = "MITgcm beam extraction: U, V, rho_insitu, DRFfull"
-    ds.attrib["beam_start"] = "lon=193.3000, lat=24.2000"
-    ds.attrib["beam_end"]   = "lon=196.2500, lat=27.5000"
-    ds.attrib["n_points"]   = N_beam
-    ds.attrib["created_by"] = "beam_extract_nc.jl"
+    defVar(ds, "DRF", Float32.(DRF), ("nz",),
+        attrib = Dict("units" => "m", "long_name" => "Nominal layer thickness (1D, hFacC-independent)"))
+
+
+   
 
 
 end
