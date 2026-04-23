@@ -135,6 +135,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
         DRFfull = hFacC .* DRF3d    # (nx, ny, nz)
 
+        for t in 1:nt        # ← correct
+            rho1 = rho[:, :, :, t]
+            rho1[hFacC .== 0] .= 0.0
+            rho[:, :, :, t] = rho1
+        end
+
 
         # --- Extract each beam point from this tile ---
         # Local index: global ix → local lx = ix - xs + 1
