@@ -27,7 +27,7 @@ Tts = 366192
 nt = div(Tts, dto)
 
 # --- NIW Filter (29-44 hr band) ---
-T1_niw, T2_niw, delt, N = 29.0, 44.0, 1.0, 4
+T1_niw, T2_niw, delt, N =  22.68,29.16, 1.0, 4
 fcutlow_niw  = 1 / T2_niw   # 1/44 cphr
 fcuthigh_niw = 1 / T1_niw   # 1/29 cphr
 fnq = 1 / delt
