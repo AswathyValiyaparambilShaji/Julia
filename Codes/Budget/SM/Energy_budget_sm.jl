@@ -194,7 +194,7 @@ G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
 
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
 Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full
-              .- G_vel_H_full .- G_vel_V_full .- G_buoy_full)
+              .- G_vel_H_full .- G_vel_V_full .-  G_buoy_full)
 Residual2 = Conv .- FDiv
 
 
@@ -231,7 +231,7 @@ println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
 # ==========================================================
 
 
-fig = Figure(resolution=(1800, 800))
+fig = Figure(resolution=(1200, 800))
 
 
 # Color ranges
@@ -360,8 +360,8 @@ hm9 = heatmap!(ax9, lon, lat, G_total;
 
 
 # Add colorbars
-Colorbar(fig[1, 6], hm4, label = "[W/m2]")
-Colorbar(fig[2, 6], hm7, label = "[W/m2]")
+Colorbar(fig[1, 5], hm4, label = "[W/m2]")
+Colorbar(fig[2, 5], hm7, label = "[W/m2]")
 
 
 display(fig)
