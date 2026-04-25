@@ -194,7 +194,7 @@ G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
 
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
 Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full
-              .- G_vel_H_full .- G_vel_V_full .-  G_buoy_full)
+              .+ G_vel_H_full .+ G_vel_V_full .+ G_buoy_full)
 Residual2 = Conv .- FDiv
 
 
@@ -369,10 +369,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v7.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v6.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v7.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v6.png"))")
 
 
 
