@@ -83,7 +83,7 @@ ax1 = Axis(fig[1, 1],
 hm1 = CairoMakie.heatmap!(ax1, lon, lat, G_vel_H_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
-    colorrange=(-0.00005, 0.00005))
+    colorrange=(-0.05, 0.05))
 
 Colorbar(fig[1, 2], hm1, label="G Horizontal [W/m²]")
 
@@ -96,7 +96,7 @@ ax2 = Axis(fig[1, 3],
 hm2 = CairoMakie.heatmap!(ax2, lon, lat, G_vel_V_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
-    colorrange=(-0.00005, 0.00005))
+    colorrange=(-0.05, 0.05))
 
 Colorbar(fig[1, 4], hm2, label="G Vertical [W/m²]")
 
