@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> buoyancy production for each 3-day period
 #   "weekly" -> buoyancy production mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> buoyancy production mean over full time record
-time_mode = "full"   # <-- change to "3day", "weekly", or "full"
+time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -98,7 +98,7 @@ if time_mode == "3day"
     println("Starting buoyancy production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "BP_3day"))
+    mkpath(joinpath(base2, "BP3day_old"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -285,8 +285,8 @@ if time_mode == "3day"
             println("  BP range: $(extrema(BP_3day[isfinite.(BP_3day)]))")
 
 
-            output_dir = joinpath(base2, "BP_3day")
-            open(joinpath(output_dir, "bp_uf_3day_$suffix.bin"), "w") do io
+            output_dir = joinpath(base2, "BP3day_old")
+            open(joinpath(output_dir, "bp_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(BP_3day))
             end
 

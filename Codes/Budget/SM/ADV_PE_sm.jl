@@ -93,7 +93,7 @@ if time_mode == "3day"
     println("Starting PE flux calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "U_PE_3day"))
+    mkpath(joinpath(base2, "U_PE_3dayold"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
