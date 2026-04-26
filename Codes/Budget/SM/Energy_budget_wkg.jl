@@ -374,7 +374,7 @@ else
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_uf_3day_$suffix.bin"), "r") do io
+            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
