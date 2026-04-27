@@ -148,6 +148,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         for i in pts
             lx = beam_ix[i] - xs + 1
             ly = beam_iy[i] - ys + 1
+            println(lx)
+            println(ly)
             U_beam[i, :, :]   .= Float32.(ucc[lx, ly, :, :])
             V_beam[i, :, :]   .= Float32.(vcc[lx, ly, :, :])
             rho_beam[i, :, :] .= Float32.(rho[lx, ly, :, :])
