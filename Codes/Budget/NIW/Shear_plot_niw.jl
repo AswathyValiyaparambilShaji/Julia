@@ -72,7 +72,7 @@ clim_V = maximum(abs.(filter(!isnan, G_vel_V_full)))
 clim_H = min(clim_H, 0.01)
 clim_V = min(clim_V, 0.01)
 
-fig = Figure(size=(1800, 800))
+fig = Figure(size=(1200, 800))
 
 # --- Panel 1: G Horizontal Shear ---
 ax1 = Axis(fig[1, 1],
@@ -85,20 +85,20 @@ hm1 = CairoMakie.heatmap!(ax1, lon, lat, G_vel_H_full;
     colormap=Reverse(:RdBu),
     colorrange=(-0.05, 0.05))
 
-Colorbar(fig[1, 2], hm1, label="G Horizontal [W/m²]")
 
 # --- Panel 2: G Vertical Shear ---
-ax2 = Axis(fig[1, 3],
+ax2 = Axis(fig[1, 2],
     title="G: IT→NIW Vertical Shear (Velocity)",
     xlabel="Longitude [°]",
-    ylabel="Latitude [°]")
+    ylabel = "",
+    yticklabelsvisible = false)
 
 hm2 = CairoMakie.heatmap!(ax2, lon, lat, G_vel_V_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
     colorrange=(-0.05, 0.05))
 
-Colorbar(fig[1, 4], hm2, label="G Vertical [W/m²]")
+Colorbar(fig[1, 3], hm2, label="G_Shear [W/m²]")
 
 display(fig)
 
