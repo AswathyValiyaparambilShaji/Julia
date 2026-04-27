@@ -243,7 +243,7 @@ end
 TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
 PS = SP_H_full .+ SP_V_full
 Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full
-                .- G_vel_H_full .- G_vel_V_full .- G_buoy_full)
+                .+ G_vel_H_full .+ G_vel_V_full .+ G_buoy_full)
 
 # ============================================================================
 # PART 4: APPLY DEPTH MASK AND COMPUTE ZONAL AVERAGES
@@ -366,8 +366,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_v3.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_v3.png"))")
+save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_v4p.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_v4p.png"))")
 
 
 
