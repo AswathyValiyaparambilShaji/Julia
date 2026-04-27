@@ -62,6 +62,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         # Place interior (strip one buffer cell each side)
         Conv_z[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
+        println(Conv_z[12,12])
 
 
     end

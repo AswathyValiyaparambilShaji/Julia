@@ -45,8 +45,9 @@ dt  = 25
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
+nt_avg = div(nt, 3*24)   # number of 3-day periods
 nt3 = div(nt, 3*24)   # number of 3-day periods
-
+hrs_3day = 72
 
 
 
@@ -72,7 +73,7 @@ thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
-
+ρ0 = 999.8
 
 
 
@@ -119,7 +120,15 @@ if time_mode == "3day"
             z     = cumsum(DRFfull, dims=3)
             depth = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            H     = sum(DRFfull, dims=3)
+            DRF4d = reshape(DRFfull, nx, ny, nz, 1)
+            H_4d  = reshape(H, nx, ny, 1, 1)
+            mask3D       = hFacC .== 0
+            mask4D_proto = reshape(mask3D, nx, ny, nz, 1)
+            mask4D       = repeat(mask4D_proto, 1, 1, 1, nt)
 
+            z_edge = cat(zeros(nx, ny, 1), cumsum(DRFfull, dims=3); dims=3)
+            za     = 0.5 .* (z_edge[:, :, 1:end-1] .+ z_edge[:, :, 2:end])
 
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
@@ -139,7 +148,7 @@ if time_mode == "3day"
             UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
             VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
-            rhob = bandpassfilter(rho, T1, T2, delt, N_filt, nt)
+        rhob = bandpassfilter(rho, T1, T2, delt, N, nt)
         rho  = nothing; GC.gc()
 
 
@@ -161,7 +170,7 @@ if time_mode == "3day"
         end)
 
 
-        eta     = bandpassfilter(eta_raw, T1, T2, delt, N_filt, nt)
+        eta     = bandpassfilter(eta_raw, T1, T2, delt, N, nt)
         eta_raw = nothing; GC.gc()
 
 
@@ -306,7 +315,16 @@ elseif time_mode == "weekly"
             z     = cumsum(DRFfull, dims=3)
             depth = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            H     = sum(DRFfull, dims=3)
+            DRF4d = reshape(DRFfull, nx, ny, nz, 1)
+            H_4d  = reshape(H, nx, ny, 1, 1)
+            mask3D       = hFacC .== 0
+            mask4D_proto = reshape(mask3D, nx, ny, nz, 1)
+            mask4D       = repeat(mask4D_proto, 1, 1, 1, nt)
 
+
+            z_edge = cat(zeros(nx, ny, 1), cumsum(DRFfull, dims=3); dims=3)
+            za     = 0.5 .* (z_edge[:, :, 1:end-1] .+ z_edge[:, :, 2:end])
 
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
@@ -326,7 +344,7 @@ elseif time_mode == "weekly"
             UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
             VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
-            rhob = bandpassfilter(rho, T1, T2, delt, N_filt, nt)
+            rhob = bandpassfilter(rho, T1, T2, delt, N, nt)
         rho  = nothing; GC.gc()
 
 
@@ -348,7 +366,7 @@ elseif time_mode == "weekly"
         end)
 
 
-        eta     = bandpassfilter(eta_raw, T1, T2, delt, N_filt, nt)
+        eta     = bandpassfilter(eta_raw, T1, T2, delt, N, nt)
         eta_raw = nothing; GC.gc()
 
 
@@ -482,6 +500,16 @@ elseif time_mode == "full"
             z     = cumsum(DRFfull, dims=3)
             depth = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            H     = sum(DRFfull, dims=3)
+            DRF4d = reshape(DRFfull, nx, ny, nz, 1)
+            H_4d  = reshape(H, nx, ny, 1, 1)
+            mask3D       = hFacC .== 0
+            mask4D_proto = reshape(mask3D, nx, ny, nz, 1)
+            mask4D       = repeat(mask4D_proto, 1, 1, 1, nt)
+
+            z_edge = cat(zeros(nx, ny, 1), cumsum(DRFfull, dims=3); dims=3)
+            za     = 0.5 .* (z_edge[:, :, 1:end-1] .+ z_edge[:, :, 2:end])
+
 
 
             fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
@@ -500,8 +528,8 @@ elseif time_mode == "full"
             end)
 
 
-            rhob = bandpassfilter(rho, T1, T2, delt, N_filt, nt)
-        rho  = nothing; GC.gc()
+            rhob = bandpassfilter(rho, T1, T2, delt, N, nt)
+            rho  = nothing; GC.gc()
             UDA = dropdims(sum(fu .* DRFfull, dims=3) ./ depth; dims=3)
             VDA = dropdims(sum(fv .* DRFfull, dims=3) ./ depth; dims=3)
 
@@ -512,7 +540,7 @@ elseif time_mode == "full"
 
 
         pp   = pc .- sum(pc .* DRF4d, dims=3) ./ H_4d
-        pp[mask4D] .= 0.0
+        #pp[mask4D] .= 0.0
         pc   = nothing; GC.gc()
 
 
@@ -523,7 +551,7 @@ elseif time_mode == "full"
         end)
 
 
-        eta     = bandpassfilter(eta_raw, T1, T2, delt, N_filt, nt)
+        eta     = bandpassfilter(eta_raw, T1, T2, delt, N, nt)
         eta_raw = nothing; GC.gc()
 
 
@@ -573,13 +601,13 @@ elseif time_mode == "full"
 
         # ── 6. pη = ρ0·g·η − ∫ρ0·N²·ζbt dz′  [Eq. 6] ───────────────────────
         p_eta = .-cumsum(ρ0 .* N2_4d .* zbt .* DRF4d, dims=3)
-        p_eta[mask4D] .= 0.0
+        #p_eta[mask4D] .= 0.0
         zbt = nothing; N2_4d = nothing; eta = nothing; GC.gc()
 
 
         # ── 7. pint = p′ − pη  →  P - P_barotropic - P_heaving  [Eq. 4] ──────
         pint = pp .- p_eta
-        pint[mask4D] .= 0.0
+        #pint[mask4D] .= 0.0
         pp = nothing; p_eta = nothing; GC.gc()
 
             dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
@@ -588,7 +616,7 @@ elseif time_mode == "full"
 
             H  = depth
             pb = pint[:, :, end, :]   # bottom pressure (nx, ny, nt)
-
+            #println(pint[12,12,:,10])
 
 
             dHdx = zeros(nx-2, ny)
@@ -597,7 +625,6 @@ elseif time_mode == "full"
 
             dHdy = zeros(nx, ny-2)
             dHdy[:, :] .= (H[:, 3:ny] .- H[:, 1:ny-2]) ./ (dy[:, 1:ny-2] .+ dy[:, 2:ny-1])
-
 
             W1 = .-(UDA[2:end-1, :, :] .* dHdx)
             W2 = .-(VDA[:, 2:end-1, :] .* dHdy)
@@ -608,9 +635,11 @@ elseif time_mode == "full"
             w   = w1c .+ w2c
 
 
+
             # Conversion time series then mean over full record
             c  = pb[2:end-1, 2:end-1, :] .* w
             ca = dropdims(mean(c; dims=3); dims=3)   # (nx-2, ny-2)
+                    #println(round.(pb[12,12,1:10],digits=3))
 
 
             suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)

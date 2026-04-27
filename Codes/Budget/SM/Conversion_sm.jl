@@ -17,7 +17,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> conversion for each 3-day bin over full record (output has nt3 time steps)
 #   "weekly" -> conversion mean over Apr 22 00:00 - Apr 28 23:00 (single output)
 #   "full"   -> conversion mean over full record (single output)
-time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -389,6 +389,7 @@ elseif time_mode == "full"
 
             H  = depth
             pb = pp_3d[:, :, end, :]   # bottom pressure (nx, ny, nt)
+            println(pp_3d[12,12,:,10])
 
 
             dHdx = zeros(nx-2, ny)
