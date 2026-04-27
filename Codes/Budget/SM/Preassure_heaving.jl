@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
@@ -39,10 +39,19 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 T1, T2, delt, N_filt = 9.0, 15.0, 1.0, 4
 
 
+# ── Global 2D arrays to accumulate tile results ───────────────────────────────
+xn_range   = cfg["xn_start"]:cfg["xn_end"]
+yn_range   = cfg["yn_start"]:cfg["yn_end"]
+nx_global  = length(xn_range) * tx
+ny_global  = length(yn_range) * ty
 
 
-for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
+pp_global   = fill(NaN32, nx_global, ny_global)   # depth-int, time-mean p′
+peta_global = fill(NaN32, nx_global, ny_global)   # depth-int, time-mean pη
+
+
+for xn in xn_range
+    for yn in yn_range
 
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
@@ -92,7 +101,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         pc    = nothing; GC.gc()
 
 
-        # ── 3. Bandpass η (nx,ny,nt) ──────────────────────────────────────────
+        # ── 3. Bandpass η ─────────────────────────────────────────────────────
         eta_raw = Float64.(open(joinpath(base, "Eta", "Eta_$suffix.bin"), "r") do io
             raw = read(io, nx*ny*nt*sizeof(Float32))
             reshape(reinterpret(Float32, raw), nx, ny, nt)
@@ -125,7 +134,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         N2a = nothing; GC.gc()
 
 
-        # clamp: must catch NaN explicitly — NaN < threshold = false in Julia
         N2thr = 1.0e-8
         n_nan = sum(isnan.(N2c))
         n_low = sum(N2c .< N2thr)
@@ -143,29 +151,103 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         N2c = nothing; GC.gc()
 
 
-        # ── 5. ζbt = η(z+H)/H  [Eq. 5] ───────────────────────────────────────
-        # +down convention: z+H = H-za
+        # ── 5. ζbt = η(z+H)/H ────────────────────────────────────────────────
         zbt = reshape(eta, nx, ny, 1, nt) .*
               (H_4d .- reshape(za, nx, ny, nz, 1)) ./ H_4d
         zbt[mask4D] .= 0.0
 
 
-        # ── 6. pη = ρ0·g·η − ∫ρ0·N²·ζbt dz′  [Eq. 6] ───────────────────────
-        p_eta = .-  cumsum(ρ0 .* N2_4d .* zbt .* DRF4d, dims=3)
+        # ── 6. pη = −∫ρ0·N²·ζbt dz′ ──────────────────────────────────────────
+        p_eta = .- cumsum(ρ0 .* N2_4d .* zbt .* DRF4d, dims=3)
         p_eta[mask4D] .= 0.0
         zbt = nothing; N2_4d = nothing; eta = nothing; GC.gc()
 
 
-        # ── 7. pint = p′ − pη  →  P - P_barotropic - P_heaving  [Eq. 4] ──────
+        # ── 7. pint = p′ − pη ─────────────────────────────────────────────────
         pint = pp .- p_eta
         pint[mask4D] .= 0.0
         pp = nothing; p_eta = nothing; GC.gc()
 
 
+        # ── 8. Depth-integrate & time-mean → 2D  (strip buffer) ──────────────
+        # depth integral: sum(field * DRF, dims=3) → (nx,ny,1,nt)
+        # time mean: mean over dim=4 → (nx,ny,1,1) → squeeze to (nx,ny)
+        pp_2d   = Float32.(dropdims(mean(
+                      sum(pp   .* DRF4d, dims=3), dims=4), dims=(3,4)))
+        peta_2d = Float32.(dropdims(mean(
+                      sum(p_eta_tile .* DRF4d, dims=3), dims=4), dims=(3,4)))
+
+         #= Calculate tile positions in global grid
+            xs = (xn - 1) * tx + 1
+            xe = xs + tx + (2 * buf) - 1
+            ys = (yn - 1) * ty + 1
+            ye = ys + ty + (2 * buf) - 1
+
+
+            # Update global arrays — full time dimension assigned
+            Conv[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
+            FDiv[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
+
+
+            U_KE_full[xs+2:xe-2,    ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :] =#
+        # strip buffer
+        pp_int   = pp_2d[buf+1:end-buf,   buf+1:end-buf]
+        peta_int = peta_2d[buf+1:end-buf, buf+1:end-buf]
+
+
+        # place into global arrays
+        xi = (xn - cfg["xn_start"]) * tx + 1
+        yi = (yn - cfg["yn_start"]) * ty + 1
+        pp_global[xi:xi+tx-1,   yi:yi+ty-1] = pp_int
+        peta_global[xi:xi+tx-1, yi:yi+ty-1] = peta_int
+
+
+        pp_2d = nothing; peta_2d = nothing
+        pp_int = nothing; peta_int = nothing
+        mask4D = nothing; GC.gc()
 
 
     end
 end
+
+
+# ── 9. Save global 2D fields ──────────────────────────────────────────────────
+open(joinpath(base2, "pp_depthint_timemean.bin"), "w") do io
+    write(io, pp_global)
+end
+open(joinpath(base2, "peta_depthint_timemean.bin"), "w") do io
+    write(io, peta_global)
+end
+println("Saved global 2D fields.")
+
+
+# ── 10. Plot comparison ───────────────────────────────────────────────────────
+# Shared colour range: ±max of both fields (ignore NaN)
+vmax_pp   = maximum(abs.(filter(!isnan, pp_global)))
+vmax_peta = maximum(abs.(filter(!isnan, peta_global)))
+
+
+fig = Figure(size = (1200, 500))
+
+
+ax1 = Axis(fig[1, 1],
+    title  = "Depth-integrated, Time-mean  p′  [Pa·m]",
+    xlabel = "x tile index", ylabel = "y tile index")
+hm1 = heatmap!(ax1, pp_global',
+    colormap = :RdBu_r, colorrange = (-vmax_pp, vmax_pp))
+Colorbar(fig[1, 2], hm1, label = "Pa·m")
+
+
+ax2 = Axis(fig[1, 3],
+    title  = "Depth-integrated, Time-mean  pη  [Pa·m]",
+    xlabel = "x tile index", ylabel = "y tile index")
+hm2 = heatmap!(ax2, peta_global',
+    colormap = :RdBu_r, colorrange = (-vmax_peta, vmax_peta))
+Colorbar(fig[1, 4], hm2, label = "Pa·m")
+
+
+save(joinpath(base2, "pp_vs_peta_comparison.png"), fig)
+println("Plot saved: pp_vs_peta_comparison.png")
 
 
 
