@@ -223,7 +223,7 @@ Residual_n      = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
 Residual_G_n    = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .- G_n)
 # versions without tendency
 Residual_n1     = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
-Residual_G_n1   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- G_n)
+Residual_G_n1   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .+ G_n)
 
 
 # Time series (area-weighted)
@@ -314,7 +314,7 @@ fig1 = Figure(resolution=(1100, 400), fontsize=14, backgroundcolor=:white)
 
 
 ax1 = Axis(fig1[1, 1];
-    title  = "All Budget Terms  (area-averaged, 3-day periods)  -G",
+    title  = "All Budget Terms  (area-averaged, 3-day periods)  (+G)",
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W kg⁻¹]",
     axis_theme...)
@@ -328,8 +328,8 @@ lines!(ax1, time_days, SP_V_avg       .* sc; label="⟨Pₛᵛ⟩  Vert. shear p
 lines!(ax1, time_days, BP_avg         .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",      color=c_bp,   linewidth=1.8)
 lines!(ax1, time_days, A_avg          .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
 lines!(ax1, time_days, G_avg          .* sc; label="⟨G⟩  IT→NIW transfer",      color=c_g,    linewidth=1.8)
-#lines!(ax1, time_days, ET_avg        .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax1, time_days, Residual_G_avg1 .* sc; label="⟨D⟩  Residual (-G)",       color=c_res,  linewidth=1.8)
+lines!(ax1, time_days, ET_avg        .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
+lines!(ax1, time_days, Residual_G_avg1 .* sc; label="⟨D⟩  Residual (D))",       color=c_res,  linewidth=1.8)
 axislegend(ax1; position=:rt, leg_style...)
 
 
@@ -342,13 +342,13 @@ display(fig1)
 # ============================================================
 # Figure 2: Budget terms — D with G added (+G), two subpanels
 # ============================================================
-println("\nCreating Figure 2 (D +G, with tendency + BP & vert. shear)...")
+println("\nCreating Figure 2 (D -G, with tendency + BP & vert. shear)...")
 fig2 = Figure(resolution=(1100, 800), fontsize=14, backgroundcolor=:white)
 
 
 # --- Subplot 1: all budget terms including tendency, D without G subtracted ---
 ax2a = Axis(fig2[1, 1];
-    title  = "All Budget Terms  (area-averaged, 3-day periods)  +G",
+    title  = "All Budget Terms  (area-averaged, 3-day periods)  (-G)",
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W kg⁻¹]",
     axis_theme...)
@@ -363,7 +363,7 @@ lines!(ax2a, time_days, BP_avg       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.", 
 lines!(ax2a, time_days, A_avg        .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
 lines!(ax2a, time_days, G_avg        .* sc; label="⟨G⟩  IT→NIW transfer",      color=c_g,    linewidth=1.8)
 lines!(ax2a, time_days, ET_avg       .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax2a, time_days, Residual_avg .* sc; label="⟨D⟩  Residual (+G)",        color=c_res,  linewidth=1.8)
+lines!(ax2a, time_days, Residual_G_avg .* sc; label="⟨D⟩  Residual ",        color=c_res,  linewidth=1.8)
 axislegend(ax2a; position=:rt, leg_style...)
 
 
