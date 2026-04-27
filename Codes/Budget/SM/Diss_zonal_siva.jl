@@ -132,7 +132,9 @@ SP_H_full = zeros(NX, NY)
 SP_V_full = zeros(NX, NY)
 BP_full = zeros(NX, NY)
 ET_full = zeros(NX, NY)
-
+G_vel_H_full = zeros(NX, NY)
+G_vel_V_full = zeros(NX, NY)
+G_buoy_full  = zeros(NX, NY)
 
 # Load energy budget data for all tiles
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -140,6 +142,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
         
+        
+
         # Read energy budget terms
         fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
@@ -147,59 +151,90 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx-2, ny-2)
         end)
-        
+
+
         C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
             reshape(raw_data, nx-2, ny-2)
         end)
-        
+
+
         u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
+
+
         u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
+
+
         sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
+
+
         sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
+
+
         bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
-        te_mean = Float64.(open(joinpath(base2, "TE_tn", "te_tn_mean_$suffix.bin"), "r") do io
+
+
+        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
-        
+
+
+        # --- Read G terms (time-mean, IT -> NIW) ---
+        g_vel_h = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+        end)
+
+
+        g_vel_v = Float64.(open(joinpath(base2, "G_vel_V_full", "g_vel_v_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+        end)
+
+
+        g_buoy = Float64.(open(joinpath(base2, "G_buoy_full", "g_buoy_mean_$suffix.bin"), "r") do io
+            nbytes = nx * ny * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+        end)
+
+
         # Calculate tile positions
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
-        
+
+
         # Update global arrays (remove buffer zones)
-        Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
-        FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
-        U_KE_full[xs+2:xe-2, ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
-        U_PE_full[xs+2:xe-2, ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
-        SP_H_full[xs+2:xe-2, ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        SP_V_full[xs+2:xe-2, ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-        BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_mean[buf:nx-buf+1, buf:ny-buf+1]
-        ET_full[xs+2:xe-2, ys+2:ye-2] .= te_mean[buf:nx-buf+1, buf:ny-buf+1]
+        Conv[xs+2:xe-2, ys+2:ye-2]         .= C[2:end-1, 2:end-1]
+        FDiv[xs+2:xe-2, ys+2:ye-2]         .= fxD[2:end-1, 2:end-1]
+        U_KE_full[xs+2:xe-2,    ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
+        U_PE_full[xs+2:xe-2,    ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
+        SP_H_full[xs+2:xe-2,    ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+        SP_V_full[xs+2:xe-2,    ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+        BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
+        ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
+        G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
+        G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
+        G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
     end
 end
 
@@ -207,8 +242,8 @@ end
 # Calculate energy budget dissipation (residual)
 TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
 PS = SP_H_full .+ SP_V_full
-Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full)
-
+Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full
+                .- G_vel_H_full .- G_vel_V_full .- G_buoy_full)
 
 # ============================================================================
 # PART 4: APPLY DEPTH MASK AND COMPUTE ZONAL AVERAGES
