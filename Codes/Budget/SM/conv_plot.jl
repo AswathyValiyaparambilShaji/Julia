@@ -40,7 +40,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
-        fpath   = joinpath(base2, "Conv", "Conv_$suffix2.bin")
+        fpath   = joinpath(base2, "Conv_corr", "Conv_$suffix2.bin")
 
 
     
@@ -77,7 +77,7 @@ fig = Figure(resolution = (700, 500))
 println(Conv_z[10,10])
 
 ax = Axis(fig[1, 1],
-    title   = "Vertical Conversion Cz  (W/m²)",
+    title   = "Vertical Conversion  (W/m²)",
     xlabel  = "Longitude [°]",
     ylabel  = "Latitude [°]")
 ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
@@ -97,8 +97,8 @@ display(fig)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "ConvZ_map_v1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "ConvZ_map_v1.png"))")
+save(joinpath(FIGDIR, "ConvZ_map_v1_phc.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "ConvZ_map_v1_phc.png"))")
 
 
 

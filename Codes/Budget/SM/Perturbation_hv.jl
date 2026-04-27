@@ -129,9 +129,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         N2thr = 1.0e-8
         n_nan = sum(isnan.(N2c))
         n_low = sum(N2c .< N2thr)
-        println("  N2 NaN: $n_nan | below threshold: $n_low | before: $(extrema(filter(!isnan, N2c)))")
         N2c[isnan.(N2c) .| (N2c .< N2thr)] .= N2thr
-        println("  N2 after clamp: $(extrema(N2c))")
+       
 
 
         N2_4d = zeros(Float64, nx, ny, nz, nt)
@@ -150,9 +149,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         zbt[mask4D] .= 0.0
 
 
-        # ── 6. pη = ρ0·g·η − ∫ρ0·N²·ζbt dz′  [Eq. 6] ───────────────────────
-        p_eta = ρ0 .* g .* reshape(eta, nx, ny, 1, nt) .-
-                cumsum(ρ0 .* N2_4d .* zbt .* DRF4d, dims=3)
+        # ── 6. pη = − ∫ρ0·N²·ζbt dz′  [Eq. 6] ───────────────────────
+        p_eta =  .- cumsum(ρ0 .* N2_4d .* zbt .* DRF4d, dims=3)
         p_eta[mask4D] .= 0.0
         zbt = nothing; N2_4d = nothing; eta = nothing; GC.gc()
 
