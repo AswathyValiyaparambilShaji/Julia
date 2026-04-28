@@ -232,7 +232,7 @@ fig = Figure(size = (1200, 500))
 
 ax1 = Axis(fig[1, 1],
     title  = "Depth-integrated, Time-mean  p′  [Pa·m]",
-    xlabel = "x tile index", ylabel = "y tile index")
+    xlabel = "lon", ylabel = "lat")
 hm1 = heatmap!(ax1, pp_global',
     colormap = :RdBu_r, colorrange = (-vmax_pp, vmax_pp))
 Colorbar(fig[1, 2], hm1, label = "Pa·m")
@@ -240,11 +240,11 @@ Colorbar(fig[1, 2], hm1, label = "Pa·m")
 
 ax2 = Axis(fig[1, 3],
     title  = "Depth-integrated, Time-mean  pη  [Pa·m]",
-    xlabel = "x tile index", ylabel = "y tile index")
+    xlabel = "lon", ylabel = "lat")
 hm2 = heatmap!(ax2, peta_global',
     colormap = :RdBu_r, colorrange = (-vmax_peta, vmax_peta))
 Colorbar(fig[1, 4], hm2, label = "Pa·m")
-
+display(fig)
 
 save(joinpath(base2, "pp_vs_peta_comparison.png"), fig)
 println("Plot saved: pp_vs_peta_comparison.png")

@@ -180,7 +180,7 @@ fig = Figure(size = (600, 700))
 
 ax = Axis(fig[1, 1],
     title  = "Pressure profiles  ",
-    xlabel = "Pressure  [Pa]",
+    xlabel = "Pressure  ",
     ylabel = "Depth  [m]",
     yreversed = true)
 
