@@ -42,7 +42,8 @@ thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
-rho0 = 999.8
+#rho0 = 999.8
+rho0 = 1027.5
 println(DRF)
 
 # Create output directory

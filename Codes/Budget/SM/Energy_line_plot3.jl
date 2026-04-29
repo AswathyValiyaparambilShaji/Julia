@@ -33,7 +33,7 @@ nt_avg = div(nt, ts)
 nt3 = div(nt, 3*24)
 
 
-rho0 = 999.8
+rho0 = 1027.5
 
 
 # --- Thickness ---

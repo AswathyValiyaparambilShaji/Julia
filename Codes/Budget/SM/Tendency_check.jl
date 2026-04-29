@@ -40,7 +40,7 @@ nt3 = div(nt, 3*24)
 dt_output = dt * dto       # seconds per output interval = 3600 s
 
 
-rho0 = 999.8
+rho0 = 1027.5
 
 
 # --- Thickness ---

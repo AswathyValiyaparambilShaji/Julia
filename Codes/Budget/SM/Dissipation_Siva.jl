@@ -32,7 +32,7 @@ nx = tx + 2 * buf
 ny = ty + 2 * buf
 
 
-rho0 = 999.8
+rho0 = 1027.5
 
 
 # --- Thickness & constants ---

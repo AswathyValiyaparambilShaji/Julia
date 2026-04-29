@@ -29,7 +29,7 @@ ts  = 72                     # timesteps per 3-day period (3*24)
 nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
 nt3 = div(nt, 3*24)
 
-rho0 = 999.8
+rho0 = 1027.5
 
 # --- Thickness ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]

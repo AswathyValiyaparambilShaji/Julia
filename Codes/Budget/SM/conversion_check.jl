@@ -38,7 +38,7 @@ nt   = div(Tts, dto)
 thk    = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF    = thk[1:nz]
 DRF3d  = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-rho0   = 998.0
+rho0   = 999.8
 g      = 9.8
 T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 
