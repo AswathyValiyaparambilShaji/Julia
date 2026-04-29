@@ -94,7 +94,7 @@ display(fig)
 
 
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "G_buoy_full.png"), fig)
+save(joinpath(FIGDIR, "G_buoy_full_v1.png"), fig)
 println("G_buoy figure saved.")
 
 #=
