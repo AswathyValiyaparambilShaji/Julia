@@ -12,7 +12,7 @@ base2 = cfg["base_path2"]
 
 # --- TIME MODE CONFIGURATION ---
 # Options: "3day", "weekly", "full"
-time_mode = "3day"
+time_mode = "full"
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -125,19 +125,19 @@ if time_mode == "3day"
                     t_actual = t_start + idx - 1
 
                     # IT gradients computed at each timestep
-                    fu_t = @view fu[:, :, :, t_actual]
-                    fv_t = @view fv[:, :, :, t_actual]
-                    fu_x, fu_y, fv_x, fv_y = compute_IT_gradients(fu_t, fv_t, dx, dy, nx, ny, nz)
+                    fu_n = @view fu_niw[:, :, :, t_actual]
+                    fv_n = @view fv_niw[:, :, :, t_actual]
+                    fu_nx, fu_ny, fv_nx, fv_ny = compute_IT_gradients(fu_n, fv_n, dx, dy, nx, ny, nz)
 
                     # NIW velocities (owned field)
-                    us = @view fu_niw[:, :, :, t_actual]
-                    vs = @view fv_niw[:, :, :, t_actual]
+                    ut = @view fu[:, :, :, t_actual]
+                    vt = @view fv[:, :, :, t_actual]
 
                     # G_vel = -rho0 * [us*(us*∂ut/∂x + vs*∂ut/∂y) + vs*(us*∂vt/∂x + vs*∂vt/∂y)] * DRF
-                    temp1 = us .* us .* fu_x .* DRFfull
-                    temp2 = us .* vs .* fu_y .* DRFfull
-                    temp3 = vs .* us .* fv_x .* DRFfull
-                    temp4 = vs .* vs .* fv_y .* DRFfull
+                    temp1 = ut .* ut .* fu_nx .* DRFfull
+                    temp2 = ut .* vt .* fu_ny .* DRFfull
+                    temp3 = vt .* ut .* fv_nx .* DRFfull
+                    temp4 = vt .* vt .* fv_ny .* DRFfull
 
                     g_vel_temp[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
                 end
@@ -188,17 +188,18 @@ elseif time_mode == "weekly"
             g_vel = zeros(Float64, nx, ny, nt_week)
 
             for idx in 1:nt_week
-                fu_t = @view fu[:, :, :, idx]
-                fv_t = @view fv[:, :, :, idx]
-                fu_x, fu_y, fv_x, fv_y = compute_IT_gradients(fu_t, fv_t, dx, dy, nx, ny, nz)
+                fu_n = @view fu_niw[:, :, :, idx]
+                fv_n = @view fv_niw[:, :, :, idx]
+                fu_nx, fu_ny, fv_nx, fv_ny = compute_IT_gradients(fu_n, fv_n, dx, dy, nx, ny, nz)
 
-                us = @view fu_niw[:, :, :, idx]
-                vs = @view fv_niw[:, :, :, idx]
+                ut = @view fu[:, :, :, idx]
+                vt = @view fv[:, :, :, idx]
 
-                temp1 = us .* us .* fu_x .* DRFfull
-                temp2 = us .* vs .* fu_y .* DRFfull
-                temp3 = vs .* us .* fv_x .* DRFfull
-                temp4 = vs .* vs .* fv_y .* DRFfull
+                temp1 = ut .* ut .* fu_nx .* DRFfull
+                temp2 = ut .* vt .* fu_ny .* DRFfull
+                temp3 = vt .* ut .* fv_nx .* DRFfull
+                temp4 = vt .* vt .* fv_ny .* DRFfull
+
 
                 g_vel[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
             end
@@ -249,17 +250,18 @@ elseif time_mode == "full"
 
             println("Calculating G_vel for each timestep...")
             for t in 1:nt
-                fu_t = @view fu[:, :, :, t]
-                fv_t = @view fv[:, :, :, t]
-                fu_x, fu_y, fv_x, fv_y = compute_IT_gradients(fu_t, fv_t, dx, dy, nx, ny, nz)
+                fu_n = @view fu_niw[:, :, :, t]
+                fv_n = @view fv_niw[:, :, :, t]
+                fu_nx, fu_ny, fv_nx, fv_ny = compute_IT_gradients(fu_n, fv_n, dx, dy, nx, ny, nz)
 
-                us = @view fu_niw[:, :, :, t]
-                vs = @view fv_niw[:, :, :, t]
+                ut = @view fu[:, :, :, t]
+                vt = @view fv[:, :, :, t]
 
-                temp1 = us .* us .* fu_x .* DRFfull
-                temp2 = us .* vs .* fu_y .* DRFfull
-                temp3 = vs .* us .* fv_x .* DRFfull
-                temp4 = vs .* vs .* fv_y .* DRFfull
+                temp1 = ut .* ut .* fu_nx .* DRFfull
+                temp2 = ut .* vt .* fu_ny .* DRFfull
+                temp3 = vt .* ut .* fv_nx .* DRFfull
+                temp4 = vt .* vt .* fv_ny .* DRFfull
+
 
                 g_vel[:, :, t] = -rho0 .* dropdims(sum((temp1 .+ temp2 .+ temp3 .+ temp4), dims=3), dims=3)
             end

@@ -16,7 +16,7 @@ base2 = cfg["base_path2"]
 
 # --- TIME MODE CONFIGURATION ---
 # Options: "3day", "weekly", "full"
-time_mode = "3day"
+time_mode = "full"
 
 
 # --- Domain & grid ---
@@ -157,12 +157,20 @@ if time_mode == "3day"
             end)
 
 
-            # --- NIW velocities (owned field) ---
-            fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+            # --- Read fluctuating velocities ---
+            fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
             end)
-            fv_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fv_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+
+
+            fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
             end)
 
 
@@ -188,8 +196,8 @@ if time_mode == "3day"
 
 
                     # IT buoyancy gradients at this timestep
-                    b_IT_t = @view b_IT[:, :, :, t_actual]
-                    b_IT_x, b_IT_y = compute_IT_buoyancy_gradients(b_IT_t, dx, dy, hFacC, nx, ny, nz)
+                    b_NIW_t = @view b_NIW[:, :, :, t_actual]
+                    b_NIW_x, b_NIW_y = compute_IT_buoyancy_gradients(b_NIW_t, dx, dy, hFacC, nx, ny, nz)
 
 
                     # Background N2
@@ -197,14 +205,14 @@ if time_mode == "3day"
 
 
                     # NIW owned fields
-                    b_s  = @view b_NIW[:, :, :, t_actual]
-                    us   = @view fu_niw[:, :, :, t_actual]
-                    vs   = @view fv_niw[:, :, :, t_actual]
+                    b_t  = @view b_IT[:, :, :, t_actual]
+                    ut   = @view fu[:, :, :, t_actual]
+                    vt   = @view fv[:, :, :, t_actual]
 
 
                     # G_buoy = -(b_NIW/N2)(u_NIW*∂b_IT/∂x + v_NIW*∂b_IT/∂y) * DRF
-                    temp1 = (b_s ./ n2_val) .* us .* b_IT_x .* DRFfull
-                    temp2 = (b_s ./ n2_val) .* vs .* b_IT_y .* DRFfull
+                    temp1 = (b_t ./ n2_val) .* ut .* b_NIW_x .* DRFfull
+                    temp2 = (b_t ./ n2_val) .* vt .* b_NIW_y .* DRFfull
 
 
                     temp1[isnan.(temp1)] .= 0.0
@@ -289,14 +297,23 @@ elseif time_mode == "weekly"
             end)[:, :, :, idx_start:idx_end]
 
 
-            fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
+           # --- Read fluctuating velocities ---
+            fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
 
 
-            fv_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fv_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
+            fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
+
+
 
 
             DRFfull = hFacC .* DRF3d
@@ -311,18 +328,18 @@ elseif time_mode == "weekly"
                 t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
 
 
-                b_IT_t = @view b_IT[:, :, :, idx]
-                b_IT_x, b_IT_y = compute_IT_buoyancy_gradients(b_IT_t, dx, dy, hFacC, nx, ny, nz)
+                 b_NIW_t = @view b_NIW[:, :, :, idx]
+                 b_NIW_x, b_NIW_y = compute_IT_buoyancy_gradients(b_NIW_t, dx, dy, hFacC, nx, ny, nz)
 
 
                 n2_val = @view N2_center[:, :, :, t_avg]
-                b_s    = @view b_NIW[:, :, :, idx]
-                us     = @view fu_niw[:, :, :, idx]
-                vs     = @view fv_niw[:, :, :, idx]
+                b_t    = @view b_IT[:, :, :, idx]
+                ut     = @view fu[:, :, :, idx]
+                vt     = @view fv[:, :, :, idx]
 
 
-                temp1 = (b_s ./ n2_val) .* us .* b_IT_x .* DRFfull
-                temp2 = (b_s ./ n2_val) .* vs .* b_IT_y .* DRFfull
+                    temp1 = (b_t ./ n2_val) .* ut .* b_NIW_x .* DRFfull
+                    temp2 = (b_t ./ n2_val) .* vt .* b_NIW_y .* DRFfull
 
 
                 temp1[isnan.(temp1)] .= 0.0
@@ -404,11 +421,20 @@ elseif time_mode == "full"
             end)
 
 
-            fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+            # --- Read fluctuating velocities ---
+            fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
             end)
-            fv_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fv_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+
+
+            fv = Float64.(open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
             end)
 
 
@@ -424,18 +450,17 @@ elseif time_mode == "full"
                 t_avg = min(div(t - 1, ts) + 1, nt_avg)
 
 
-                b_IT_t = @view b_IT[:, :, :, t]
-                b_IT_x, b_IT_y = compute_IT_buoyancy_gradients(b_IT_t, dx, dy, hFacC, nx, ny, nz)
+                b_NIW_t = @view b_NIW[:, :, :, t]
+                b_NIW_x, b_NIW_y = compute_IT_buoyancy_gradients(b_NIW_t, dx, dy, hFacC, nx, ny, nz)
 
 
                 n2_val = @view N2_center[:, :, :, t_avg]
-                b_s    = @view b_NIW[:, :, :, t]
-                us     = @view fu_niw[:, :, :, t]
-                vs     = @view fv_niw[:, :, :, t]
-
-
-                temp1 = (b_s ./ n2_val) .* us .* b_IT_x .* DRFfull
-                temp2 = (b_s ./ n2_val) .* vs .* b_IT_y .* DRFfull
+                b_t    = @view b_IT[:, :, :, t]
+                ut     = @view fu[:, :, :, t]
+                vt     = @view fv[:, :, :, t]
+                # G_buoy = -(b_NIW/N2)(u_NIW*∂b_IT/∂x + v_NIW*∂b_IT/∂y) * DRF
+                temp1 = (b_t ./ n2_val) .* ut .* b_NIW_x .* DRFfull
+                temp2 = (b_t ./ n2_val) .* vt .* b_NIW_y .* DRFfull
 
 
                 temp1[isnan.(temp1)] .= 0.0
