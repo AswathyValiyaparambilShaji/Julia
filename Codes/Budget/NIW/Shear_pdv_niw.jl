@@ -12,7 +12,7 @@ base2 = cfg["base_path2"]
 
 # --- TIME MODE CONFIGURATION ---
 # Options: "3day", "weekly", "full"
-time_mode = "3day"
+time_mode = "full"
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -49,7 +49,7 @@ nt_week          = idx_end - idx_start + 1
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF  = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-rho0 = 999.8
+rho0 = 1027.5
 
 # ============================================================================
 # Helper: compute vertical gradients of IT velocities at a single timestep
@@ -91,6 +91,13 @@ if time_mode == "3day"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
 
+            fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
+
             # NIW-filtered velocities (owned field  appears twice)
             fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
@@ -98,9 +105,7 @@ if time_mode == "3day"
             fv_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fv_niw_$suffix.bin"), "r") do io
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
-            fw_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fw_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
-            end)
+           
 
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
@@ -118,18 +123,18 @@ if time_mode == "3day"
                     t_actual = t_start + idx - 1
 
                     # IT vertical gradients at this timestep
-                    fu_t = @view fu[:, :, :, t_actual]
-                    fv_t = @view fv[:, :, :, t_actual]
-                    fu_z, fv_z = compute_IT_vertical_gradients(fu_t, fv_t, DRF, nx, ny, nz)
+                    fu_n = @view fu_niw[:, :, :, t_actual]
+                    fv_n = @view fv_niw[:, :, :, t_actual]
+                    fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
                     # NIW owned fields
-                    us  = @view fu_niw[:, :, :, t_actual]
-                    vs  = @view fv_niw[:, :, :, t_actual]
-                    ws  = @view fw_niw[:, :, :, t_actual]
+                    ut  = @view fu[:, :, :, t_actual]
+                    vt  = @view fv[:, :, :, t_actual]
+                    wt  = @view fw[:, :, :, t_actual]
 
                     # G_vel_V = -rho0 * [ws*us*∂u_IT/∂z + ws*vs*∂v_IT/∂z] * DRF
-                    temp1 = ws .* us .* fu_z .* DRFfull
-                    temp2 = ws .* vs .* fv_z .* DRFfull
+                    temp1 = wt .* ut .* fu_nz .* DRFfull
+                    temp2 = wt .* vt .* fv_nz .* DRFfull
 
                     g_vel_v_temp[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
                 end
@@ -164,6 +169,13 @@ elseif time_mode == "weekly"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)[:, :, :, idx_start:idx_end]
 
+            fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)[:, :, :, idx_start:idx_end]
+
             fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)[:, :, :, idx_start:idx_end]
@@ -172,9 +184,7 @@ elseif time_mode == "weekly"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)[:, :, :, idx_start:idx_end]
 
-            fw_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fw_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
+            
 
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
@@ -182,16 +192,16 @@ elseif time_mode == "weekly"
             g_vel_v = zeros(Float64, nx, ny, nt_week)
 
             for idx in 1:nt_week
-                fu_t = @view fu[:, :, :, idx]
-                fv_t = @view fv[:, :, :, idx]
-                fu_z, fv_z = compute_IT_vertical_gradients(fu_t, fv_t, DRF, nx, ny, nz)
+                fu_n = @view fu_niw[:, :, :, idx]
+                fv_n = @view fv_niw[:, :, :, idx]
+                fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
-                us  = @view fu_niw[:, :, :, idx]
-                vs  = @view fv_niw[:, :, :, idx]
-                ws  = @view fw_niw[:, :, :, idx]
+                ut  = @view fu[:, :, :, idx]
+                vt  = @view fv[:, :, :, idx]
+                wt  = @view fw[:, :, :, idx]
 
-                temp1 = ws .* us .* fu_z .* DRFfull
-                temp2 = ws .* vs .* fv_z .* DRFfull
+                temp1 = wt .* ut .* fu_nz .* DRFfull
+                temp2 = wt .* vt .* fv_nz .* DRFfull
 
                 g_vel_v[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
             end
@@ -224,15 +234,19 @@ elseif time_mode == "full"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
 
+            fw = Float64.(open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
             fu_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fu_niw_$suffix.bin"), "r") do io
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
             fv_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fv_niw_$suffix.bin"), "r") do io
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
-            fw_niw = Float64.(open(joinpath(base2, "UVW_NIW", "fw_niw_$suffix.bin"), "r") do io
-                reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
-            end)
+            
 
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
@@ -241,16 +255,16 @@ elseif time_mode == "full"
 
             println("Calculating G_vel_V for each timestep...")
             for t in 1:nt
-                fu_t = @view fu[:, :, :, t]
-                fv_t = @view fv[:, :, :, t]
-                fu_z, fv_z = compute_IT_vertical_gradients(fu_t, fv_t, DRF, nx, ny, nz)
+                fu_n = @view fu_niw[:, :, :, t]
+                fv_n = @view fv_niw[:, :, :, t]
+                fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
-                us  = @view fu_niw[:, :, :, t]
-                vs  = @view fv_niw[:, :, :, t]
-                ws  = @view fw_niw[:, :, :, t]
+                ut  = @view fu[:, :, :, t]
+                vt  = @view fv[:, :, :, t]
+                wt  = @view fw[:, :, :, t]
 
-                temp1 = ws .* us .* fu_z .* DRFfull
-                temp2 = ws .* vs .* fv_z .* DRFfull
+                temp1 = wt .* ut .* fu_nz .* DRFfull
+                temp2 = wt .* vt .* fv_nz .* DRFfull
 
                 g_vel_v[:, :, t] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
             end
