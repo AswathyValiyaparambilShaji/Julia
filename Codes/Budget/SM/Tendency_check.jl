@@ -137,12 +137,23 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         ye = ys + ty + (2 * buf) - 1
 
 
-        # ---- Place into global arrays (interior only) ----
+        #---- Place into global arrays (interior only) ----
         KE_full[xs+2:xe-2,   ys+2:ye-2, :] .= ke_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
         PE_full[xs+2:xe-2,   ys+2:ye-2, :] .= pe_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
         TE_t_full[xs+2:xe-2, ys+2:ye-2, :] .= te_t_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         FH[xs+2:xe-2,  ys+2:ye-2]          .= depth[buf:nx-buf+1,     buf:ny-buf+1]
         RAC[xs+2:xe-2, ys+2:ye-2]          .= rac[buf:nx-buf+1,       buf:ny-buf+1]
+        #=
+        KE_full[xs:xs+tx-1,   ys:ys+ty-1, :] .= ke_3day[buf+1:nx-buf,   buf+1:ny-buf, :]
+PE_full[xs:xs+tx-1,   ys:ys+ty-1, :] .= pe_3day[buf+1:nx-buf,   buf+1:ny-buf, :]
+TE_t_full[xs:xs+tx-1, ys:ys+ty-1, :] .= te_t_3day[buf+1:nx-buf, buf+1:ny-buf, :]
+FH[xs:xs+tx-1,        ys:ys+ty-1]    .= depth[buf+1:nx-buf,      buf+1:ny-buf]
+RAC[xs:xs+tx-1,       ys:ys+ty-1]    .= rac[buf+1:nx-buf,        buf+1:ny-buf]
+
+=#
+
+
+
     end
 end
 
@@ -152,7 +163,6 @@ end
 # ============================================================
 KE_tmean = dropdims(mean(KE_full, dims=3), dims=3)   # NX x NY
 PE_tmean = dropdims(mean(PE_full, dims=3), dims=3)   # NX x NY
-println(PE_tmean[1:10,1:10])
 
 
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
