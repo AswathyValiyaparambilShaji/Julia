@@ -104,5 +104,5 @@ display(fig)
 
 # --- Save ---
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "G_vel_H_V_comparison.png"), fig)
+save(joinpath(FIGDIR, "G_vel_H_V1_comparison.png"), fig)
 println("Figure saved.")
