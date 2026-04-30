@@ -51,8 +51,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         ys = (yn - 1) * ty + 1
         ye = ys + ty - 1
 
-
+        println("$suffix")
         G_buoy_full[xs:xe, ys:ye] .= g_buoy[buf+1:nx-buf, buf+1:ny-buf]
+        println(G_buoy_full[xs:xs+10,ys])
 
 
         println("Completed tile $suffix")
