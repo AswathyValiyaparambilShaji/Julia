@@ -46,7 +46,8 @@ rho0  = 1027.5
 
 
 # --- NIW Filter parameters (+/-0.125fo band) ---
-T1_niw, T2_niw, delt, N = 22.68,29.16, 1.0, 4
+#T1_niw, T2_niw, delt, N = 22.68,29.16, 1.0, 4
+T1_niw, T2_niw, delt, N = 20,32, 1.0, 4
 
 
 # --- Loop over tiles ---
