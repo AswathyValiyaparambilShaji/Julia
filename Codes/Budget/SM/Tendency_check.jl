@@ -87,7 +87,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # ---- Read APE ----
-        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
+        ape_raw = Float64.(open(joinpath(base2, "APE", "APE_tc_sm_$suffix.bin"), "r") do io
             nbytes = nx * ny * nz * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)),
                     nx, ny, nz, nt)
@@ -103,7 +103,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         DRF3d4    = reshape(DRF3d, nx, ny, nz, 1)
         ape_clean = replace(ape_raw, NaN => 0.0)
         pe_di     = dropdims(sum(ape_clean .* DRFfull4, dims=3), dims=3)  # nx x ny x nt
-
 
         # ---- Total energy depth-integrated ----
         te_di = ke_di .+ pe_di   # nx x ny x nt
@@ -153,6 +152,7 @@ end
 # ============================================================
 KE_tmean = dropdims(mean(KE_full, dims=3), dims=3)   # NX x NY
 PE_tmean = dropdims(mean(PE_full, dims=3), dims=3)   # NX x NY
+println(PE_tmean[1:10,1:10])
 
 
 valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
@@ -164,7 +164,7 @@ lat_vec = collect(lat)
 # ============================================================
 # 0.25° latitude binning  (area-weighted)
 # ============================================================
-bin_width   = 0.9
+bin_width   = 1.0
 bin_edges   = collect(minlat : bin_width : maxlat)
 bin_centers = bin_edges[1:end-1] .+ bin_width / 2
 nbins       = length(bin_centers)
@@ -247,7 +247,7 @@ mkpath(joinpath(base2, "EnergyRatio"))
 # ============================================================
 fig1 = Figure(resolution=(900, 560), backgroundcolor=:white)
 ax1  = Axis(fig1[1, 1],
-    title     = "Zonal-Mean, Time-Mean, Depth-Integrated KE & APE  (0.9° bins)",
+    title     = "Zonal-Mean, Time-Mean, Depth-Integrated KE & APE  (1° bins)",
     xlabel    = "Latitude (°N)",
     ylabel    = "Energy  (J m⁻²)",
     titlesize = 16, xlabelsize = 13, ylabelsize = 13)
@@ -258,8 +258,8 @@ lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE
 axislegend(ax1, position=:rt)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v8.png"), fig1)
-println("Saved: KE_APE_zonal_binned_v8.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_zonal_binned_v9.png"), fig1)
+println("Saved: KE_APE_zonal_binned_v9.png")
 display(fig1)
 
 
@@ -300,7 +300,7 @@ lines!(ax2, theory_M2, bin_centers,
 # Observed KE/APE ratio
 lines!(ax2, ratio_binned, bin_centers,
     color=:royalblue, linewidth=2.5,
-    label="KE / APE  (observed, 0.9° bins)")
+    label="KE / APE  (observed, 1° bins)")
 
 
 # KE = APE reference line
@@ -312,8 +312,8 @@ vlines!(ax2, [1.0],
 axislegend(ax2, position=:rt, labelsize=11)
 
 
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v8.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_v8.png")
+save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v9.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_v9.png")
 display(fig2)
 
 
