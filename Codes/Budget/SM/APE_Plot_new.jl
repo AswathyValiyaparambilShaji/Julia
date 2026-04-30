@@ -65,7 +65,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
       DRFfull[hFacC .== 0] .= 0
 
 
-      APE = Float64.(open(joinpath(base2, "APE", "APE_tn_sm_$suffix.bin"), "r") do io
+      APE = Float64.(open(joinpath(base2, "APE", "APE_tc_sm_$suffix.bin"), "r") do io
           nbytes = nx * ny * nz * nt * sizeof(Float32)
           reshape(reinterpret(Float32, read(io, nbytes)),
                   nx, ny, nz, nt)
@@ -144,7 +144,7 @@ display(fig)
 
 # Save figure
 FIGDIR        = cfg["fig_base"]
-save(joinpath(FIGDIR, "APE_sm_v2.png"), fig)
+save(joinpath(FIGDIR, "APE_sm_v3.png"), fig)
 
 
 
