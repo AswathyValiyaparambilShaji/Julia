@@ -208,7 +208,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        # --- Read G terms (time-mean, IT -> NIW) ---
+        #= --- Read G terms (time-mean, IT -> NIW) ---
         g_vel_h = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
@@ -224,7 +224,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         g_buoy = Float64.(open(joinpath(base2, "G_buoy_full", "g_buoy_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
+        end)=#
 
 
         # Calculate tile positions
@@ -243,9 +243,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_V_full[xs+2:xe-2,    ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
         BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
         ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
-        G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
-        G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
-        G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
+        #G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
+        #G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
+        #G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
     end
 end
 
@@ -253,8 +253,9 @@ end
 # Calculate energy budget dissipation (residual) with G subtracted
 TotalFlux  = FDiv .+ U_KE_full .+ U_PE_full
 PS         = SP_H_full .+ SP_V_full
-Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full
-                .- G_vel_H_full .- G_vel_V_full .- G_buoy_full)
+#G_total = G_vel_H_full .- G_vel_V_full .- G_buoy_full
+Budget_Diss = -(Conv .- TotalFlux .+ PS .+ BP_full .- ET_full)
+                #.+ G_total)
 
 
 println("Budget dissipation range: ", extrema(Budget_Diss))
@@ -310,8 +311,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison_v3.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_v3.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_WTG_v3.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_WTG_v3.png"))")
 
 
 
