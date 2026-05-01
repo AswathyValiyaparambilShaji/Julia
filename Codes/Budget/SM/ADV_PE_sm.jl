@@ -93,7 +93,7 @@ if time_mode == "3day"
     println("Starting PE flux calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "U_PE_3dayold"))
+    mkpath(joinpath(base2, "U_PE_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -155,6 +155,32 @@ if time_mode == "3day"
             N2_adjusted[:, :, 1, :]      = N2[:, :, 1, :]
             N2_adjusted[:, :, 2:nz, :]   = N2[:, :, 1:nz-1, :]
             N2_adjusted[:, :, nz+1, :]   = N2[:, :, nz, :]
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
+
+
+            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
+            for k in 1:nz
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
+            end
+            N2_adjusted = nothing
+            N2_phase    = nothing
+
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
@@ -165,17 +191,13 @@ if time_mode == "3day"
 
             # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            println("Tile $suffix:")
-            println("  Using physical N2 threshold: $N2_threshold")
 
 
             n_filtered = sum(N2_center .< N2_threshold)
             n_total = length(N2_center)
-            println("  Filtering $(n_filtered) values out of $(n_total) ($(round(100*n_filtered/n_total, digits=2))%)")
 
 
             N2_center[N2_center .< N2_threshold] .= N2_threshold
-            println("  After filtering - N2 range: ", extrema(N2_center))
 
 
             # --- Calculate PE gradients (vectorized) ---

@@ -164,31 +164,39 @@ if time_mode == "3day"
             end)
 
 
+       
+
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-
-
-            N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
-
-
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
-
-
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+            N2_adjusted = nothing
+            N2_phase    = nothing
 
 
             # --- Calculate 3-day averaged mean buoyancy field B ---
@@ -210,6 +218,15 @@ if time_mode == "3day"
                 end
             end
 
+             # --- Filter out anomalously low N2 values ---
+            N2_threshold = 1.0e-8
+
+
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
+
+
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
             # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
             println("Calculating buoyancy gradients...")
@@ -228,7 +245,7 @@ if time_mode == "3day"
 
 
             for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
+                if hFacC[i-1,j,k] == 0 || hFacC[i,j,k] == 0 || hFacC[i+1,j,k] == 0
                     B_x[i, j, k, t] = NaN
                 end
                 if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1

@@ -198,7 +198,7 @@ if time_mode == "3day"
             println("Flux calculation complete")
 
 
-            output_dir = joinpath(base2, "U_KE_3dayold")
+            output_dir = joinpath(base2, "U_KE_3day")
             open(joinpath(output_dir, "u_ke_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(U_KE_3day))
             end
@@ -442,7 +442,7 @@ elseif time_mode == "full"
             u_ke_mean = dropdims(mean(U_KE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_KE_old")
+            output_dir = joinpath(base2, "U_KE")
             open(joinpath(output_dir, "u_ke_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_ke_mean))
             end
