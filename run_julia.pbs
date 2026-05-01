@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N niw_filter
-#PBS -q debug
-#PBS -l select=1:ncpus=16:mem=80GB:model=mil_ait
+#PBS -q long
+#PBS -l select=1:ncpus=128:mem=80GB:model=mil_ait
 #PBS -l walltime=02:00:00
 #PBS -o /nobackup/avaliyap/logs/output.out
 #PBS -e /nobackup/avaliyap/logs/output.err
@@ -11,7 +11,7 @@ export PATH="/home3/avaliyap/.juliaup/bin:$PATH"
 source "/home3/avaliyap/.juliaup/env"
 
 
-export JULIA_NUM_THREADS=16
+export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
