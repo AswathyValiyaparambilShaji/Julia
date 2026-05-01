@@ -552,7 +552,7 @@ elseif time_mode == "full"
 
 
 
-            N
+            
             # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
 
