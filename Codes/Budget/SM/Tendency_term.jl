@@ -71,7 +71,7 @@ if use_3day
             println("\n--- Processing tile: $suffix (3-day) ---")
             
             # --- Read APE ---
-            APE = Float64.(open(joinpath(base2, "APE", "APE_tc_sm_$suffix.bin"), "r") do io
+            APE = Float64.(open(joinpath(base2, "APE", "APE_t_sm_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nz * nt * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
             end)
