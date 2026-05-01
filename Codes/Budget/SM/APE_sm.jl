@@ -162,7 +162,7 @@
                 b_tt = b[:, :, :, tt]
             
                 # APE = 0.5 * rho0 * (b^2 / N2)
-                APE[:, :, :, tt] = 0.25 .* rho0 .* (b_tt.^2 ./ n2_val)
+                APE[:, :, :, tt] = 0.5 .* rho0 .* (b_tt.^2 ./ n2_val)
             end
         end
 
