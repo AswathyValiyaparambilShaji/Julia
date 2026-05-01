@@ -94,6 +94,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # Assign the flux data to the correct region in the full flux arrays
         KE[xs+1:xe-1, ys+1:ye-1] .= ke[xsf:xef,ysf:yef]
         
+    println("KE 2D range: ", extrema(ke)) 
+    println("File size: ", filesize(joinpath(base2, "KE", "ke_t_sm_01x01_3.bin"))) 
+
+
 
 
     end
