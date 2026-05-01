@@ -462,7 +462,7 @@ elseif time_mode == "full"
     println("Starting PE flux calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "U_PE_old"))
+    mkpath(joinpath(base2, "U_PE"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
