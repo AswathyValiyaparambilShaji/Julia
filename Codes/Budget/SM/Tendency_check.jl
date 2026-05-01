@@ -321,8 +321,9 @@ vlines!(ax2, [1.0],
 
 axislegend(ax2, position=:rt, labelsize=11)
 
-
-save(joinpath(base2, "EnergyRatio", "KE_APE_ratio_zonal_binned_v9.png"), fig2)
+# Save figure
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "KE_APE_ratio_zonal_binned_v9.png"), fig2)
 println("Saved: KE_APE_ratio_zonal_binned_v9.png")
 display(fig2)
 

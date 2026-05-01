@@ -128,7 +128,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        # --- Read G horizontal shear (IT -> NIW) ---
+        #= --- Read G horizontal shear (IT -> NIW) ---
         g_vel_h = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
@@ -146,7 +146,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         g_buoy = Float64.(open(joinpath(base2, "G_buoy_full", "g_buoy_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
+        end)=#
 
 
         # Time average the WPI
@@ -171,9 +171,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
         ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
         WPI_full[xs+2:xe-2,     ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
-        G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
-        G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
-        G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
+        #G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
+        #G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
+        #G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
 
 
         println("Completed tile $suffix")
@@ -189,12 +189,12 @@ TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
 MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
 A         = U_KE_full .+ U_PE_full
 PS        = SP_H_full .+ SP_V_full
-G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
+#G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
 
 
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
-Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full
-              .+ G_vel_H_full .+ G_vel_V_full .+ G_buoy_full)
+Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
+              #.+ G_total)
 Residual2 = Conv .- FDiv
 
 
@@ -255,7 +255,7 @@ hm1 = heatmap!(ax1, lon, lat, Conv;
 
 # Row 1, Column 2: Flux Divergence
 ax2 = Axis(fig[1, 2],
-    title = "(b) < ∇.F>",
+    title = "(b) <∇.F>",
     xlabel = "",
     xticklabelsvisible = false,
     ylabel = "",
@@ -333,7 +333,7 @@ hm7 = heatmap!(ax7, lon, lat, ET_full;
     colormap = cmap)
 
 
-#= Row 2, Column 4: Wind Power Input (x10^-3)
+# Row 2, Column 4: Wind Power Input (x10^-3)
 ax8 = Axis(fig[2, 4],
     title = "(h) <WPI> [x10^-3]",
     xlabel = "Longitude [deg]",
@@ -343,10 +343,10 @@ ax8 = Axis(fig[2, 4],
 hm8 = heatmap!(ax8, lon, lat, WPI_plot;
     interpolate = false,
     colorrange = crange2,
-    colormap = cmap)=#
+    colormap = cmap)#
 
 
-# Row 2, Column 5: Total G transfer (IT -> NIW)
+#= Row 2, Column 5: Total G transfer (IT -> NIW)
 ax9 = Axis(fig[2, 4],
     title = "(i) <G>",
     xlabel = "Longitude [deg]",
@@ -356,7 +356,7 @@ ax9 = Axis(fig[2, 4],
 hm9 = heatmap!(ax9, lon, lat, G_total;
     interpolate = false,
     colorrange = crange2,
-    colormap = cmap)
+    colormap = cmap)=#
 
 
 # Add colorbars
@@ -369,10 +369,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v7.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V1.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WPI_G_v7.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V1.png "))")
 
 
 
