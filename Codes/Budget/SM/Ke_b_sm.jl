@@ -77,8 +77,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Bandpass filter density, free rho immediately ---
-        fr  = bandpassfilter(rho, T1, T2, delt, N, nt)
-        rho = nothing; GC.gc()
+        #fr  = bandpassfilter(rho, T1, T2, delt, N, nt)
+        #rho = nothing; GC.gc()
 
 
         # --- Read fu, compute baroclinic u', free fu ---
@@ -117,7 +117,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         up_3d = vp_3d = wp_3d = nothing; GC.gc()
 
 
-        # --- Baroclinic buoyancy b = -g * rho' / rho0 ---
+        #= --- Baroclinic buoyancy b = -g * rho' / rho0 ---
         rho_prime = fr 
         rho_prime[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         fr = nothing
@@ -127,7 +127,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         b[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         rho_prime = nothing; GC.gc()
 
-
+=#
         # --- Save outputs ---
         open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "w") do io
             write(io, Float32.(ke))

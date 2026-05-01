@@ -169,7 +169,7 @@ if time_mode == "3day"
             for j in 1:ny, i in 1:nx
                 kf = k_last_full[i, j]
                 if kf > 0
-                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                    N2_adjusted[i, j, kf+1, :] .= N2[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
                 end
             end
 
@@ -179,14 +179,8 @@ if time_mode == "3day"
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
             N2_adjusted = nothing
-            N2_phase    = nothing
+            N2    = nothing
 
-
-
-            N2_center = zeros(Float64, nx, ny, nz, nt_avg)
-            for k in 1:nz
-                N2_center[:, :, k, :] = (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :]) ./ 2.0
-            end
 
 
             # --- Filter out anomalously low N2 values ---
@@ -264,8 +258,8 @@ if time_mode == "3day"
             println("Flux calculation complete")
 
 
-            output_dir = joinpath(base2, "U_PE_3dayold")
-            open(joinpath(output_dir, "u_pe_uf_3day_$suffix.bin"), "w") do io
+            output_dir = joinpath(base2, "U_PE_3day")
+            open(joinpath(output_dir, "u_pe_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(U_PE_3day))
             end
 
@@ -288,7 +282,7 @@ elseif time_mode == "weekly"
     println("Starting PE flux calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "U_PE_weeklyold"))
+    mkpath(joinpath(base2, "U_PE_weekly"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -350,27 +344,43 @@ elseif time_mode == "weekly"
             N2_adjusted[:, :, 1, :]      = N2[:, :, 1, :]
             N2_adjusted[:, :, 2:nz, :]   = N2[:, :, 1:nz-1, :]
             N2_adjusted[:, :, nz+1, :]   = N2[:, :, nz, :]
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
-                N2_center[:, :, k, :] = (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :]) ./ 2.0
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
+            N2_adjusted = nothing
+            N2    = nothing
+
 
 
             # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            println("Tile $suffix:")
-            println("  Using physical N2 threshold: $N2_threshold")
 
 
             n_filtered = sum(N2_center .< N2_threshold)
             n_total = length(N2_center)
-            println("  Filtering $(n_filtered) values out of $(n_total) ($(round(100*n_filtered/n_total, digits=2))%)")
 
 
             N2_center[N2_center .< N2_threshold] .= N2_threshold
-            println("  After filtering - N2 range: ", extrema(N2_center))
 
 
             # --- Calculate PE gradients over weekly window ---
@@ -428,7 +438,7 @@ elseif time_mode == "weekly"
             u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_PE_uf_weeklyold")
+            output_dir = joinpath(base2, "U_PE_weekly")
             open(joinpath(output_dir, "u_pe_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end
@@ -504,7 +514,7 @@ elseif time_mode == "full"
             end)
 
 
-            # --- Calculate grid metrics ---
+                        # --- Calculate grid metrics ---
             DRFfull = hFacC .* DRF3d
             DRFfull[hFacC .== 0] .= 0.0
 
@@ -514,27 +524,44 @@ elseif time_mode == "full"
             N2_adjusted[:, :, 1, :]      = N2[:, :, 1, :]
             N2_adjusted[:, :, 2:nz, :]   = N2[:, :, 1:nz-1, :]
             N2_adjusted[:, :, nz+1, :]   = N2[:, :, nz, :]
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
-                N2_center[:, :, k, :] = (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :]) ./ 2.0
+                N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
+            N2_adjusted = nothing
+            N2    = nothing
 
 
+
+            N
             # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            println("Tile $suffix:")
-            println("  Using physical N2 threshold: $N2_threshold")
 
 
             n_filtered = sum(N2_center .< N2_threshold)
             n_total = length(N2_center)
-            println("  Filtering $(n_filtered) values out of $(n_total) ($(round(100*n_filtered/n_total, digits=2))%)")
 
 
             N2_center[N2_center .< N2_threshold] .= N2_threshold
-            println("  After filtering - N2 range: ", extrema(N2_center))
 
 
             # --- Calculate PE gradients (vectorized) ---
@@ -592,8 +619,8 @@ elseif time_mode == "full"
             u_pe_mean = dropdims(mean(U_PE, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "U_PE_old")
-            open(joinpath(output_dir, "u_pe_uf_mean_$suffix.bin"), "w") do io
+            output_dir = joinpath(base2, "U_PE")
+            open(joinpath(output_dir, "u_pe_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(u_pe_mean))
             end
 

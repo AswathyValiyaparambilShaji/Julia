@@ -91,7 +91,7 @@ if time_mode == "3day"
     println("Starting KE flux calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "U_KE_3dayold"))
+    mkpath(joinpath(base2, "U_KE_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -222,7 +222,7 @@ elseif time_mode == "weekly"
     println("Starting KE flux calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "U_KE_weeklyold"))
+    mkpath(joinpath(base2, "U_KE_weekly"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -344,7 +344,7 @@ elseif time_mode == "full"
     println("Starting KE flux calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "U_KE_old"))
+    mkpath(joinpath(base2, "U_KE"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
