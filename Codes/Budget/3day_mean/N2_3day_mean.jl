@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML ,CairoMakie
 using Impute
 
 
@@ -115,10 +115,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            N2_interfaces = -(g / rho0) .* (Δρ ./ Δz)
            
            # Store in array (put interface values at lower cell centers)
-           N2[:, :, 2:end, t] = N2_interfaces
+           N2[:, :, 1:end-1, t] = N2_interfaces
            
-           # Handle the first level
-           N2[:, :, 1, t] = N2_interfaces[:, :, 1]
+           #N2 corrections to bottom cell should be dobe while using N2
        end
       
        # --- Set negative values to NaN ---
@@ -131,7 +130,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        # --- Fill NaN values using Impute.jl ---
        println("Filling NaN values with nearest neighbor...")
        
-       # Fill along depth dimension (dim=3) for each (i,j,t) profile
+       #= Fill along depth dimension (dim=3) for each (i,j,t) profile
        # Using nearest neighbor (forward fill then backward fill)
        for t in 1:nt_avg
            for j in 1:ny
@@ -147,6 +146,47 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
                end
            end
        end
+       =#
+       # Fill along depth dimension (dim=3) for each (i,j,t) profile
+# Using nearest neighbor (forward fill then backward fill)
+
+
+fig_profiles = Figure(resolution=(600, 800))
+ax1 = Axis(fig_profiles[1, 1], title="Before LOCF (NaN profiles)", xlabel="N² (s⁻²)", ylabel="Depth index")
+ax2 = Axis(fig_profiles[1, 2], title="After LOCF+NOCB (filled profiles)", xlabel="N² (s⁻²)", ylabel="Depth index")
+
+
+for t in 1:nt_avg
+    for j in 1:ny
+        for i in 1:nx
+            profile = N2[i, j, :, t]
+            if any(isnan, profile)
+                # Plot before filling
+                lines!(ax1, profile, 1:length(profile), color=(:blue, 0.3))
+
+
+                # Forward fill (carry last observation forward)
+                profile_ff = Impute.locf(profile)
+                # Backward fill (carry next observation backward)
+                profile_filled = Impute.nocb(profile_ff)
+                N2[i, j, :, t] = profile_filled
+
+
+                # Plot after filling
+                lines!(ax2, profile_filled, 1:length(profile_filled), color=(:red, 0.3))
+            end
+        end
+    end
+end
+display(fig_profiles)
+
+save("N2_nan_profiles_check.png", fig_profiles)
+println("Saved N2 NaN profile check plot.")
+
+
+
+
+
        
        n_nan_after = sum(isnan.(N2))
        n_negative_after = sum(N2 .< 0)
