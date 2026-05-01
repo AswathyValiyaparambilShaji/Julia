@@ -68,9 +68,6 @@ idx_end          = hour_apr28_end   + 1    # = 1416  (1-based)
 nt_week          = idx_end - idx_start + 1 # = 168
 
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
-
 
 
 
@@ -98,7 +95,7 @@ if time_mode == "3day"
     println("Starting buoyancy production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "BP3day_old"))
+    mkpath(joinpath(base2, "BP_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -131,7 +128,10 @@ if time_mode == "3day"
                     rho[mask, k, t] .= NaN
                 end
             end
-
+            DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+            DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0   
 
             # --- Read N2 (3-day averaged) ---
             N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
@@ -163,7 +163,15 @@ if time_mode == "3day"
                 reshape(raw_data, nx, ny, nz, nt)
             end)
 
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
 
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
        
 
             # --- Adjust N2 to interfaces ---
@@ -197,6 +205,15 @@ if time_mode == "3day"
             end
             N2_adjusted = nothing
             N2_phase    = nothing
+            # --- Filter out anomalously low N2 values ---
+            N2_threshold = 1.0e-8
+
+
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
+
+
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
 
             # --- Calculate 3-day averaged mean buoyancy field B ---
@@ -218,16 +235,7 @@ if time_mode == "3day"
                 end
             end
 
-             # --- Filter out anomalously low N2 values ---
-            N2_threshold = 1.0e-8
-
-
-            n_filtered = sum(N2_center .< N2_threshold)
-            n_total = length(N2_center)
-
-
-            N2_center[N2_center .< N2_threshold] .= N2_threshold
-
+             
             # --- Calculate mean buoyancy gradients: ∂B/∂x, ∂B/∂y ---
             println("Calculating buoyancy gradients...")
             B_x = fill(NaN, nx, ny, nz, nt_avg)
@@ -245,7 +253,7 @@ if time_mode == "3day"
 
 
             for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] == 0 || hFacC[i,j,k] == 0 || hFacC[i+1,j,k] == 0
+                if hFacC[i-1,j,k]!= 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
                     B_x[i, j, k, t] = NaN
                 end
                 if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
@@ -278,8 +286,8 @@ if time_mode == "3day"
                     B_x_t  = @view B_x[:, :, :, t_avg]
                     B_y_t  = @view B_y[:, :, :, t_avg]
                     b_t    = @view b[:, :, :, t_actual]
-                    ut     = @view fu[:, :, :, t_actual]
-                    vt     = @view fv[:, :, :, t_actual]
+                    ut     = @view up_3d[:, :, :, t_actual]
+                    vt     = @view vp_3d[:, :, :, t_actual]
 
 
                     temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
@@ -302,7 +310,7 @@ if time_mode == "3day"
             println("  BP range: $(extrema(BP_3day[isfinite.(BP_3day)]))")
 
 
-            output_dir = joinpath(base2, "BP3day_old")
+            output_dir = joinpath(base2, "BP_3day")
             open(joinpath(output_dir, "bp_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(BP_3day))
             end
@@ -391,33 +399,65 @@ elseif time_mode == "weekly"
                 reshape(raw_data, nx, ny, nz, nt)
             end)[:, :, :, idx_start:idx_end]
 
+            DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+            DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0  
+            
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+       
 
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-
-
+            N2_adjusted = nothing
+            N2_phase    = nothing
+            # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
 
 
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
 
 
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
+
+            
 
             # --- Calculate 3-day averaged mean buoyancy field B ---
             # Uses full rho record mapped via t_avg for B/N2 gradients,
@@ -476,7 +516,7 @@ elseif time_mode == "weekly"
 
 
             for t in 1:nt_avg, k in 1:nz, j in 2:ny-1, i in 2:nx-1
-                if hFacC[i-1,j,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
+                if hFacC[i-1,j,k]!= 1 || hFacC[i,j,k] != 1 || hFacC[i+1,j,k] != 1
                     B_x[i, j, k, t] = NaN
                 end
                 if hFacC[i,j-1,k] != 1 || hFacC[i,j,k] != 1 || hFacC[i,j+1,k] != 1
@@ -500,8 +540,8 @@ elseif time_mode == "weekly"
                 B_x_t  = @view B_x[:, :, :, t_avg]
                 B_y_t  = @view B_y[:, :, :, t_avg]
                 b_t    = @view b[:, :, :, idx]
-                ut     = @view fu[:, :, :, idx]
-                vt     = @view fv[:, :, :, idx]
+                ut     = @view up_3d[:, :, :, idx]
+                vt     = @view vp_3d[:, :, :, idx]
 
 
                 temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
@@ -527,7 +567,7 @@ elseif time_mode == "weekly"
 
 
             output_dir = joinpath(base2, "BP_weekly")
-            open(joinpath(output_dir, "bp_uf_weekly_$suffix.bin"), "w") do io
+            open(joinpath(output_dir, "bp_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end
 
@@ -550,7 +590,7 @@ elseif time_mode == "full"
     println("Starting buoyancy production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "BP_old"))
+    mkpath(joinpath(base2, "BP"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -616,31 +656,62 @@ elseif time_mode == "full"
             end)
 
 
+                        DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+            DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0  
+            
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+       
+
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-
-
+            N2_adjusted = nothing
+            N2_phase    = nothing
+            # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
 
 
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
 
 
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
 
             # --- Calculate 3-day averaged mean buoyancy field B ---
@@ -704,8 +775,8 @@ elseif time_mode == "full"
                 B_x_t  = @view B_x[:, :, :, t_avg]
                 B_y_t  = @view B_y[:, :, :, t_avg]
                 b_t    = @view b[:, :, :, t]
-                ut     = @view fu[:, :, :, t]
-                vt     = @view fv[:, :, :, t]
+                ut     = @view up_3d[:, :, :, t]
+                vt     = @view vp_3d[:, :, :, t]
 
 
                 temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
@@ -730,7 +801,7 @@ elseif time_mode == "full"
             println("  BP range: $(extrema(BP[isfinite.(BP)]))")
 
 
-            output_dir = joinpath(base2, "BP_old")
+            output_dir = joinpath(base2, "BP")
             open(joinpath(output_dir, "bp_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end

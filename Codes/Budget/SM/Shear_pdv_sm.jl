@@ -68,12 +68,6 @@ idx_end          = hour_apr28_end   + 1    # = 1416  (1-based)
 nt_week          = idx_end - idx_start + 1 # = 168
 
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
-
-
-
-
 # --- Thickness & constants ---
 thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
@@ -97,7 +91,7 @@ if time_mode == "3day"
     println("Starting vertical shear production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "SP_V_3dayold"))
+    mkpath(joinpath(base2, "SP_V_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -156,8 +150,22 @@ if time_mode == "3day"
 
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+            depth   = sum(DRFfull, dims=3)
 
+            DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             # --- Calculate vertical gradients of mean velocities: ∂U/∂z, ∂V/∂z ---
             println("Calculating vertical gradients of mean velocities...")
@@ -198,9 +206,9 @@ if time_mode == "3day"
 
                     U_z_t = @view U_z[:, :, :, t_avg]
                     V_z_t = @view V_z[:, :, :, t_avg]
-                    ut    = @view fu[:, :, :, t_actual]
-                    vt    = @view fv[:, :, :, t_actual]
-                    wt    = @view fw[:, :, :, t_actual]
+                    ut    = @view up_3d[:, :, :, t_actual]
+                    vt    = @view vp_3d[:, :, :, t_actual]
+                    wt    = @view wp_3d[:, :, :, t_actual]
 
 
                     temp1 = wt .* ut .* U_z_t .* DRFfull
@@ -218,7 +226,7 @@ if time_mode == "3day"
             println("Vertical shear production calculation complete")
 
 
-            output_dir = joinpath(base2, "SP_V_3dayold")
+            output_dir = joinpath(base2, "SP_V_3day")
             open(joinpath(output_dir, "sp_v_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_V_3day))
             end
@@ -242,7 +250,7 @@ elseif time_mode == "weekly"
     println("Starting vertical shear production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "SP_V_weeklyold"))
+    mkpath(joinpath(base2, "SP_V_weekly"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -301,8 +309,22 @@ elseif time_mode == "weekly"
 
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+            
             DRFfull[hFacC .== 0] .= 0.0
-
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             # --- Calculate vertical gradients of mean velocities: ∂U/∂z, ∂V/∂z ---
             println("Calculating vertical gradients of mean velocities...")
@@ -334,9 +356,9 @@ elseif time_mode == "weekly"
 
                 U_z_t = @view U_z[:, :, :, t_avg]
                 V_z_t = @view V_z[:, :, :, t_avg]
-                ut    = @view fu[:, :, :, idx]
-                vt    = @view fv[:, :, :, idx]
-                wt    = @view fw[:, :, :, idx]
+                ut    = @view up_3d[:, :, :, idx]
+                vt    = @view vp_3d[:, :, :, idx]
+                wt    = @view wp_3d[:, :, :, idx]
 
 
                 temp1 = wt .* ut .* U_z_t .* DRFfull
@@ -354,7 +376,7 @@ elseif time_mode == "weekly"
             SP_V = dropdims(mean(sp_v, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "SP_V_weeklyold")
+            output_dir = joinpath(base2, "SP_V_weekly")
             open(joinpath(output_dir, "sp_v_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_V))
             end
@@ -378,7 +400,7 @@ elseif time_mode == "full"
     println("Starting vertical shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "SP_V_old"))
+    mkpath(joinpath(base2, "SP_V"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -437,8 +459,22 @@ elseif time_mode == "full"
 
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+            depth   = sum(DRFfull, dims=3)
 
+            DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             # --- Calculate vertical gradients of mean velocities: ∂U/∂z, ∂V/∂z ---
             println("Calculating vertical gradients of mean velocities...")
@@ -470,9 +506,9 @@ elseif time_mode == "full"
 
                 U_z_t = @view U_z[:, :, :, t_avg]
                 V_z_t = @view V_z[:, :, :, t_avg]
-                ut    = @view fu[:, :, :, t]
-                vt    = @view fv[:, :, :, t]
-                wt    = @view fw[:, :, :, t]
+                ut    = @view up_3d[:, :, :, t]
+                vt    = @view vp_3d[:, :, :, t]
+                wt    = @view wp_3d[:, :, :, t]
 
 
                 temp1 = wt .* ut .* U_z_t .* DRFfull
@@ -490,7 +526,7 @@ elseif time_mode == "full"
             SP_V = dropdims(mean(sp_v, dims=3), dims=3)
 
 
-            output_dir = joinpath(base2, "SP_V_old")
+            output_dir = joinpath(base2, "SP_V")
             open(joinpath(output_dir, "sp_v_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_V))
             end

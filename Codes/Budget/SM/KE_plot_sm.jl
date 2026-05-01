@@ -63,29 +63,20 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     depth = sum(DRFfull, dims=3)
     DRFfull[hFacC .== 0] .= 0.0
 
- # --- Read KE ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)
+ # ---- Read KE ----
+        println("  Readig KE...")
+        ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nz * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
+        end)
 
 
-        #=fv = open(joinpath(base2, "UVW_F", "fv_$suffix.bin"), "r") do io
-            # Calculate the number of bytes needed
-            nbytes = nx * ny * nz * sizeof(Float64)
-            # Read the raw bytes
-            raw_bytes = read(io, nbytes)
-            # Reinterpret as Float64 array and reshape
-            raw_data = reinterpret(Float64, raw_bytes)
-            reshaped_data = reshape(raw_data, nx, ny, nz)
-        end
-        =#
+        
+        # ---- Depth-integrate KE (weighted by DRFfull) ----
+        DRFfull4 = reshape(DRFfull, nx, ny, nz, 1)
+        ke_di    = dropdims(sum(ke_raw .* DRFfull4, dims=3), dims=3)   # nx x ny x nt
 
-        ked = mean(ke_t, dims=4)
-        ke = sum(ked .* DRFfull, dims=3)        # (nx,ny,1,1)
-
+        ke = mean(ke_di, dims =3)
         # ---- Tile position in global grid ----
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
@@ -101,12 +92,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 fig = Figure(resolution=(500, 400))
-
+println(KE[1:30,10])
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
 ax1 = Axis(fig[1, 1], title="KE (kg/s²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
                 (minimum(lat), maximum(lat)))
-hm = CairoMakie.heatmap!(ax1, lon, lat, KE ; interpolate = false,colormap    = :jet,colorrange = (0,8000))
+hm = CairoMakie.heatmap!(ax1, lon, lat, KE ; interpolate = false,colormap   = :jet,colorrange = (0,18000))
 
 
 Colorbar(fig[1, 2], hm, label = " (kg/s²)")

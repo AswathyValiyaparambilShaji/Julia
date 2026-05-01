@@ -68,11 +68,6 @@ idx_end          = hour_apr28_end   + 1    # = 1416  (1-based)
 nt_week          = idx_end - idx_start + 1 # = 168
 
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
-
-
-
 
 # --- Thickness & constants ---
 thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
@@ -97,7 +92,7 @@ if time_mode == "3day"
     println("Starting horizontal shear production calculation for $nt3 3-day periods...")
 
 
-    mkpath(joinpath(base2, "SP_H_3dayold"))
+    mkpath(joinpath(base2, "SP_H_3day"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -150,8 +145,18 @@ if time_mode == "3day"
 
             # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
-
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+           
 
             # --- Calculate horizontal gradients of mean velocities ---
             println("Calculating horizontal gradients of mean velocities...")
@@ -201,8 +206,8 @@ if time_mode == "3day"
                     U_y_t = @view U_y[:, :, :, t_avg]
                     V_x_t = @view V_x[:, :, :, t_avg]
                     V_y_t = @view V_y[:, :, :, t_avg]
-                    ut    = @view fu[:, :, :, t_actual]
-                    vt    = @view fv[:, :, :, t_actual]
+                    ut    = @view up_3d[:, :, :, t_actual]
+                    vt    = @view vp_3d[:, :, :, t_actual]
 
 
                     temp1 = ut .* ut .* U_x_t .* DRFfull
@@ -222,7 +227,7 @@ if time_mode == "3day"
             println("Horizontal shear production calculation complete")
 
 
-            output_dir = joinpath(base2, "SP_H_3dayold")
+            output_dir = joinpath(base2, "SP_H_3day")
             open(joinpath(output_dir, "sp_h_3day_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H_3day))
             end
@@ -246,7 +251,7 @@ elseif time_mode == "weekly"
     println("Starting horizontal shear production calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
 
 
-    mkpath(joinpath(base2, "SP_H_weeklyold"))
+    mkpath(joinpath(base2, "SP_H_weekly"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -297,9 +302,20 @@ elseif time_mode == "weekly"
             end)[:, :, :, idx_start:idx_end]
 
 
-            # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            
 
 
             # --- Calculate horizontal gradients of mean velocities ---
@@ -341,8 +357,8 @@ elseif time_mode == "weekly"
                 U_y_t = @view U_y[:, :, :, t_avg]
                 V_x_t = @view V_x[:, :, :, t_avg]
                 V_y_t = @view V_y[:, :, :, t_avg]
-                ut    = @view fu[:, :, :, idx]
-                vt    = @view fv[:, :, :, idx]
+                ut    = @view up_3d[:, :, :, idx]
+                vt    = @view vp_3d[:, :, :, idx]
 
 
                 temp1 = ut .* ut .* U_x_t .* DRFfull
@@ -362,7 +378,7 @@ elseif time_mode == "weekly"
             SP_H = dropdims(mean(sp_h, dims=3), dims=3)   # (nx, ny)
 
 
-            output_dir = joinpath(base2, "SP_H_weeklyold")
+            output_dir = joinpath(base2, "SP_H_weekly")
             open(joinpath(output_dir, "sp_h_weekly_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H))
             end
@@ -386,7 +402,7 @@ elseif time_mode == "full"
     println("Starting horizontal shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "SP_H_old"))
+    mkpath(joinpath(base2, "SP_H"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -437,9 +453,19 @@ elseif time_mode == "full"
             end)
 
 
-            # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
 
 
             # --- Calculate horizontal gradients of mean velocities ---
@@ -481,8 +507,8 @@ elseif time_mode == "full"
                 U_y_t = @view U_y[:, :, :, t_avg]
                 V_x_t = @view V_x[:, :, :, t_avg]
                 V_y_t = @view V_y[:, :, :, t_avg]
-                ut    = @view fu[:, :, :, t]
-                vt    = @view fv[:, :, :, t]
+                ut    = @view up_3d[:, :, :, t]
+                vt    = @view vp_3d[:, :, :, t]
 
 
                 temp1 = ut .* ut .* U_x_t .* DRFfull
@@ -502,7 +528,7 @@ elseif time_mode == "full"
             SP_H = dropdims(mean(sp_h, dims=3), dims=3)
 
 
-            output_dir = joinpath(base2, "SP_H_old")
+            output_dir = joinpath(base2, "SP_H")
             open(joinpath(output_dir, "sp_h_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H))
             end
