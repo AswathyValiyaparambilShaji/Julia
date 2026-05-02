@@ -37,7 +37,8 @@ nt = div(Tts, dto)
 
 # --- Filter (10.2–32.2 hr broadband: 0.8f₀ to 2.5f₀ at mean lat 27.695°N) ---
 T1, T2, delt, N = 10.2, 32.2, 1.0, 4
-
+mkpath(joinpath(base, "NT"))
+mkpath(joinpath(base, "NT","UVW_nt"))
 
 # --- Loop over all tiles ---
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -71,17 +72,17 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Save broadband filtered U, V, W ---
-        open(joinpath(base2, "UVW_NT", "fu_nt_$suffix.bin"), "w") do io
+        open(joinpath(base,"NT", "UVW_NT", "fu_nt_$suffix.bin"), "w") do io
                write(io, Float32.(fu))
            end
-           open(joinpath(base2, "UVW_NT", "fv_nt_$suffix.bin"), "w") do io
+           open(joinpath(base,"NT", "UVW_NT", "fv_nt_$suffix.bin"), "w") do io
                write(io, Float32.(fv))
            end
               
-           open(joinpath(base2, "UVW_NT", "fw_nt_$suffix.bin"), "w") do io
+           open(joinpath(base,"NT", "UVW_NT", "fw_nt_$suffix.bin"), "w") do io
                write(io, Float32.(fw))
            end
-
+ 
 
 
         println("Completed tile: $suffix")

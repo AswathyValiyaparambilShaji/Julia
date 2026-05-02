@@ -34,6 +34,7 @@ fcutlow_niw  = 1 / T2_niw   # 1/44 cphr
 fcuthigh_niw = 1 / T1_niw   # 1/29 cphr
 fnq = 1 / delt
 bpf_niw = digitalfilter(Bandpass(fcutlow_niw, fcuthigh_niw), Butterworth(N); fs = fnq)
+    
 
 # --- Parallelize over tiles ---
 for xn in cfg["xn_start"]:cfg["xn_end"]
