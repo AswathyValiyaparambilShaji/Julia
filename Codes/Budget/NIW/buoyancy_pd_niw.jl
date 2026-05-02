@@ -122,25 +122,45 @@ if time_mode == "3day"
             end)
 
 
+            # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-
-
+            N2_adjusted = nothing
+            N2_phase    = nothing
+            # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
+
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
 
 
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
 
             # --- IT buoyancy (differentiated field) ---
@@ -175,8 +195,19 @@ if time_mode == "3day"
 
 
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0 
 
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
 
             G_buoy_3day = zeros(Float64, nx, ny, nt3)
             hrs_per_chunk = 3 * 24
@@ -206,8 +237,8 @@ if time_mode == "3day"
 
                     # NIW owned fields
                     b_t  = @view b_IT[:, :, :, t_actual]
-                    ut   = @view fu[:, :, :, t_actual]
-                    vt   = @view fv[:, :, :, t_actual]
+                    ut   = @view up_3d[:, :, :, t_actual]
+                    vt   = @view vp_3d[:, :, :, t_actual]
 
 
                     # G_buoy = -(b_NIW/N2)(u_NIW*∂b_IT/∂x + v_NIW*∂b_IT/∂y) * DRF
@@ -261,26 +292,45 @@ elseif time_mode == "weekly"
                 reshape(reinterpret(Float32, raw), nx, ny, nz, nt_avg)
             end)
 
-
+            # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
-            N2_adjusted[:, :, 1,    :] = N2_phase[:, :, 1,      :]
-            N2_adjusted[:, :, 2:nz, :] = N2_phase[:, :, 1:nz-1, :]
-            N2_adjusted[:, :, nz+1, :] = N2_phase[:, :, nz-1,   :]
+            N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
+            N2_adjusted[:, :, 2:nz,:] = N2_phase[:, :, 1:nz-1, :]
+            N2_adjusted[:, :, nz+1,:] = N2_phase[:, :, nz-1, :]
+
+            k_last_full = zeros(Int, nx, ny)
+            for j in 1:ny, i in 1:nx
+                for k in nz:-1:1
+                    if hFacC[i, j, k] >= 1.0
+                        k_last_full[i, j] = k
+                        break
+                    end
+                end
+            end
+
+
+            for j in 1:ny, i in 1:nx
+                kf = k_last_full[i, j]
+                if kf > 0
+                    N2_adjusted[i, j, kf+1, :] .= N2_phase[i, j, kf-1, :] # k+1 because of the concatination of adition surface grid
+                end
+            end
 
 
             N2_center = zeros(Float64, nx, ny, nz, nt_avg)
             for k in 1:nz
                 N2_center[:, :, k, :] .= 0.5 .* (N2_adjusted[:, :, k, :] .+ N2_adjusted[:, :, k+1, :])
             end
-
-
+            N2_adjusted = nothing
+            N2_phase    = nothing
+            # --- Filter out anomalously low N2 values ---
             N2_threshold = 1.0e-8
-            N2_center[N2_center .< N2_threshold] .= NaN
+
+            n_filtered = sum(N2_center .< N2_threshold)
+            n_total = length(N2_center)
 
 
-            for i in 1:nx, j in 1:ny, t in 1:nt_avg
-                N2_center[i, j, :, t] = Impute.interp(N2_center[i, j, :, t])
-            end
+            N2_center[N2_center .< N2_threshold] .= N2_threshold
 
 
             # --- IT buoyancy (differentiated field) — subset to weekly ---
@@ -314,10 +364,20 @@ elseif time_mode == "weekly"
             end)
 
 
-
-
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0 
+            
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
 
 
             g_buoy = zeros(Float64, nx, ny, nt_week)
@@ -334,8 +394,8 @@ elseif time_mode == "weekly"
 
                 n2_val = @view N2_center[:, :, :, t_avg]
                 b_t    = @view b_IT[:, :, :, idx]
-                ut     = @view fu[:, :, :, idx]
-                vt     = @view fv[:, :, :, idx]
+                ut     = @view up_3d[:, :, :, idx]
+                vt     = @view vp_3d[:, :, :, idx]
 
 
                     temp1 = (b_t ./ n2_val) .* ut .* b_NIW_x .* DRFfull
@@ -437,9 +497,20 @@ elseif time_mode == "full"
                 reshape(raw_data, nx, ny, nz, nt)
             end)
 
-
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0 
+            
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
 
 
             g_buoy = zeros(Float64, nx, ny, nt)
@@ -456,8 +527,8 @@ elseif time_mode == "full"
 
                 n2_val = @view N2_center[:, :, :, t_avg]
                 b_t    = @view b_IT[:, :, :, t]
-                ut     = @view fu[:, :, :, t]
-                vt     = @view fv[:, :, :, t]
+                ut     = @view up_3d[:, :, :, t]
+                vt     = @view vp_3d[:, :, :, t]
                 # G_buoy = -(b_NIW/N2)(u_NIW*∂b_IT/∂x + v_NIW*∂b_IT/∂y) * DRF
                 temp1 = (b_t ./ n2_val) .* ut .* b_NIW_x .* DRFfull
                 temp2 = (b_t ./ n2_val) .* vt .* b_NIW_y .* DRFfull

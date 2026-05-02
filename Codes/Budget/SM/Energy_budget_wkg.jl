@@ -73,9 +73,9 @@ if use_3day
     SP_V_full    = zeros(NX, NY, nt3)
     BP_full      = zeros(NX, NY, nt3)
     ET_full      = zeros(NX, NY, nt3)
-    G_vel_H_full = zeros(NX, NY, nt3)
-    G_vel_V_full = zeros(NX, NY, nt3)
-    G_buoy_full  = zeros(NX, NY, nt3)
+    #G_vel_H_full = zeros(NX, NY, nt3)
+    #G_vel_V_full = zeros(NX, NY, nt3)
+    #G_buoy_full  = zeros(NX, NY, nt3)
 
 
     # Static fields (same for all times)
@@ -116,31 +116,31 @@ if use_3day
             end)
 
 
-            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
+            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
 
 
-            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
+            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
 
 
-            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
+            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
 
 
-            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
+            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
 
 
-            bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
+            bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
@@ -152,7 +152,7 @@ if use_3day
             end)
 
 
-            # --- Read G terms (IT -> NIW), 3-day ---
+            #= --- Read G terms (IT -> NIW), 3-day ---
             g_vel_h_3day = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
@@ -168,7 +168,7 @@ if use_3day
             g_buoy_3day = Float64.(open(joinpath(base2, "G_buoy_full", "g_buoy_mean_$suffix.bin"), "r") do io
                 nbytes = nx * ny * nt3 * sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-            end)
+            end)=#
 
 
             dx  = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
@@ -195,9 +195,9 @@ if use_3day
             SP_V_full[xs+2:xe-2,    ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
             BP_full[xs+2:xe-2,      ys+2:ye-2, :] .= bp_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
             ET_full[xs+2:xe-2,      ys+2:ye-2, :] .= te_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
-            G_vel_H_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-            G_vel_V_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-            G_buoy_full[xs+2:xe-2,  ys+2:ye-2, :] .= g_buoy_3day[buf:nx-buf+1,  buf:ny-buf+1, :]
+            #G_vel_H_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+            #G_vel_V_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+            #G_buoy_full[xs+2:xe-2,  ys+2:ye-2, :] .= g_buoy_3day[buf:nx-buf+1,  buf:ny-buf+1, :]
 
 
             FH[xs+2:xe-2,  ys+2:ye-2] .= H[buf:nx-buf+1,   buf:ny-buf+1]
@@ -235,7 +235,7 @@ if use_3day
         PS_t        = SP_H_full[:, :, t] .+ SP_V_full[:, :, t]
         G_t         = G_vel_H_full[:, :, t] .+ G_vel_V_full[:, :, t] .+ G_buoy_full[:, :, t]
         Residual_t  = -(Conv[:, :, t] .- TotalFlux_t .+ PS_t .+ BP_full[:, :, t] .- ET_full[:, :, t]
-                        .- G_vel_H_full[:, :, t] .- G_vel_V_full[:, :, t] .- G_buoy_full[:, :, t])
+                        .- G_t[:,:,t])
 
 
         fig = Figure(resolution=(1600, 800))
@@ -339,9 +339,9 @@ else
     SP_V_full    = zeros(NX, NY, nt3)
     BP_full      = zeros(NX, NY, nt3)
     ET_full      = zeros(NX, NY, nt3)
-    G_vel_H_full = zeros(NX, NY, nt3)
-    G_vel_V_full = zeros(NX, NY, nt3)
-    G_buoy_full  = zeros(NX, NY, nt3)
+    #G_vel_H_full = zeros(NX, NY, nt3)
+    #G_vel_V_full = zeros(NX, NY, nt3)
+    #G_buoy_full  = zeros(NX, NY, nt3)
     ∇H           = zeros(NX, NY)
     FH           = zeros(NX, NY)
     RAC          = zeros(NX, NY)
@@ -370,23 +370,23 @@ else
                 nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
             end)
-            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
+            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_3day_$suffix.bin"), "r") do io
+            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
+            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
+            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
+            bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
@@ -396,7 +396,7 @@ else
             end)
 
 
-            # --- Read G terms (IT -> NIW) ---
+            #= --- Read G terms (IT -> NIW) ---
             g_vel_h_3day = Float64.(open(joinpath(base2, "G_vel_3day", "g_vel_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
@@ -408,7 +408,7 @@ else
             g_buoy_3day = Float64.(open(joinpath(base2, "G_buoy_3day", "g_buoy_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
-            end)
+            end)=#
 
 
             dx  = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
@@ -443,9 +443,9 @@ else
             SP_V_full[xs+2:xe-2,    ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
             BP_full[xs+2:xe-2,      ys+2:ye-2, :] .= bp_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
             ET_full[xs+2:xe-2,      ys+2:ye-2, :] .= te_3day[buf:nx-buf+1,   buf:ny-buf+1, :]
-            G_vel_H_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-            G_vel_V_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-            G_buoy_full[xs+2:xe-2,  ys+2:ye-2, :] .= g_buoy_3day[buf:nx-buf+1,  buf:ny-buf+1, :]
+            #G_vel_H_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+            #G_vel_V_full[xs+2:xe-2, ys+2:ye-2, :] .= g_vel_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+            #G_buoy_full[xs+2:xe-2,  ys+2:ye-2, :] .= g_buoy_3day[buf:nx-buf+1,  buf:ny-buf+1, :]
 
 
             FH[xs+2:xe-2,  ys+2:ye-2] .= H[buf:nx-buf+1,   buf:ny-buf+1]
@@ -470,9 +470,9 @@ else
     SP_V_m      = mean(SP_V_full,    dims=3)[:, :, 1]
     BP_m        = mean(BP_full,      dims=3)[:, :, 1]
     ET_m        = mean(ET_full,      dims=3)[:, :, 1]
-    G_vel_H_m   = mean(G_vel_H_full, dims=3)[:, :, 1]
-    G_vel_V_m   = mean(G_vel_V_full, dims=3)[:, :, 1]
-    G_buoy_m    = mean(G_buoy_full,  dims=3)[:, :, 1]
+    #G_vel_H_m   = mean(G_vel_H_full, dims=3)[:, :, 1]
+    #G_vel_V_m   = mean(G_vel_V_full, dims=3)[:, :, 1]
+    #G_buoy_m    = mean(G_buoy_full,  dims=3)[:, :, 1]
 
 
     println("\nCalculating derived terms...")
@@ -486,7 +486,7 @@ else
 
 
     Residual  = -(Conv_m .- TotalFlux .+ SP_H_m .+ SP_V_m .+ BP_m .- ET_m
-                  .- G_vel_H_m .- G_vel_V_m .- G_buoy_m)
+                  .+G)
     Residual2 = Conv_m .- FDiv_m
 
 
@@ -558,7 +558,7 @@ else
     hm6 = heatmap!(ax6, lon, lat, (BP_m./(rho0.*FH))*10^8;
         interpolate=false, colorrange=crange2, colormap=cmap)
 
-
+#=
     ax7 = Axis(fig[2, 3],
         title="(g) ⟨∂E/∂t⟩",
         xlabel="Longitude [°]", xlabelsize=19,
@@ -573,11 +573,11 @@ else
         ylabel="", yticklabelsvisible=false, titlesize=22)
     hm8 = heatmap!(ax8, lon, lat, (G./(rho0.*FH))*10^8;
         interpolate=false, colorrange=crange2, colormap=cmap)
-
+=#
 
     # Add shared colorbars
-    Colorbar(fig[1, 5], hm1, label=rich("[x 10", superscript("-8"), "W/kg]"))
-    Colorbar(fig[2, 5], hm5, label=rich("[x 10", superscript("-8"), "W/kg]"))
+    Colorbar(fig[1, 4], hm1, label=rich("[x 10", superscript("-8"), "W/kg]"))
+    Colorbar(fig[2, 4], hm5, label=rich("[x 10", superscript("-8"), "W/kg]"))
 
 
     display(fig)
@@ -585,8 +585,8 @@ else
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v4.png"), fig)
-    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_Total_wkg_v4.png"))")
+    save(joinpath(FIGDIR, "EnergyBudget_Total_wkg_WTG_v1.png"), fig)
+    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_Total_wkg_WTG_v1 .png"))")
 
 
 end

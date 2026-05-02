@@ -285,7 +285,7 @@ axislegend(ax1; position=:rt, leg_style...)
 
 
 
-outpath1 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_v6_n.png")
+outpath1 = joinpath(FIGDIR, "Budget_TimeSeries_3day_WTEG_v1.png")
 save(outpath1, fig1, px_per_unit=2)
 println("Figure 1 saved → $outpath1")
 display(fig1)
@@ -339,18 +339,13 @@ ax2b = Axis(fig2[2, 1];
 hlines!(ax2b, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 lines!(ax2b, time_days, BP_avg   .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",     color=c_bp,  linewidth=2.0)
 lines!(ax2b, time_days, SP_V_avg .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.", color=c_psv, linewidth=2.0)
-#lines!(ax2b, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
+lines!(ax2b, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
 axislegend(ax2b; position=:rt, leg_style...)
-
-
 
 
 #rowgap!(fig2.layout, 1, 24)
 
-
-
-
-outpath2 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_wt_v5_n.png")
+outpath2 = joinpath(FIGDIR, "KE_PE_Budget_TimeSeries_3day_WTG_v1.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
