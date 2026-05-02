@@ -15,7 +15,7 @@ export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
-julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Budget/NT/UVW_nt_filter.jl
+julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Budget/NT/UVW_nt_filtered.jl
 
 
 
