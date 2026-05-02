@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -N niw_filter
-#PBS -q normal 
+#PBS -q long 
 #PBS -l select=1:ncpus=128:mem=200GB:model=mil_ait
-#PBS -l walltime=03:00:00
+#PBS -l walltime=30:00:00
 #PBS -o /nobackup/avaliyap/logs/output.out
 #PBS -e /nobackup/avaliyap/logs/output.err
 
