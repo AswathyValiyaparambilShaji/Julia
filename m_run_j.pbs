@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N julia_job
+#PBS -q normal
+#PBS -l select=1:ncpus=128:mem=200GB:model=mil_ait
+#PBS -l walltime=03:00:00
+#PBS -o /nobackup/avaliyap/logs/output_${PBS_JOBID}.out
+#PBS -e /nobackup/avaliyap/logs/output_${PBS_JOBID}.err
+
+
+export PATH="/home3/avaliyap/.juliaup/bin:$PATH"
+source "/home3/avaliyap/.juliaup/env"
+export JULIA_NUM_THREADS=128
+
+
+JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
+julia ${JULIA_SCRIPT}
+
+
+
+

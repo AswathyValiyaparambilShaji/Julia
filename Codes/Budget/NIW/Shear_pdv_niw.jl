@@ -147,8 +147,9 @@ if time_mode == "3day"
                     # G_vel_V = -rho0 * [ws*us*∂u_IT/∂z + ws*vs*∂v_IT/∂z] * DRF
                     temp1 = wt .* ut .* fu_nz .* DRFfull
                     temp2 = wt .* vt .* fv_nz .* DRFfull
-
                     g_vel_v_temp[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
+                                    temp1 = temp2=ut=vt=wt=fu_n=fv_n=fu_nz=gv_nz = nothing; GC.gc()
+
                 end
 
                 G_vel_V_3day[:, :, t] = mean(g_vel_v_temp, dims=3)
@@ -231,6 +232,8 @@ elseif time_mode == "weekly"
                 temp2 = wt .* vt .* fv_nz .* DRFfull
 
                 g_vel_v[:, :, idx] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
+                 temp1 = temp2=ut=vt=wt=fu_n=fv_n=fu_nz=gv_nz = nothing; GC.gc()
+           
             end
 
             G_vel_V = dropdims(mean(g_vel_v, dims=3), dims=3)
@@ -309,6 +312,8 @@ elseif time_mode == "full"
                 temp2 = wt .* vt .* fv_nz .* DRFfull
 
                 g_vel_v[:, :, t] = -rho0 .* dropdims(sum((temp1 .+ temp2), dims=3), dims=3)
+                temp1 = temp2=ut=vt=wt=fu_n=fv_n=fu_nz=gv_nz = nothing; GC.gc()
+
             end
 
             G_vel_V = dropdims(mean(g_vel_v, dims=3), dims=3)
