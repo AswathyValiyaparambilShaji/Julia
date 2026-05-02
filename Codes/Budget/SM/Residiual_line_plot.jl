@@ -133,7 +133,7 @@ end
 
 
 println("\nApplying depth mask (> 3000 m)...")
-depth_mask = FH .> 3000.0
+depth_mask = FH .> 500.0
 RAC_masked = RAC .* depth_mask
 println("Deep points (>3000m): $(sum(depth_mask)) / $(length(depth_mask))")
 
@@ -271,7 +271,7 @@ vars = [R1_var, R2_var, R3_var, R4_var, R5_var]
 
 fig_ts = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
 ax_ts  = Axis(fig_ts[1, 1];
-    title  = "Spatial Variance of Residuals — deep points only (H > 3000 m, 3-day averages)",
+    title  = "Spatial Variance of Residuals — deep points only (H > 500 m, 3-day averages)",
     xlabel = "Time  [days]",
     ylabel = "Spatial variance  [×10⁻¹⁶ W² kg⁻²]",
     axis_theme...
@@ -292,7 +292,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep_v3.png")
+outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep_v4.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
