@@ -21,7 +21,7 @@ JOB4=$(qsub -v JULIA_SCRIPT=$BASE/NT/UVW_nt_filtered.jl -W depend=afterok:$JOB3 
 echo "Job 4 submitted: $JOB4"
 
 #JOB5=$(qsub -v JULIA_SCRIPT=$BASE/NT/UVW_nt_filtered.jl -W depend=afterok:$JOB4 $PBS)
-#echo "Job 5 submitted: $JOB5"
+echo "Job 5 submitted: $JOB5"
 
 # Add as many scripts as you need following the same pattern...
 
