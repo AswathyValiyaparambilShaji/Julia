@@ -42,8 +42,7 @@ idx_start        = hour_apr22_start + 1
 idx_end          = hour_apr28_end   + 1
 nt_week          = idx_end - idx_start + 1
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
+
 
 # --- Thickness & constants ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
@@ -109,8 +108,21 @@ if time_mode == "3day"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
 
+            # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+           
+
 
             G_vel_3day = zeros(Float64, nx, ny, nt3)
             hrs_per_chunk = 3 * 24
@@ -130,8 +142,8 @@ if time_mode == "3day"
                     fu_nx, fu_ny, fv_nx, fv_ny = compute_IT_gradients(fu_n, fv_n, dx, dy, nx, ny, nz)
 
                     # NIW velocities (owned field)
-                    ut = @view fu[:, :, :, t_actual]
-                    vt = @view fv[:, :, :, t_actual]
+                    ut = @view up_3d[:, :, :, t_actual]
+                    vt = @view vp_3d[:, :, :, t_actual]
 
                     # G_vel = -rho0 * [us*(us*∂ut/∂x + vs*∂ut/∂y) + vs*(us*∂vt/∂x + vs*∂vt/∂y)] * DRF
                     temp1 = ut .* ut .* fu_nx .* DRFfull
@@ -182,9 +194,20 @@ elseif time_mode == "weekly"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)[:, :, :, idx_start:idx_end]
 
+            # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
-
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+           
             g_vel = zeros(Float64, nx, ny, nt_week)
 
             for idx in 1:nt_week
@@ -243,9 +266,20 @@ elseif time_mode == "full"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
 
+            # --- Calculate cell thicknesses ---
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
-
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+           
             g_vel = zeros(Float64, nx, ny, nt)
 
             println("Calculating G_vel for each timestep...")
@@ -254,8 +288,8 @@ elseif time_mode == "full"
                 fv_n = @view fv_niw[:, :, :, t]
                 fu_nx, fu_ny, fv_nx, fv_ny = compute_IT_gradients(fu_n, fv_n, dx, dy, nx, ny, nz)
 
-                ut = @view fu[:, :, :, t]
-                vt = @view fv[:, :, :, t]
+                ut = @view up_3d[:, :, :, t]
+                vt = @view vp_3d[:, :, :, t]
 
                 temp1 = ut .* ut .* fu_nx .* DRFfull
                 temp2 = ut .* vt .* fu_ny .* DRFfull

@@ -42,8 +42,6 @@ idx_start        = hour_apr22_start + 1
 idx_end          = hour_apr28_end   + 1
 nt_week          = idx_end - idx_start + 1
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
 
 # --- Thickness & constants ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
@@ -106,9 +104,23 @@ if time_mode == "3day"
                 reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
             end)
            
-
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             G_vel_V_3day = zeros(Float64, nx, ny, nt3)
             hrs_per_chunk = 3 * 24
@@ -128,9 +140,9 @@ if time_mode == "3day"
                     fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
                     # NIW owned fields
-                    ut  = @view fu[:, :, :, t_actual]
-                    vt  = @view fv[:, :, :, t_actual]
-                    wt  = @view fw[:, :, :, t_actual]
+                    ut  = @view up_3d[:, :, :, t_actual]
+                    vt  = @view vp_3d[:, :, :, t_actual]
+                    wt  = @view wp_3d[:, :, :, t_actual]
 
                     # G_vel_V = -rho0 * [ws*us*∂u_IT/∂z + ws*vs*∂v_IT/∂z] * DRF
                     temp1 = wt .* ut .* fu_nz .* DRFfull
@@ -187,7 +199,22 @@ elseif time_mode == "weekly"
             
 
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             g_vel_v = zeros(Float64, nx, ny, nt_week)
 
@@ -196,9 +223,9 @@ elseif time_mode == "weekly"
                 fv_n = @view fv_niw[:, :, :, idx]
                 fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
-                ut  = @view fu[:, :, :, idx]
-                vt  = @view fv[:, :, :, idx]
-                wt  = @view fw[:, :, :, idx]
+                ut  = @view up_3d[:, :, :, idx]
+                vt  = @view vp_3d[:, :, :, idx]
+                wt  = @view wp_3d[:, :, :, idx]
 
                 temp1 = wt .* ut .* fu_nz .* DRFfull
                 temp2 = wt .* vt .* fv_nz .* DRFfull
@@ -249,7 +276,22 @@ elseif time_mode == "full"
             
 
             DRFfull = hFacC .* DRF3d
+            depth   = sum(DRFfull, dims=3)
+
             DRFfull[hFacC .== 0] .= 0.0
+            mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
+            up_3d  = fu .- ucA
+            up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fu = ucA = nothing; GC.gc()
+            vcA    = sum(fv .* DRFfull, dims=3) ./ depth
+            vp_3d  = fv .- vcA
+            vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fv = vcA = nothing; GC.gc()
+            wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+            wp_3d  = fw .- wcA
+            wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
+            fw = wcA = nothing; GC.gc()
 
             g_vel_v = zeros(Float64, nx, ny, nt)
 
@@ -259,9 +301,9 @@ elseif time_mode == "full"
                 fv_n = @view fv_niw[:, :, :, t]
                 fu_nz, fv_nz = compute_IT_vertical_gradients(fu_n, fv_n, DRF, nx, ny, nz)
 
-                ut  = @view fu[:, :, :, t]
-                vt  = @view fv[:, :, :, t]
-                wt  = @view fw[:, :, :, t]
+                ut  = @view up_3d[:, :, :, t]
+                vt  = @view vp_3d[:, :, :, t]
+                wt  = @view wp_3d[:, :, :, t]
 
                 temp1 = wt .* ut .* fu_nz .* DRFfull
                 temp2 = wt .* vt .* fv_nz .* DRFfull

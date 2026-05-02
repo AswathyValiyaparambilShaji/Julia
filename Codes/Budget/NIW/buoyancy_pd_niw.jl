@@ -50,10 +50,6 @@ idx_end          = hour_apr28_end   + 1
 nt_week          = idx_end - idx_start + 1
 
 
-@printf("Weekly window: Apr 22 00:00 - Apr 28 23:00  ->  indices %d:%d  (%d hourly snapshots)\n",
-        idx_start, idx_end, nt_week)
-
-
 # --- Thickness & constants ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF  = thk[1:nz]

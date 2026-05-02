@@ -482,11 +482,11 @@ else
     TotalFlux = FDiv_m .+ U_KE_m .+ U_PE_m
     A         = U_KE_m .+ U_PE_m
     PS        = SP_H_m .+ SP_V_m
-    G         = G_vel_H_m .+ G_vel_V_m .+ G_buoy_m
+    #G         = G_vel_H_m .+ G_vel_V_m .+ G_buoy_m
 
 
-    Residual  = -(Conv_m .- TotalFlux .+ SP_H_m .+ SP_V_m .+ BP_m .- ET_m
-                  .+G)
+    Residual  = -(Conv_m .- TotalFlux .+ SP_H_m .+ SP_V_m .+ BP_m .- ET_m)
+                  #.+G)
     Residual2 = Conv_m .- FDiv_m
 
 
