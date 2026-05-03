@@ -103,23 +103,23 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3dayold", "u_ke_3day_$suffix.bin"), "r") do io
+            u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3dayold", "u_pe_uf_3day_$suffix.bin"), "r") do io
+            u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3dayold", "sp_h_3day_$suffix.bin"), "r") do io
+            sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3dayold", "sp_v_3day_$suffix.bin"), "r") do io
+            sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
-            bp_3day = Float64.(open(joinpath(base2, "BP3day_old", "bp_3day_$suffix.bin"), "r") do io
+            bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_$suffix.bin"), "r") do io
                 nbytes = nx*ny*nt3*sizeof(Float32)
                 reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
             end)
@@ -220,10 +220,7 @@ TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
 # D without G subtracted (original residual, includes tendency)
 Residual_n      = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
 # D with G subtracted (G accounts for IT -> NIW transfer)
-Residual_G_n    = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .- G_n)
-# versions without tendency
-Residual_n1     = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n)
-Residual_G_n1   = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .+ G_n)
+Residual_G_n    = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .+ G_n)
 
 
 # Time series (area-weighted)
@@ -241,8 +238,7 @@ G_vel_V_avg     = area_avg(G_vel_V_n,    valid_mask, RAC, total_area)
 G_buoy_avg      = area_avg(G_buoy_n,     valid_mask, RAC, total_area)
 Residual_avg    = area_avg(Residual_n,   valid_mask, RAC, total_area)
 Residual_G_avg  = area_avg(Residual_G_n, valid_mask, RAC, total_area)
-Residual_avg1   = area_avg(Residual_n1,  valid_mask, RAC, total_area)
-Residual_G_avg1 = area_avg(Residual_G_n1,valid_mask, RAC, total_area)
+
 
 
 # Time axis
@@ -329,11 +325,11 @@ lines!(ax1, time_days, BP_avg         .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",
 lines!(ax1, time_days, A_avg          .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
 lines!(ax1, time_days, G_avg          .* sc; label="⟨G⟩  IT→NIW transfer",      color=c_g,    linewidth=1.8)
 lines!(ax1, time_days, ET_avg        .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax1, time_days, Residual_G_avg1 .* sc; label="⟨D⟩  Residual (D))",       color=c_res,  linewidth=1.8)
+lines!(ax1, time_days, Residual_G_avg .* sc; label="⟨D⟩  Residual (D))",       color=c_res,  linewidth=1.8)
 axislegend(ax1; position=:rt, leg_style...)
 
 
-outpath1 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wp_v6n.png")
+outpath1 = joinpath(FIGDIR, "Budget_TimeSeries_3day_WG_V1.png")
 save(outpath1, fig1, px_per_unit=2)
 println("Figure 1 saved -> $outpath1")
 display(fig1)
@@ -389,7 +385,7 @@ axislegend(ax2b; position=:rt, leg_style...)
 #rowgap!(fig2.layout, 1, 24)
 
 
-outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_wg_v1p.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_WGS_V1.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved -> $outpath2")
 display(fig2)
