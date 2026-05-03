@@ -22,19 +22,19 @@ JOB5=$(qsub -v JULIA_SCRIPT=$BASE/NT/ADV_PE_nt.jl  -W depend=afterok:$JOB4 $PBS)
 echo "Job 5 submitted: $JOB5"
 
 JOB6=$(qsub -v JULIA_SCRIPT=$BASE/NT/ADV_KE_nt.jl -W depend=afterok:$JOB5 $PBS)
-echo "Job 5 submitted: $JOB6"
+echo "Job 6 submitted: $JOB6"
 
 JOB7=$(qsub -v JULIA_SCRIPT=$BASE/NT/Bouyancy_pd_nt.jl -W depend=afterok:$JOB6 $PBS)
-echo "Job 5 submitted: $JOB7"
+echo "Job 7 submitted: $JOB7"
 
 JOB8=$(qsub -v JULIA_SCRIPT=$BASE/NT/Shear_pdh_nt.jl -W depend=afterok:$JOB7 $PBS)
-echo "Job 5 submitted: $JOB8"
+echo "Job 8 submitted: $JOB8"
 
 JOB9=$(qsub -v JULIA_SCRIPT=$BASE/NT/Shear_pdv_nt.jl -W depend=afterok:$JOB8 $PBS)
-echo "Job 5 submitted: $JOB9"
+echo "Job 9 submitted: $JOB9"
 
 JOB10=$(qsub -v JULIA_SCRIPT=$BASE/NT/Tendency_term_nt.jl -W depend=afterok:$JOB9 $PBS)
-echo "Job 5 submitted: $JOB10"
+echo "Job 10 submitted: $JOB10"
 
 #JOB5=$(qsub -v JULIA_SCRIPT=$BASE -W depend=afterok:$JOB4 $PBS)
 #echo "Job 5 submitted: $JOB5"
