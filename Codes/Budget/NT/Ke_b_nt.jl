@@ -150,3 +150,13 @@ end
 
 
 
+Documents/Julia_new/Julia/Codes/Budget/NT/ADV_KE_nt_plot.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/ADV_PE_nt_plot.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/APE_plot_nt.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/Buoyancy_pd_nt_plot.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/Conv_plot_nt.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/FlxDiv_plot_nt.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/KE_plot_nt.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/Shear_pdh_nt_plot.jl 
+Documents/Julia_new/Julia/Codes/Budget/NT/Shear_pdv_nt_plot.jl 
+

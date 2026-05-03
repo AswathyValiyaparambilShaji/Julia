@@ -16,7 +16,7 @@ base2 = cfg["base_path2"]
 #-0.0026407592217563463, 0.001007435484580632
 # --- TIME MODE CONFIGURATION ---
 # Options: "3day", "weekly", "full"
-time_mode = "full"
+time_mode = "3day"
 
 
 # --- Domain & grid ---
