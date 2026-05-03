@@ -372,7 +372,7 @@ FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V1.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png "))")
 
 
 
