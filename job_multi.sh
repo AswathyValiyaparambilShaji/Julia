@@ -6,7 +6,7 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/NIW/buoyancy_pd_niw.jl  $PBS)
+JOB1=$(qsub -v JULIA_SCRIPT=$BASE/SM/Energy_line_plot3.jl  $PBS)
 echo "Job 1 submitted: $JOB1"
 
 JOB2=$(qsub -v JULIA_SCRIPT=$BASE/NT/FlxDiv_plot_nt.jl  -W depend=afterok:$JOB1 $PBS)
@@ -30,8 +30,8 @@ echo "Job 7 submitted: $JOB7"
 JOB8=$(qsub -v JULIA_SCRIPT=$BASE/NT/KE_plot_nt.jl -W depend=afterok:$JOB7 $PBS)
 echo "Job 8 submitted: $JOB8"
 
-JOB9=$(qsub -v JULIA_SCRIPT=$BASE/SM/Energy_line_plot3.jl -W depend=afterok:$JOB8 $PBS)
-echo "Job 9 submitted: $JOB9"
+#JOB9=$(qsub -v JULIA_SCRIPT=$BASE/SM/Energy_line_plot3.jl -W depend=afterok:$JOB8 $PBS)
+#echo "Job 9 submitted: $JOB9"
 
 #JOB10=$(qsub -v JULIA_SCRIPT=$BASE/NT/Tendency_term_nt.jl -W depend=afterok:$JOB9 $PBS)
 #echo "Job 10 submitted: $JOB10"
