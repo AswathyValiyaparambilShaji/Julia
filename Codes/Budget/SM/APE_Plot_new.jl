@@ -130,13 +130,13 @@ ax = Axis(fig[1, 1],
          ylabel="Latitude [°]")
 #ax.limits[] = (193.0,194.2,24.0, 25.4)
 
-hm = CairoMakie.heatmap!(ax, lon, lat, APE_full;
+hm = CairoMakie.heatmap!(ax, lon, lat, APE_full./1000;
                         interpolate=false,
                         colormap=:jet,
-                        colorrange=(0, 8000))
+                        colorrange=(0, 15))
 
 
-Colorbar(fig[1, 2], hm, label="APE [J/m²]")
+Colorbar(fig[1, 2], hm, label="APE [KJ/m²]")
 
 
 display(fig)

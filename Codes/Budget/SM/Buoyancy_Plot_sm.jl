@@ -88,7 +88,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, BP_full;
                         interpolate=false,
                         colormap=Reverse(:RdBu),
-                        colorrange=(-0.015, 0.015))
+                        colorrange=(-0.05, 0.05))
 
 
 Colorbar(fig[1, 2], hm, label="Buoyancy Production [W/m²]")

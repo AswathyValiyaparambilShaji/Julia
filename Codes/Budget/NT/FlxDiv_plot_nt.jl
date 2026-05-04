@@ -8,7 +8,7 @@ using .FluxUtils: read_bin
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg   = TOML.parsefile(config_file)
 base  = cfg["base_path"]
-base2 = cfg["base_path2"]
+base2 = cfg["base_path_nt"]
 
 
 NX, NY = 288, 468
@@ -30,7 +30,7 @@ FDiv_z = zeros(NX, NY)
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        fpath   = joinpath(base2, "FDiv", "FDiv_$suffix2.bin")
+        fpath   = joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin")
 
 
         D = Float64.(open(fpath, "r") do io
@@ -49,7 +49,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-fig = Figure(size=(700, 500))
+fig = Figure(resolution=(400, 300))
 ax  = Axis(fig[1,1],
     title  = "Flux Divergence ∇·F  (W/m²)",
     xlabel = "Longitude [°]",
@@ -60,7 +60,7 @@ ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 hm = CairoMakie.heatmap!(ax, lon, lat, FDiv_z;
     interpolate = false,
     colorrange  = (-0.050, 0.050),
-    colormap    = Reverse(:RdBu))
+    colormap    = :bwr)
 
 
 Colorbar(fig[1,2], hm, label="W/m²")
@@ -70,7 +70,7 @@ display(fig)
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
 save(joinpath(FIGDIR, "FDiv_map_nt_V1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "FDiv_map_nt_v1.png"))")
+println("Figure saved: $(joinpath(FIGDIR, "FDiv_map_nt_V1.png"))")
 
 
 

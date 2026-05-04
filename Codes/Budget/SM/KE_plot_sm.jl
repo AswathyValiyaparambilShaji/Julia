@@ -94,13 +94,13 @@ end
 fig = Figure(resolution=(500, 400))
 println(KE[1:30,10])
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
-ax1 = Axis(fig[1, 1], title="KE (kg/s²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
+ax1 = Axis(fig[1, 1], title="KE (KJ/m²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
                 (minimum(lat), maximum(lat)))
-hm = CairoMakie.heatmap!(ax1, lon, lat, KE ; interpolate = false,colormap   = :jet,colorrange = (0,18000))
+hm = CairoMakie.heatmap!(ax1, lon, lat, KE./1000 ; interpolate = false,colormap   = :jet,colorrange = (0,15))
 
 
-Colorbar(fig[1, 2], hm, label = " (kg/s²)")
+Colorbar(fig[1, 2], hm, label = " (KJ/m²)")
 display(fig)
 FIGDIR        = cfg["fig_base"]
 fgname = "KE_dI_v4.png"

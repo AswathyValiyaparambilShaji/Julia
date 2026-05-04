@@ -47,8 +47,7 @@ rho0  = 1027.5
 
 
 # --- Filter parameters (9-15 day bandpass, 1 step sampling) ---
-T1, T2, delt, N = 9.0, 15.0, 1.0, 4
-
+T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 
 # --- Loop over tiles ---
 for xn in cfg["xn_start"]:cfg["xn_end"]

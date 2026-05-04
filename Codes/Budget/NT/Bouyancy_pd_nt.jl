@@ -76,7 +76,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
 
 
-        b = Float64.(open(joinpath(base2, "b", "b_t_nt_$suffix.bin"), "r") do io
+        b = Float64.(open(joinpath(base2, "b", "b_nt_$suffix.bin"), "r") do io
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
         end)
 
