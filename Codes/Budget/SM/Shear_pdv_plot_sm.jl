@@ -74,6 +74,7 @@ println("\nSP_V_full range: $(minimum(skipmissing(SP_V_full))) to $(maximum(skip
 # =================== VISUALIZATION ========================
 # ==========================================================
 
+println(SP_V_full[20,1:10])
 
 fig = Figure(size=(1000, 800))
 

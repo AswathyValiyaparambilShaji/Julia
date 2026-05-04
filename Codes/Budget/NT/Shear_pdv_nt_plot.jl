@@ -54,6 +54,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         xe = xs + tx - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty - 1
+println(sp_v_mean[20,1:10])
 
 
         sp_v_interior = sp_v_mean[buf+1:nx-buf, buf+1:ny-buf]
@@ -73,7 +74,6 @@ println("\nSP_V_full range: $(minimum(skipmissing(SP_V_full))) to $(maximum(skip
 # ==========================================================
 # =================== VISUALIZATION ========================
 # ==========================================================
-
 
 fig = Figure(size=(1000, 800))
 

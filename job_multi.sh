@@ -6,7 +6,7 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/SM/Ke_b_nt.jl  $PBS)
+JOB1=$(qsub -v JULIA_SCRIPT=$BASE/NT/Ke_b_nt.jl  $PBS)
 echo "Job 1 submitted: $JOB1"
 
 JOB2=$(qsub -v JULIA_SCRIPT=$BASE/NT/FlxDiv_plot_nt.jl  -W depend=afterok:$JOB1 $PBS)

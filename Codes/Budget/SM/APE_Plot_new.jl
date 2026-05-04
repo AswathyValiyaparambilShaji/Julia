@@ -121,8 +121,7 @@ println("\nAPE_full range: $(minimum(skipmissing(APE_full))) to $(maximum(skipmi
 # ==========================================================
 
 
-fig = Figure(size=(1000, 800))
-
+fig = Figure(resolution=(500, 400))
 
 ax = Axis(fig[1, 1],
          title="Depth-Integrated Time-Averaged APE",

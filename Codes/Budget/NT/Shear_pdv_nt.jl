@@ -121,9 +121,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         up_3d = nothing; vp_3d = nothing; wp_3d = nothing
         U_z = nothing; V_z = nothing; GC.gc()
 
-
+        spm = dropdims(mean(sp_v, dims=3), dims=3)
+        println(spm[20,1:10])
         open(joinpath(base2, "SP_V", "sp_v_nt_$suffix.bin"), "w") do io
-            write(io, Float32.(dropdims(mean(sp_v, dims=3), dims=3)))
+            write(io, Float32.(spm))
         end
 
 
