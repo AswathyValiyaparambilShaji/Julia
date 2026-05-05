@@ -49,13 +49,16 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
-
+#=
+        xs = (xn - 1) * tx + buf+ 1
+        xe = xs + tx - 1
+        ys = (yn - 1) * ty +buf+ 1
+        ye = ys + ty - 1
+        =#
         xs = (xn - 1) * tx + 1
         xe = xs + tx - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty - 1
-println(sp_v_mean[20,1:10])
-
 
         sp_v_interior = sp_v_mean[buf+1:nx-buf, buf+1:ny-buf]
 
