@@ -52,7 +52,7 @@ end
 println("Conv_z range: ", extrema(Conv_z[Conv_z .!= 0]))
 
 
-fig = Figure(size=(700, 500))
+fig = Figure(resolution=(600, 800))
 ax  = Axis(fig[1,1],
     title  = "Barotropic-to-Baroclinic Conversion  (W/m²)",
     xlabel = "Longitude [°]",
@@ -63,7 +63,7 @@ ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 hm = CairoMakie.heatmap!(ax, lon, lat, Conv_z;
     interpolate = false,
     colorrange  = (-0.050, 0.050),
-    colormap    = Reverse(:RdBu))
+    colormap    = :bwr)
 
 
 Colorbar(fig[1,2], hm, label="W/m²")

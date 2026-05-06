@@ -49,7 +49,7 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
 
 
-T1, T2, delt, N = 9.0, 15.0, 1.0, 4
+T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]

@@ -49,7 +49,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-fig = Figure(resolution=(400, 300))
+fig = Figure(resolution=(600, 800))
 ax  = Axis(fig[1,1],
     title  = "Flux Divergence ∇·F  (W/m²)",
     xlabel = "Longitude [°]",
