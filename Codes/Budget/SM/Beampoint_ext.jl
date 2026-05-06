@@ -76,7 +76,8 @@ U_beam   = zeros(Float32, N_beam, nz, nt)
 V_beam   = zeros(Float32, N_beam, nz, nt)
 rho_beam = zeros(Float32, N_beam, nz, nt)
 DRF_beam = zeros(Float32, N_beam, nz)
-
+Theta_beam   = zeros(Float32, N_beam, nz, nt)
+Salt_beam = zeros(Float32, N_beam, nz, nt)
 
 # ============================================================================
 # TILE LOOP — extract beam points tile by tile (avoids full domain in memory)
@@ -156,8 +157,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             V_beam[i, :, :]   .= Float32.(vcc[lx, ly, :, :])
             rho_beam[i, :, :] .= Float32.(rho[lx, ly, :, :])
             DRF_beam[i, :]    .= Float32.(DRFfull[lx, ly, :])
-            Salt_beam[i, :]    .= Float32.(Salt[lx, ly, :])
-            Theta_beam[i, :]   .= Float32.(Theta[lx, ly, :])
+            Salt_beam[i, :,:]    .= Float32.(Salt[lx, ly, :,:])
+            Theta_beam[i, :,:]   .= Float32.(Theta[lx, ly, :,:])
         end
 
 
@@ -214,9 +215,9 @@ NCDatasets.Dataset(ncfile, "c") do ds
     defVar(ds, "DRF", Float32.(DRF), ("nz",),
         attrib = Dict("units" => "m", "long_name" => "Nominal layer thickness (1D, hFacC-independent)"))
 
-    defVar(ds, "Theta", Float32.(Theta_beam), ("nz",))
+    defVar(ds, "Theta", Float32.(Theta_beam), ("beam_point","nz","nt"))
 
-    defVar(ds, "Salt", Float32.(Salt_beam), ("nz",))
+    defVar(ds, "Salt", Float32.(Salt_beam), ("beam_point","nz","nt"))
 
    
 
