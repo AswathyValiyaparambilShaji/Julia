@@ -96,7 +96,7 @@ ax2 = Axis(fig[1, 2],
 hm2 = CairoMakie.heatmap!(ax2, lon, lat, G_vel_V_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
-    colorrange=(-0.02, 0.02))
+    colorrange=(-0.005, 0.005))
 
 Colorbar(fig[1, 3], hm2, label="G_Shear [W/m²]")
 

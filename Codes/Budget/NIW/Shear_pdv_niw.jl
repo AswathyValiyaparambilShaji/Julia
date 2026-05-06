@@ -9,7 +9,7 @@ cfg = TOML.parsefile(config_file)
 
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
-
+#println(base2)
 # --- TIME MODE CONFIGURATION ---
 # Options: "3day", "weekly", "full"
 time_mode = "full"
