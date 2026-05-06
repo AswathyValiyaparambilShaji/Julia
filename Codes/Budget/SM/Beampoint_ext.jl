@@ -109,7 +109,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         # --- Read U, V (raw C-grid) ---
         U_raw = read_bin(joinpath(base, "U/U_$suffix.bin"), (nx, ny, nz, nt))
         V_raw = read_bin(joinpath(base, "V/V_$suffix.bin"), (nx, ny, nz, nt))
-
+        # --- Read T, S (raw C-grid) ---
+        Salt     = read_bin(joinpath(base, "Salt/Salt_$suffix.bin"),   (nx, ny, nz, nt))
+        Theta     = read_bin(joinpath(base, "Theta/Theta_$suffix.bin"),   (nx, ny, nz, nt))
 
         # C-grid to cell centres
         uc = 0.5 .* (U_raw[1:end-1, :, :, :] .+ U_raw[2:end,   :, :, :])
@@ -154,6 +156,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             V_beam[i, :, :]   .= Float32.(vcc[lx, ly, :, :])
             rho_beam[i, :, :] .= Float32.(rho[lx, ly, :, :])
             DRF_beam[i, :]    .= Float32.(DRFfull[lx, ly, :])
+            Salt_beam[i, :]    .= Float32.(Salt[lx, ly, :])
+            Theta_beam[i, :]   .= Float32.(Theta[lx, ly, :])
         end
 
 
@@ -210,6 +214,9 @@ NCDatasets.Dataset(ncfile, "c") do ds
     defVar(ds, "DRF", Float32.(DRF), ("nz",),
         attrib = Dict("units" => "m", "long_name" => "Nominal layer thickness (1D, hFacC-independent)"))
 
+    defVar(ds, "Theta", Float32.(Theta_beam), ("nz",))
+
+    defVar(ds, "Salt", Float32.(Salt_beam), ("nz",))
 
    
 
