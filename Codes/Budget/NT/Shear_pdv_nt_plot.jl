@@ -72,6 +72,7 @@ end
 
 
 println("\nSP_V_full range: $(minimum(skipmissing(SP_V_full))) to $(maximum(skipmissing(SP_V_full)))")
+println(SP_V_full[20,1:10])
 
 
 # ==========================================================
@@ -90,7 +91,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, SP_V_full;
                        interpolate=false,
                        colormap=Reverse(:RdBu),
-                       colorrange=(-0.05, 0.05))
+                       colorrange=(-0.025, 0.025))
 
 
 Colorbar(fig[1, 2], hm, label="Vertical Shear Production [W/m²]")

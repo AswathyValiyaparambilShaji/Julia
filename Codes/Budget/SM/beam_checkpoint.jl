@@ -4,8 +4,8 @@ using NCDatasets, CairoMakie, Printf
 # ============================================================================
 # SET THIS to your locally downloaded NC file path
 # ============================================================================
-ncfile  = "mnt/data/aswathy/MITgcm_NAS/beam_UVrho.nc"   # ← change this
-figfile = "mnt/data/aswathy/MITgcm_NAS/beam_profiles.png"           # ← change this
+ncfile  = "/data3/aswathy/mnt/data/aswathy/MITgcm_NAS/figures/beam_UVrho.nc"   # ← change this
+figfile = "mnt/data/aswathy/MITgcm_NAS/figures/beam_profiles.png"           # ← change this
 t_plot  = 500          # time index to plot
 
 

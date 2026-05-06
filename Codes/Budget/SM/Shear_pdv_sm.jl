@@ -525,6 +525,7 @@ elseif time_mode == "full"
             # --- Time average ---
             SP_V = dropdims(mean(sp_v, dims=3), dims=3)
 
+                    println(SP_V[20,1:10])
 
             output_dir = joinpath(base2, "SP_V")
             open(joinpath(output_dir, "sp_v_mean_$suffix.bin"), "w") do io
