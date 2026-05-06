@@ -83,7 +83,7 @@ ax1 = Axis(fig[1, 1],
 hm1 = CairoMakie.heatmap!(ax1, lon, lat, G_vel_H_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
-    colorrange=(-0.05, 0.05))
+    colorrange=(-0.005, 0.005))
 
 
 # --- Panel 2: G Vertical Shear ---

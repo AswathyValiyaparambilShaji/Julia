@@ -92,7 +92,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 fig = Figure(resolution=(500, 400))
-println(KE[1:30,10])
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
 ax1 = Axis(fig[1, 1], title="KE (KJ/m²) ", xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
