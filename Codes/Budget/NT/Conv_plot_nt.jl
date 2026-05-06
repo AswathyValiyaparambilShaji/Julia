@@ -72,8 +72,8 @@ display(fig)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "Conv_map.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Conv_map.png"))")
+save(joinpath(FIGDIR, "Conv_ma_nt_v1.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Conv_map_nt_v1.png"))")
 
 
 

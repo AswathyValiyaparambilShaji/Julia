@@ -16,7 +16,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> reads xflx_3day / yflx_3day files (nx, ny, nz, nt3), makes movie
 #   "weekly" -> reads xflx_weekly / yflx_weekly files (nx, ny, nz), makes single PNG
 #   "full"   -> reads xflx / yflx files (nx, ny, nz), makes single PNG
-time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 
