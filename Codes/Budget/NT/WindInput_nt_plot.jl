@@ -111,13 +111,13 @@ ax = Axis(fig[1, 1],
     ylabel = "Latitude [°]")
 
 
-hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean;
+hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean.*1000;
     interpolate = false,
-    colormap    = Reverse(:RdBu),
-    colorrange  = (-0.05, 0.05))
+    colormap    =:bwr,
+    colorrange  = (-0.025, 0.025))
 
 
-Colorbar(fig[1, 2], hm, label = "Wind Input [W/m²]")
+Colorbar(fig[1, 2], hm, label = "Wind Input [mW/m²]")
 
 
 display(fig)

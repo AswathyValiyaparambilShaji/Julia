@@ -60,7 +60,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Flux Divergence ---
-        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
+        fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -69,7 +69,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Conversion ---
-        C = Float64.(open(joinpath(base2, "Conv", "Conv_$(suffix2).bin"), "r") do io
+        C = Float64.(open(joinpath(base2, "Conv", "Conv_nt_$suffix2.bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -78,73 +78,54 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read KE Advection ---
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_mean_$suffix.bin"), "r") do io
+        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read PE Advection ---
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
+        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Energy Tendency ---
-        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_mean_$suffix.bin"), "r") do io
+        te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Vertical Shear Production ---
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
+        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Wind Power Input (with time dimension) ---
-        wpi_tile = Float64.(open(joinpath(base2, "WindPowerInput", "wpi_$suffix.bin"), "r") do io
+        wpi_tile = Float64.(open(joinpath(base2, "WindInput", "wpi_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
         end)
 
 
-        # --- Read G horizontal shear (IT -> NIW) ---
-        g_vel_h = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-
-
-        # --- Read G vertical shear (IT -> NIW) ---
-        g_vel_v = Float64.(open(joinpath(base2, "G_vel_V_full", "g_vel_v_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)
-
-
-        # --- Read G buoyancy (IT -> NIW) ---
-        g_buoy = Float64.(open(joinpath(base2, "G_buoy_full", "g_buoy_mean_$suffix.bin"), "r") do io
-            nbytes = nx * ny * sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-        end)#
 
 
         # Time average the WPI
@@ -169,9 +150,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
         ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
         WPI_full[xs+2:xe-2,     ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
-        G_vel_H_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_h[buf:nx-buf+1,  buf:ny-buf+1]
-        G_vel_V_full[xs+2:xe-2, ys+2:ye-2] .= g_vel_v[buf:nx-buf+1,  buf:ny-buf+1]
-        G_buoy_full[xs+2:xe-2,  ys+2:ye-2] .= g_buoy[buf:nx-buf+1,   buf:ny-buf+1]
 
 
         println("Completed tile $suffix")
@@ -187,12 +165,10 @@ TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
 MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
 A         = U_KE_full .+ U_PE_full
 PS        = SP_H_full .+ SP_V_full
-G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
 
 
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
-Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full
-              .+ G_total)
+Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
 Residual2 = Conv .- FDiv
 
 
@@ -331,7 +307,7 @@ hm7 = heatmap!(ax7, lon, lat, ET_full;
     colormap = cmap)
 
 
-#= Row 2, Column 4: Wind Power Input (x10^-3)
+# Row 2, Column 4: Wind Power Input (x10^-3)
 ax8 = Axis(fig[2, 4],
     title = "(h) <WPI> [x10^-3]",
     xlabel = "Longitude [deg]",
@@ -341,10 +317,10 @@ ax8 = Axis(fig[2, 4],
 hm8 = heatmap!(ax8, lon, lat, WPI_plot;
     interpolate = false,
     colorrange = crange2,
-    colormap = cmap)=#
+    colormap = cmap)#
 
 
-# Row 2, Column 5: Total G transfer (IT -> NIW)
+#= Row 2, Column 5: Total G transfer (IT -> NIW)
 ax9 = Axis(fig[2, 4],
     title = "(h) <G>",
     xlabel = "Longitude [deg]",
@@ -354,7 +330,7 @@ ax9 = Axis(fig[2, 4],
 hm9 = heatmap!(ax9, lon, lat, G_total;
     interpolate = false,
     colorrange = crange2,
-    colormap = cmap)#
+    colormap = cmap)=#
 
 
 # Add colorbars
@@ -367,10 +343,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WG_nt_V1.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WG_nt_V1.png "))")
 
 
 
