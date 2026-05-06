@@ -329,7 +329,7 @@ lines!(ax1, time_days, Residual_G_avg .* sc; label="⟨D⟩  Residual (D))",    
 axislegend(ax1; position=:rt, leg_style...)
 
 
-outpath1 = joinpath(FIGDIR, "Budget_TimeSeries_3day_WG_V1.png")
+outpath1 = joinpath(FIGDIR, "Budget_TimeSeries_3day_WG_V2.png")
 save(outpath1, fig1, px_per_unit=2)
 println("Figure 1 saved -> $outpath1")
 display(fig1)
