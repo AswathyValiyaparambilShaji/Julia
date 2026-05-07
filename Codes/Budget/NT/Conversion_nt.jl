@@ -39,9 +39,6 @@ t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
 t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
 wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
-@printf("Weekly window: %s - %s -> indices %d:%d (%d steps)\n",
-    t_wk_start, t_wk_end, wk_start, wk_end, wk_end - wk_start + 1)
-
 
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
