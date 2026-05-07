@@ -142,7 +142,7 @@ SP_H_full    = zeros(NX, NY)
 SP_V_full    = zeros(NX, NY)
 BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
-
+WPI_full     = zeros(NX, NY)
 
 
 # Load energy budget data for all tiles
