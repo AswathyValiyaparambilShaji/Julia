@@ -209,8 +209,8 @@ fig = Figure(resolution=(1200, 800))
 
 
 # Color ranges
-crange  = (-0.03, 0.03)
-crange2 = (-0.015, 0.015)
+crange  = (-0.05, 0.05)
+crange2 = (-0.025, 0.025)
 cmap = :bwr
 
 
