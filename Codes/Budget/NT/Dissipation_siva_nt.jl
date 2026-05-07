@@ -30,7 +30,9 @@ buf = 3
 tx, ty = 47, 66
 nx = tx + 2 * buf
 ny = ty + 2 * buf
-
+dto = 144
+Tts = 366192
+nt  = div(Tts, dto)
 
 rho0 = 1027.5
 
