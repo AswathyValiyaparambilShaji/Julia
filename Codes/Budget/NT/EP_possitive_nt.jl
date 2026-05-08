@@ -126,15 +126,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
    	ye = ys + ty + (2 * buf) - 1
    	Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
    	FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
-
-
-   	U_KE_full[xs+2:xe-2,	ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
-   	U_PE_full[xs+2:xe-2,	ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
-   	SP_H_full[xs+2:xe-2,	ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-   	SP_V_full[xs+2:xe-2,	ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-   	BP_full[xs+2:xe-2,  	ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
-   	ET_full[xs+2:xe-2,  	ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
-   	WPI_full[xs+2:xe-2, 	ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
+   	U_KE_full[xs+2:xe-2,ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
+   	U_PE_full[xs+2:xe-2,    ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
+   	SP_H_full[xs+2:xe-2,    ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+   	SP_V_full[xs+2:xe-2,   ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+   	BP_full[xs+2:xe-2, ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
+   	ET_full[xs+2:xe-2, ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
+   	WPI_full[xs+2:xe-2, ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
 
    	println("Completed tile $suffix")
    end
