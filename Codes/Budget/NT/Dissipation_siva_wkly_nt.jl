@@ -1,4 +1,4 @@
-using Printf, MAT, FilePathsBase, TOML, NCDatasets, CairoMakie, Statistics
+using Printf, MAT, FilePathsBase, TOML, NCDatasets, CairoMakie, Statistics, Dates
 
 
 # Include FluxUtils.jl
@@ -143,6 +143,13 @@ SP_V_full    = zeros(NX, NY)
 BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
+
+# Weekly window from date
+t_origin  = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
+t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
+wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
 
 # Load energy budget data for all tiles
