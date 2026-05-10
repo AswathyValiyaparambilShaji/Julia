@@ -137,6 +137,12 @@ BP_full = zeros(NX, NY)
 ET_full = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
 
+t_origin  = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
+t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
+wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+
 # Load energy budget data for all tiles
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
