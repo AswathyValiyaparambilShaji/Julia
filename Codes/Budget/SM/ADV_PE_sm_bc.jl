@@ -52,9 +52,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
         # --- Read PE (full temporal resolution) ---
         pe = Float64.(open(joinpath(base2, "pe", "pe_t_sm_$suffix.bin"), "r") do io
-            raw_data = reinterpret(Float32, read(io, nx * ny * nz * nt * sizeof(Float32)))
-            reshape(raw_data, nx, ny, nz, nt)
-        end)
+                nbytes = nx * ny * nz * nt * sizeof(Float32)
+                raw_bytes = read(io, nbytes)
+                raw_data = reinterpret(Float32, raw_bytes)
+                reshape(raw_data, nx, ny, nz, nt)
+            end)
+
         # --- Read N2 (3-day averaged) ---
         N2 = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
             raw_data = reinterpret(Float32, read(io, nx * ny * nz * nt_avg * sizeof(Float32)))
