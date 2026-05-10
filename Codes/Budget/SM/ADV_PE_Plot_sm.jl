@@ -44,7 +44,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read time-averaged PE advection flux
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_mean_$suffix.bin"), "r") do io
+        u_pe_mean = Float64.(open(joinpath(base2, "BC","U_PE", "u_pe_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
