@@ -39,7 +39,7 @@ rho0 = 1027.5
 
 
 # Depth threshold (in meters)
-DEPTH_THRESHOLD = 3900.0
+DEPTH_THRESHOLD = 3000.0
 
 
 # --- Thickness & constants ---
@@ -368,5 +368,5 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1.png"))")
+save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1_3000.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1_3000.png"))")
