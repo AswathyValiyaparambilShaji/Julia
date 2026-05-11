@@ -80,30 +80,35 @@ DXC = zeros(NX, NY)  # Zonal grid spacing
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        
-        # Read hFacC
-        hFacC = read_bin(joinpath(base, "hFacC", "hFacC_$suffix.bin"), (nx, ny, nz))
-        
-        # Calculate depth
-        DRFfull = hFacC .* DRF3d
-        depth = sum(DRFfull, dims=3)
-        
-        # Read grid cell spacing
-        dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-        
-        # Calculate tile positions in global grid
-        xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
-        ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
-        
-        # Fill global arrays (remove buffer zones)
-        hFacC_full[xs+2:xe-2, ys+2:ye-2, :] .= hFacC[buf:nx-buf+1, buf:ny-buf+1, :]
-        FH[xs+2:xe-2, ys+2:ye-2] .= depth[buf:nx-buf+1, buf:ny-buf+1, 1]
-        DXC[xs+2:xe-2, ys+2:ye-2] .= dx[buf:nx-buf+1, buf:ny-buf+1]
-    end
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+
+
+       # Read hFacC
+       hFacC = read_bin(joinpath(base, "hFacC", "hFacC_$suffix.bin"), (nx, ny, nz))
+
+
+       # Calculate depth
+       DRFfull = hFacC .* DRF3d
+       depth = sum(DRFfull, dims=3)
+
+
+       # Read grid cell spacing
+       dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+
+
+       # Calculate tile positions in global grid
+       xs = (xn - 1) * tx + 1
+       xe = xs + tx + (2 * buf) - 1
+       ys = (yn - 1) * ty + 1
+       ye = ys + ty + (2 * buf) - 1
+
+
+       # Fill global arrays (remove buffer zones)
+       hFacC_full[xs+2:xe-2, ys+2:ye-2, :] .= hFacC[buf:nx-buf+1, buf:ny-buf+1, :]
+       FH[xs+2:xe-2, ys+2:ye-2] .= depth[buf:nx-buf+1, buf:ny-buf+1, 1]
+       DXC[xs+2:xe-2, ys+2:ye-2] .= dx[buf:nx-buf+1, buf:ny-buf+1]
+   end
 end
 
 
@@ -137,103 +142,109 @@ BP_full = zeros(NX, NY)
 ET_full = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
 
+
 t_origin  = DateTime(2012, 3, 1, 0, 0, 0)
 t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
 t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
 wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
+
 # Load energy budget data for all tiles
 for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        
-        
-        # --- Read Flux Divergence ---
-        fxD = Float64.(open(joinpath(base2, "FDiv_wkly", "FDiv_wkly_nt_$suffix2.bin"), "r") do io
-       	nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-       	raw_bytes = read(io, nbytes)
-       	raw_data = reinterpret(Float32, raw_bytes)
-       	reshape(raw_data, nx-2, ny-2)
-   	end)
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
 
 
-   	# --- Read Conversion ---
-   	C = Float64.(open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "r") do io
-       	nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-       	raw_bytes = read(io, nbytes)
-       	raw_data = reinterpret(Float32, raw_bytes)
-       	reshape(raw_data, nx-2, ny-2)
-   	end)
-
-    
-   	# --- Read KE Advection ---
-   	u_ke_mean = Float64.(open(joinpath(base2, "U_KE_wkly", "u_ke_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
-
-   	# --- Read PE Advection ---
-   	u_pe_mean = Float64.(open(joinpath(base2, "U_PE_wkly", "u_pe_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
+       # --- Read Flux Divergence ---
+       fxD = Float64.(open(joinpath(base2, "FDiv_wkly", "FDiv_wkly_nt_$suffix2.bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
 
 
-   	# --- Read Shear Production ---
-   	sp_h_mean = Float64.(open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
-
-   	# --- Read Energy Tendency ---
-   	te_mean = Float64.(open(joinpath(base2, "TE_t_wkly", "te_t_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
+       # --- Read Conversion ---
+       C = Float64.(open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "r") do io
+           nbytes = (nx-2) * (ny-2) * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx-2, ny-2)
+       end)
 
 
-   	# --- Read Vertical Shear Production ---
-   	sp_v_mean = Float64.(open(joinpath(base2, "SP_V_wkly", "sp_v_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
-   	# --- Read Buoyancy Production ---
-   	bp_mean = Float64.(open(joinpath(base2, "BP_wkly", "bp_wkly_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-   	end)
-
-   	# --- Read Wind Power Input (with time dimension) ---
-   	wpi_tile = Float64.(open(joinpath(base2, "WindInput", "wpi_nt_$suffix.bin"), "r") do io
-       	nbytes = nx * ny * nt * sizeof(Float32)
-       	reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
-   	end)
-
-   	# Time average the WPI
-   	wpi_mean = (dropdims(mean(wpi_tile[:, :, wk_start:wk_end], dims=3), dims=3))
+       # --- Read KE Advection ---
+       u_ke_mean = Float64.(open(joinpath(base2, "U_KE_wkly", "u_ke_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
 
+       # --- Read PE Advection ---
+       u_pe_mean = Float64.(open(joinpath(base2, "U_PE_wkly", "u_pe_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
-        # Calculate tile positions
-        xs = (xn - 1) * tx + 1
-        xe = xs + tx + (2 * buf) - 1
-        ys = (yn - 1) * ty + 1
-        ye = ys + ty + (2 * buf) - 1
+
+       # --- Read Shear Production ---
+       sp_h_mean = Float64.(open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
 
 
-        # Update global arrays (remove buffer zones)
-        Conv[xs+2:xe-2, ys+2:ye-2]         .= C[2:end-1, 2:end-1]
-        FDiv[xs+2:xe-2, ys+2:ye-2]         .= fxD[2:end-1, 2:end-1]
-        U_KE_full[xs+2:xe-2,    ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
-        U_PE_full[xs+2:xe-2,    ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
-        SP_H_full[xs+2:xe-2,    ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
-        SP_V_full[xs+2:xe-2,    ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
-        BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
-        ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
-        
-    end
+       # --- Read Energy Tendency ---
+       te_mean = Float64.(open(joinpath(base2, "TE_t_wkly", "te_t_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+
+
+       # --- Read Vertical Shear Production ---
+       sp_v_mean = Float64.(open(joinpath(base2, "SP_V_wkly", "sp_v_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+
+
+       # --- Read Buoyancy Production ---
+       bp_mean = Float64.(open(joinpath(base2, "BP_wkly", "bp_wkly_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
+       end)
+
+
+       # --- Read Wind Power Input (with time dimension) ---
+       wpi_tile = Float64.(open(joinpath(base2, "WindInput", "wpi_nt_$suffix.bin"), "r") do io
+           nbytes = nx * ny * nt * sizeof(Float32)
+           reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
+       end)
+
+
+       # Time average the WPI
+       wpi_mean = (dropdims(mean(wpi_tile[:, :, wk_start:wk_end], dims=3), dims=3))
+
+
+       # Calculate tile positions
+       xs = (xn - 1) * tx + 1
+       xe = xs + tx + (2 * buf) - 1
+       ys = (yn - 1) * ty + 1
+       ye = ys + ty + (2 * buf) - 1
+
+
+       # Update global arrays (remove buffer zones)
+       Conv[xs+2:xe-2, ys+2:ye-2]         .= C[2:end-1, 2:end-1]
+       FDiv[xs+2:xe-2, ys+2:ye-2]         .= fxD[2:end-1, 2:end-1]
+       U_KE_full[xs+2:xe-2,    ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
+       U_PE_full[xs+2:xe-2,    ys+2:ye-2] .= u_pe_mean[buf:nx-buf+1, buf:ny-buf+1]
+       SP_H_full[xs+2:xe-2,    ys+2:ye-2] .= sp_h_mean[buf:nx-buf+1, buf:ny-buf+1]
+       SP_V_full[xs+2:xe-2,    ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
+       BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
+       ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
+   end
 end
 
 
@@ -247,12 +258,13 @@ PS        = SP_H_full .+ SP_V_full
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
 Budget_Diss  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
 
+
 # ============================================================================
 # PART 4: APPLY DEPTH MASK AND COMPUTE ZONAL AVERAGES
 # ============================================================================
 
 
-# Create depth mask - TRUE where depth > 3900m
+# Create depth mask - TRUE where depth > 3000m
 deep_mask = FH .> DEPTH_THRESHOLD
 
 
@@ -272,16 +284,17 @@ Budget_zonal = zeros(NY)
 
 
 for j in 1:NY
-    deep_points_at_lat = deep_mask[:, j]
-    
-    if sum(deep_points_at_lat) > 0
-        total_dx = sum(DXC[deep_points_at_lat, j])
-        Siva_zonal[j] = sum(Siva_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
-        Budget_zonal[j] = sum(Budget_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
-    else
-        Siva_zonal[j] = NaN
-        Budget_zonal[j] = NaN
-    end
+   deep_points_at_lat = deep_mask[:, j]
+
+
+   if sum(deep_points_at_lat) > 0
+       total_dx = sum(DXC[deep_points_at_lat, j])
+       Siva_zonal[j] = sum(Siva_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
+       Budget_zonal[j] = sum(Budget_Diss_norm[deep_points_at_lat, j] .* DXC[deep_points_at_lat, j]) / total_dx
+   else
+       Siva_zonal[j] = NaN
+       Budget_zonal[j] = NaN
+   end
 end
 
 
@@ -292,37 +305,39 @@ Budget_zonal_scaled = Budget_zonal * 1e8
 
 # Smooth the Budget dissipation to reduce noise
 function smooth_data(data, window=25)
-    smoothed = copy(data)
-    n = length(data)
-    half_window = div(window, 5)
-    
-    for i in 1:n
-        if isnan(data[i])
-            continue
-        end
-        i_start = max(1, i - half_window)
-        i_end = min(n, i + half_window)
-        window_data = data[i_start:i_end]
-        valid_data = filter(!isnan, window_data)
-        if length(valid_data) > 0
-            smoothed[i] = mean(valid_data)
-        end
-    end
-    
-    return smoothed
+   smoothed = copy(data)
+   n = length(data)
+   half_window = div(window, 5)
+
+
+   for i in 1:n
+       if isnan(data[i])
+           continue
+       end
+       i_start = max(1, i - half_window)
+       i_end = min(n, i + half_window)
+       window_data = data[i_start:i_end]
+       valid_data = filter(!isnan, window_data)
+       if length(valid_data) > 0
+           smoothed[i] = mean(valid_data)
+       end
+   end
+
+
+   return smoothed
 end
 
 
-Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 15)
+Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 75)  # was 15
 
 
 # ============================================================================
 # THE ONLY CHANGE: mask edges and latitudes beyond F_band data coverage
 # ============================================================================
 for j in 1:NY
-    if j > 467 || j <= 2 || j >= NY-1
-        Siva_zonal_scaled[j] = NaN
-    end
+   if j > 467 || j <= 2 || j >= NY-1
+       Siva_zonal_scaled[j] = NaN
+   end
 end
 
 
@@ -335,26 +350,26 @@ fig = Figure(resolution=(600, 800))
 
 
 ax = Axis(fig[1, 1],
-    title="Zonal Average Dissipation",
-    xlabel="Dissipation [×10⁻⁸ W/kg]",
-    ylabel="Latitude [°]",
+   title="Zonal Average Dissipation",
+   xlabel="Dissipation [×10⁻⁸ W/kg]",
+   ylabel="Latitude [°]",
    ylabelsize = 22,
-       xlabelsize = 22,
-       titlesize = 26,
-       xticklabelsize=16,
-       yticklabelsize=16)
+   xlabelsize = 22,
+   titlesize = 26,
+   xticklabelsize=16,
+   yticklabelsize=16)
 
 
 lines!(ax, Siva_zonal_scaled, lat,
-    label="Direct Dissipation",
-    color=:red,
-    linewidth=2.5)
+   label="Direct Dissipation",
+   color=:red,
+   linewidth=2.5)
 
 
 lines!(ax, Budget_zonal_scaled_smooth, lat,
-    label="Residual Dissipation",
-    color=:blue,
-    linewidth=2.5)
+   label="Residual Dissipation",
+   color=:blue,
+   linewidth=2.5)
 
 
 vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
@@ -368,5 +383,9 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1_3000.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1_3000.png"))")
+save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2_3000.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2_3000.png"))")
+
+
+
+
