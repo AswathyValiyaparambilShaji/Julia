@@ -78,19 +78,19 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
         end)
-        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
+        u_ke_3day = Float64.(open(joinpath(base2, "BC","U_KE_3day", "u_ke_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
+        u_pe_3day = Float64.(open(joinpath(base2, "BC","U_PE_3day", "u_pe_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
+        sp_h_3day = Float64.(open(joinpath(base2,"BC", "SP_H_3day", "sp_h_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
-        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
+        sp_v_3day = Float64.(open(joinpath(base2,"BC", "SP_V_3day", "sp_v_3day_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
@@ -133,7 +133,7 @@ end
 
 
 println("\nApplying depth mask (> 3000 m)...")
-depth_mask = FH .> 500.0
+depth_mask = FH .> 3000.0
 RAC_masked = RAC .* depth_mask
 println("Deep points (>3000m): $(sum(depth_mask)) / $(length(depth_mask))")
 
@@ -292,7 +292,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_Var_Timeseries_3day_deep_v4.png")
+outpath = joinpath(FIGDIR, "Residual_bcplot_v1.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
