@@ -291,10 +291,10 @@ Budget_zonal_scaled = Budget_zonal * 1e8
 
 
 # Smooth the Budget dissipation to reduce noise
-function smooth_data(data, window=15)
+function smooth_data(data, window=25)
     smoothed = copy(data)
     n = length(data)
-    half_window = div(window, 2)
+    half_window = div(window, 5)
     
     for i in 1:n
         if isnan(data[i])
