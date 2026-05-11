@@ -328,7 +328,7 @@ function smooth_data(data, window=25)
 end
 
 
-Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 75)  # was 15
+Budget_zonal_scaled_smooth = smooth_data(Budget_zonal_scaled, 100)  # was 15
 
 
 # ============================================================================
@@ -383,8 +383,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2_3000.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2_3000.png"))")
+save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v3_3000.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v3_3000.png"))")
 
 
 
