@@ -44,7 +44,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read time-averaged vertical shear production
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "BC" ,"SP_V", "sp_v_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -99,7 +99,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "SP_V_production_v6.png"), fig)
+save(joinpath(FIGDIR, "SP_V_production_v7_55.png"), fig)
 
 
 
