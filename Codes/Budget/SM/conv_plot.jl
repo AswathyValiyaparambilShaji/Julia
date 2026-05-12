@@ -40,7 +40,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf - 2)
-        fpath   = joinpath(base2, "Conv_corr", "Conv_$suffix2.bin")
+        fpath   = joinpath(base2, "Conv", "Conv_$suffix2.bin")
 
 
     
@@ -86,7 +86,7 @@ ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 hm = CairoMakie.heatmap!(ax, lon, lat, Conv_z;
     interpolate = false,
-    colorrange  = (-0.050, 0.050),
+    colorrange  = (-0.030, 0.030),
     colormap    = :bwr)
 
 
@@ -98,8 +98,8 @@ display(fig)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "ConvZ_map_v1_phc.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "ConvZ_map_v1_phc.png"))")
+save(joinpath(FIGDIR, "ConvZ_map_v1_cpo.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "ConvZ_map_v1_cpo.png"))")
 
 
 
