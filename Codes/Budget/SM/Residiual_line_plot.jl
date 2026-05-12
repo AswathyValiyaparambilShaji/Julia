@@ -148,7 +148,6 @@ function area_weighted_mean(field, area)
     return sum(field[valid_mask] .* area[valid_mask]) / sum(area[valid_mask])
 end
 
-
 function area_weighted_var(field, area, weighted_mean)
     valid_mask = .!(isnan.(field) .| isinf.(field)) .& (area .> 0.0)
     w = area[valid_mask]
@@ -156,11 +155,9 @@ function area_weighted_var(field, area, weighted_mean)
     return sum(w .* (f .- weighted_mean).^2) / sum(w)
 end
 
-
 # ==========================================================
 # 3-DAY TIMESERIES: mean + spatial variance (deep points only)
 # ==========================================================
-
 
 println("Calculating residual timeseries + spatial variance...")
 

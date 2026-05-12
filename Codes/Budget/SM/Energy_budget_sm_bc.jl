@@ -236,7 +236,7 @@ fig = Figure(resolution=(1200, 800))
 
 # Color ranges
 crange  = (-0.03, 0.03)
-crange2 = (-0.015, 0.015)
+crange2 = (-0.03, 0.03)
 cmap = :bwr
 
 
@@ -297,19 +297,19 @@ hm4 = heatmap!(ax4, lon, lat, Residual;
 
 # Row 2, Column 1: Shear Production
 ax5 = Axis(fig[2, 1],
-    title = "(e) <Ps>",
+    title = "(e) <Ps> (Vertical)",
     xlabel = "Longitude [deg]",
     ylabel = "Latitude [deg]"
 )
-hm5 = heatmap!(ax5, lon, lat, PS;
+hm5 = heatmap!(ax5, lon, lat, SP_V_full;
     interpolate = false,
     colorrange = crange2,
     colormap = cmap)
 
 
 # Row 2, Column 2: Buoyancy Production
-ax6 = Axis(fig[2, 2],
-    title = "(f) <Pb>",
+ax6 = Axis(fig[2, 3],
+    title = "(g) <Pb>",
     xlabel = "Longitude [deg]",
     ylabel = "",
     yticklabelsvisible = false
@@ -321,8 +321,8 @@ hm6 = heatmap!(ax6, lon, lat, BP_full;
 
 
 # Row 2, Column 3: Energy Tendency
-ax7 = Axis(fig[2, 3],
-    title = "(g) <dE/dt>",
+ax7 = Axis(fig[2, 4],
+    title = "(h) <dE/dt>",
     xlabel = "Longitude [deg]",
     ylabel = "",
     yticklabelsvisible = false
@@ -333,7 +333,7 @@ hm7 = heatmap!(ax7, lon, lat, ET_full;
     colormap = cmap)
 
 
-# Row 2, Column 4: Wind Power Input (x10^-3)
+#= Row 2, Column 4: Wind Power Input (x10^-3)
 ax8 = Axis(fig[2, 4],
     title = "(h) <WPI> [x10^-3]",
     xlabel = "Longitude [deg]",
@@ -343,7 +343,7 @@ ax8 = Axis(fig[2, 4],
 hm8 = heatmap!(ax8, lon, lat, WPI_plot;
     interpolate = false,
     colorrange = crange2,
-    colormap = cmap)#
+    colormap = cmap)=#
 
 
 #= Row 2, Column 5: Total G transfer (IT -> NIW)
@@ -357,7 +357,17 @@ hm9 = heatmap!(ax9, lon, lat, G_total;
     interpolate = false,
     colorrange = crange2,
     colormap = cmap)=#
-
+#Row 2, Column 5: SP_V
+ax9 = Axis(fig[2, 2],
+    title = "(f) <Ps> (Horizontal) ",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm9 = heatmap!(ax9, lon, lat, SP_H_full;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)
 
 # Add colorbars
 Colorbar(fig[1, 5], hm4, label = "[W/m2]")
@@ -369,10 +379,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V2.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V3_bc.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V2.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V3_bc.png "))")
 
 
 
