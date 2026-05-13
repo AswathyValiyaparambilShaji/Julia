@@ -60,6 +60,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
 
+        # --- depth from hFacC ---
+        hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        H = dropdims(sum(DRFfull, dims=3), dims=3)   # (nx, ny)
 
         # --- Read Flux Divergence ---
         fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_$(suffix2).bin"), "r") do io
