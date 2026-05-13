@@ -119,7 +119,7 @@ contour!(ax, lon, lat, FH;
     linewidth  = 2,
     linestyle  = :solid,
     labels     = true,
-    labelsize  = 18,
+    labelsize  = 12,
     labelcolor = :black)
 
 
