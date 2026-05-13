@@ -48,7 +48,7 @@ G_vel_H_full = zeros(NX, NY)
 G_vel_V_full = zeros(NX, NY)
 G_buoy_full  = zeros(NX, NY)
 
-
+FH = fill(NaN, NX, NY)
 println("Loading energy budget terms...")
 
 
