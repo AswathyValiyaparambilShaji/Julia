@@ -181,7 +181,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 
-MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
+MF        =  SP_H_full .+ SP_V_full .+ BP_full
 
 # ── figure (unchanged except for the contour! lines below) ─────────────────
 fig = Figure(resolution=(600, 800))
@@ -205,7 +205,7 @@ contour!(ax, lon, lat, FH;
     linewidth  = 2,
     linestyle  = :solid,
     labels     = true,
-    labelsize  = 18,
+    labelsize  = 12,
     labelcolor = :black)
 
 
