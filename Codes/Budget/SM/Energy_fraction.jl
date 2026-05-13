@@ -17,6 +17,16 @@ tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 88
+
+# --- Thickness & constants ---
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+
+
+rho0 = 1027.5
+
+
 # Initialize global arrays
 Conv         = zeros(NX, NY)
 FDiv         = zeros(NX, NY)
