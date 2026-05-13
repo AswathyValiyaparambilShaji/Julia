@@ -200,7 +200,7 @@ hm = CairoMakie.heatmap!(ax, lon, lat, MF;
 
 # --- bathymetry contours (thicker + labelled) ---
 contour!(ax, lon, lat, FH;
-    levels     = [100.0, 500.0, 1000.0, 3000.0],
+    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
     color      = :black,
     linewidth  = 2,
     linestyle  = :solid,
