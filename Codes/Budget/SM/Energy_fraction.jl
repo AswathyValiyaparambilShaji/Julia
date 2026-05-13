@@ -171,14 +171,8 @@ frac_R = ((mean_R) / mean_C) * 100.0
 
 
 println("\n=== Area-Weighted Energy Budget Fractions ===")
-println(@sprintf("  ⟨C⟩           = %.4e W/m²", mean_C))
-println(@sprintf("  ⟨∇·F⟩        = %.4e W/m²", mean_FDiv))
-println(@sprintf("  ⟨Ps⟩         = %.4e W/m²", mean_Ps))
-println(@sprintf("  ⟨Pb⟩         = %.4e W/m²", mean_Pb))
+println(  "A fraction :", frac_A)
+println("  ⟨∇·F⟩        fraction : ", frac_FDiv)
+println("  ⟨Ps⟩ +⟨Pb⟩ fraction : ", frac_PsPb)
+println("  ⟨R⟩   fraction : ", frac_R)
 println()
-println(@sprintf("  ∇·F / C       = %.1f%%  (flux divergence fraction)", frac_FDiv))
-println(@sprintf("  (Ps+Pb) / C   = %.1f%%  (wave–mean flow interaction fraction)", frac_PsPb))
-
-
-
-
