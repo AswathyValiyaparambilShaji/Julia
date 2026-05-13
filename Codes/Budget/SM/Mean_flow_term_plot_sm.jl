@@ -32,7 +32,7 @@ dt = 25
 dto = 144
 Tts = 366192
 nt = div(Tts, dto)
-
+nz = 88
 
 # Initialize global arrays
 Conv         = zeros(NX, NY)
