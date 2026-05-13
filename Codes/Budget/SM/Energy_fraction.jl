@@ -12,11 +12,21 @@ base2 = cfg["base_path2"]
 
 
 NX, NY = 288, 468
+# --- Tile & time parameters ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 88
+dt = 25
+dto = 144
+Tts = 366192
+nt = div(Tts, dto)
+ts = 72                  # timesteps per 3-day period
+nt_avg = div(nt, ts)     # number of 3-day periods
+nt3 = div(nt, 3*24)      # number of 3-day periods
+
+
 
 # --- Thickness & constants ---
 thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
