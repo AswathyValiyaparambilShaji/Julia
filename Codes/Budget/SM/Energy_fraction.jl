@@ -157,6 +157,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     end
 end
 
+TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
 Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
 
 # ==========================================================
