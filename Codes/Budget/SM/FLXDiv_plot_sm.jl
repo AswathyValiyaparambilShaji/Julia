@@ -32,8 +32,8 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 
 FDiv_z = zeros(NX, NY)
-FH     = zeros(NX, NY)
-
+#FH     = zeros(NX, NY)
+FH = fill(NaN, NX, NY)
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -86,12 +86,15 @@ hm = CairoMakie.heatmap!(ax, lon, lat, FDiv_z;
     colormap    = :bwr)
 
 
-# --- bathymetry contours (added) ---
+# --- bathymetry contours (thicker + labelled) ---
 contour!(ax, lon, lat, FH;
-    levels     = [500.0, 1000.0, 2000.0, 3000.0, 4000.0],
+    levels     = [100.0, 500.0, 1000.0, 3000.0],
     color      = :black,
-    linewidth  = 0.8,
-    linestyle  = :solid)
+    linewidth  = 2,
+    linestyle  = :solid,
+    labels     = true,
+    labelsize  = 18,
+    labelcolor = :black)
 
 
 Colorbar(fig[1,2], hm, label="W/m²")
