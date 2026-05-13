@@ -16,7 +16,7 @@ buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
-
+nz = 88
 # Initialize global arrays
 Conv         = zeros(NX, NY)
 FDiv         = zeros(NX, NY)
