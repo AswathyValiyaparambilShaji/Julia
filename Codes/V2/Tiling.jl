@@ -92,7 +92,7 @@ for varname in vars_3d
         tile_and_append!(fld, output_dir, varname)
         fld = nothing
         GC.gc()
-        println("done: $ts / $nt  ($dtstr)")
+        #println("done: $ts / $nt  ($dtstr)")
     end
     println("$varname complete → $output_dir")
 end
@@ -122,7 +122,7 @@ for varname in vars_2d
         tile_and_append!(fld, output_dir, varname)
         fld = nothing
         GC.gc()
-        println("done: $ts / $nt  ($dtstr)")
+        #println("done: $ts / $nt  ($dtstr)")
     end
     println("$varname complete → $output_dir")
 end
