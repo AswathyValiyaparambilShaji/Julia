@@ -8,7 +8,6 @@
 
 
 export PATH="/home3/avaliyap/.juliaup/bin:$PATH"
-source "/home3/avaliyap/.juliaup/env"
 
 
 export JULIA_NUM_THREADS=128
