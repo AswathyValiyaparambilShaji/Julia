@@ -269,15 +269,6 @@ hm1 = heatmap!(ax1, lon, lat, Conv;
     colorrange = crange,
     colormap = cmap)
 
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax1, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
 
 # Row 1, Column 2: Flux Divergence
 ax2 = Axis(fig[1, 2],
@@ -293,14 +284,7 @@ hm2 = heatmap!(ax2, lon, lat, FDiv;
     colormap = cmap)
 
 # --- bathymetry contours (thicker + labelled) ---
-contour!(ax2, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 # Row 1, Column 3: Advective fluxes
 ax3 = Axis(fig[1, 3],
@@ -314,15 +298,7 @@ hm3 = heatmap!(ax3, lon, lat, A;
     interpolate = false,
     colorrange = crange,
     colormap = cmap)
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax3, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 
 # Row 1, Column 4: Dissipation
@@ -337,15 +313,7 @@ hm4 = heatmap!(ax4, lon, lat, Residual;
     interpolate = false,
     colorrange = crange,
     colormap = cmap)
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax4, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 
 # Row 2, Column 1: Shear Production
@@ -359,14 +327,7 @@ hm5 = heatmap!(ax5, lon, lat, SP_V_full;
     colorrange = crange2,
     colormap = cmap)
 # --- bathymetry contours (thicker + labelled) ---
-contour!(ax5, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 
 # Row 2, Column 2: Buoyancy Production
@@ -380,15 +341,7 @@ hm6 = heatmap!(ax6, lon, lat, BP_full;
     interpolate = false,
     colorrange = crange2,
     colormap = cmap)
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax6, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 
 # Row 2, Column 3: Energy Tendency
@@ -402,15 +355,7 @@ hm7 = heatmap!(ax7, lon, lat, ET_full;
     interpolate = false,
     colorrange = crange2,
     colormap = cmap)
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax7, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 
 #= Row 2, Column 4: Wind Power Input (x10^-3)
@@ -448,15 +393,7 @@ hm9 = heatmap!(ax9, lon, lat, SP_H_full;
     interpolate = false,
     colorrange = crange2,
     colormap = cmap)
-# --- bathymetry contours (thicker + labelled) ---
-contour!(ax9, lon, lat, FH;
-    levels     = [500.0, 1000.0, 1500.0, 2000.0, 3000.0],
-    color      = :black,
-    linewidth  = 2,
-    linestyle  = :solid,
-    labels     = true,
-    labelsize  = 12,
-    labelcolor = :black)
+
 
 # Add colorbars
 Colorbar(fig[1, 5], hm4, label = "[W/m2]")
