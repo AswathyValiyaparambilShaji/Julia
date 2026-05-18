@@ -23,8 +23,8 @@ nt      = 558
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
 # (varname, filename_suffix, is_3d)
-vars_3d = ["V", "Salt", "Theta", "W"]
-vars_2d = ["Eta", "oceTAUX", "oceTAUY"]
+vars_3d = ["hFacC_288x468x168"]
+vars_2d = ["DXC_288x468", "DYC_288x468", "RAC_288x468"]
 
 
 # ── Readers ────────────────────────────────────────────────────────────────────
