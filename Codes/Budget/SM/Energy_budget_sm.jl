@@ -94,7 +94,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_bt", "sp_h_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -108,14 +108,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Vertical Shear Production ---
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_bt", "sp_v_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
+        bp_mean = Float64.(open(joinpath(base2, "BP_bt", "bp_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -193,8 +193,8 @@ G_total   = G_vel_H_full .+ G_vel_V_full .+ G_buoy_full
 
 
 # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
-Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full
-              .+ G_total)
+Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
+              #.+ G_total)
 Residual2 = Conv .- FDiv
 
 
@@ -230,6 +230,171 @@ println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
 # =================== VISUALIZATION ========================
 # ==========================================================
 
+
+fig = Figure(resolution=(1200, 800))
+
+
+# Color ranges
+crange  = (-0.03, 0.03)
+crange2 = (-0.03, 0.03)
+cmap = :bwr
+
+
+# Row 1, Column 1: Conversion
+ax1 = Axis(fig[1, 1],
+    title = "(a) <C>",
+    xlabel = "",
+    xticklabelsvisible = false,
+    ylabel = "Latitude [deg]"
+)
+hm1 = heatmap!(ax1, lon, lat, Conv;
+    interpolate = false,
+    colorrange = crange,
+    colormap = cmap)
+
+
+# Row 1, Column 2: Flux Divergence
+ax2 = Axis(fig[1, 2],
+    title = "(b) <∇.F>",
+    xlabel = "",
+    xticklabelsvisible = false,
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm2 = heatmap!(ax2, lon, lat, FDiv;
+    interpolate = false,
+    colorrange = crange,
+    colormap = cmap)
+
+# --- bathymetry contours (thicker + labelled) ---
+
+
+# Row 1, Column 3: Advective fluxes
+ax3 = Axis(fig[1, 3],
+    title = "(c) <A>",
+    xlabel = "",
+    xticklabelsvisible = false,
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm3 = heatmap!(ax3, lon, lat, A;
+    interpolate = false,
+    colorrange = crange,
+    colormap = cmap)
+
+
+
+# Row 1, Column 4: Dissipation
+ax4 = Axis(fig[1, 4],
+    title = "(d) <D>",
+    xlabel = "",
+    xticklabelsvisible = false,
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm4 = heatmap!(ax4, lon, lat, Residual;
+    interpolate = false,
+    colorrange = crange,
+    colormap = cmap)
+
+
+
+# Row 2, Column 1: Shear Production
+ax5 = Axis(fig[2, 1],
+    title = "(e) <Ps> (Vertical)",
+    xlabel = "Longitude [deg]",
+    ylabel = "Latitude [deg]"
+)
+hm5 = heatmap!(ax5, lon, lat, SP_V_full;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)
+# --- bathymetry contours (thicker + labelled) ---
+
+
+
+# Row 2, Column 2: Buoyancy Production
+ax6 = Axis(fig[2, 3],
+    title = "(g) <Pb>",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm6 = heatmap!(ax6, lon, lat, BP_full;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)
+
+
+
+# Row 2, Column 3: Energy Tendency
+ax7 = Axis(fig[2, 4],
+    title = "(h) <dE/dt>",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm7 = heatmap!(ax7, lon, lat, ET_full;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)
+
+
+
+#= Row 2, Column 4: Wind Power Input (x10^-3)
+ax8 = Axis(fig[2, 4],
+    title = "(h) <WPI> [x10^-3]",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm8 = heatmap!(ax8, lon, lat, WPI_plot;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)=#
+
+
+#= Row 2, Column 5: Total G transfer (IT -> NIW)
+ax9 = Axis(fig[2, 4],
+    title = "(h) <G>",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm9 = heatmap!(ax9, lon, lat, G_total;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)=#
+#Row 2, Column 5: SP_V
+ax9 = Axis(fig[2, 2],
+    title = "(f) <Ps> (Horizontal) ",
+    xlabel = "Longitude [deg]",
+    ylabel = "",
+    yticklabelsvisible = false
+)
+hm9 = heatmap!(ax9, lon, lat, SP_H_full;
+    interpolate = false,
+    colorrange = crange2,
+    colormap = cmap)
+
+
+# Add colorbars
+Colorbar(fig[1, 5], hm4, label = "[W/m2]")
+Colorbar(fig[2, 5], hm7, label = "[W/m2]")
+
+
+display(fig)
+
+
+# Save figure
+FIGDIR = cfg["fig_base"]
+save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V4.png"), fig)
+
+
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V4.png "))")
+
+
+#=
 
 fig = Figure(resolution=(1200, 800))
 
@@ -375,5 +540,5 @@ save(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png"), fig)
 println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WG_V1.png "))")
 
 
-
+=#
 

@@ -402,7 +402,7 @@ elseif time_mode == "full"
     println("Starting horizontal shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "SP_H"))
+    mkpath(joinpath(base2, "SP_H_bt"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -458,6 +458,7 @@ elseif time_mode == "full"
 
             DRFfull[hFacC .== 0] .= 0.0
             mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
+            #=
             ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
             up_3d  = fu .- ucA
             up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
@@ -466,7 +467,7 @@ elseif time_mode == "full"
             vp_3d  = fv .- vcA
             vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
             fv = vcA = nothing; GC.gc()
-
+            =#
 
             # --- Calculate horizontal gradients of mean velocities ---
             println("Calculating horizontal gradients of mean velocities...")
@@ -507,8 +508,8 @@ elseif time_mode == "full"
                 U_y_t = @view U_y[:, :, :, t_avg]
                 V_x_t = @view V_x[:, :, :, t_avg]
                 V_y_t = @view V_y[:, :, :, t_avg]
-                ut    = @view up_3d[:, :, :, t]
-                vt    = @view vp_3d[:, :, :, t]
+                ut    = @view fu[:, :, :, t]
+                vt    = @view fv[:, :, :, t]
 
 
                 temp1 = ut .* ut .* U_x_t .* DRFfull
@@ -528,7 +529,7 @@ elseif time_mode == "full"
             SP_H = dropdims(mean(sp_h, dims=3), dims=3)
 
 
-            output_dir = joinpath(base2, "SP_H")
+            output_dir = joinpath(base2, "SP_H_bt")
             open(joinpath(output_dir, "sp_h_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_H))
             end

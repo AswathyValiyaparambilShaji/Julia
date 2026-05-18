@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> vertical shear production for each 3-day period
 #   "weekly" -> vertical shear production mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> vertical shear production mean over full time record
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -400,7 +400,7 @@ elseif time_mode == "full"
     println("Starting vertical shear production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "SP_V"))
+    mkpath(joinpath(base2, "SP_V_bt"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -462,6 +462,7 @@ elseif time_mode == "full"
             depth   = sum(DRFfull, dims=3)
 
             DRFfull[hFacC .== 0] .= 0.0
+            #=
             mask3D  = hFacC .== 0                           # (nx, ny, nz) Bool — reuse for masking
             ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
             up_3d  = fu .- ucA
@@ -475,6 +476,7 @@ elseif time_mode == "full"
             wp_3d  = fw .- wcA
             wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
             fw = wcA = nothing; GC.gc()
+            =#
 
             # --- Calculate vertical gradients of mean velocities: ∂U/∂z, ∂V/∂z ---
             println("Calculating vertical gradients of mean velocities...")
@@ -506,9 +508,9 @@ elseif time_mode == "full"
 
                 U_z_t = @view U_z[:, :, :, t_avg]
                 V_z_t = @view V_z[:, :, :, t_avg]
-                ut    = @view up_3d[:, :, :, t]
-                vt    = @view vp_3d[:, :, :, t]
-                wt    = @view wp_3d[:, :, :, t]
+                ut    = @view fu[:, :, :, t]
+                vt    = @view fv[:, :, :, t]
+                wt    = @view fw[:, :, :, t]
 
 
                 temp1 = wt .* ut .* U_z_t .* DRFfull
@@ -527,7 +529,7 @@ elseif time_mode == "full"
 
                     println(SP_V[20,1:10])
 
-            output_dir = joinpath(base2, "SP_V")
+            output_dir = joinpath(base2, "SP_V_bt")
             open(joinpath(output_dir, "sp_v_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(SP_V))
             end

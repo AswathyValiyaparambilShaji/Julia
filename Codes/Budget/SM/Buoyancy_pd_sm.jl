@@ -21,7 +21,7 @@ base2 = cfg["base_path2"]
 #   "3day"   -> buoyancy production for each 3-day period
 #   "weekly" -> buoyancy production mean over Apr 22 00:00 - Apr 28 23:00
 #   "full"   -> buoyancy production mean over full time record
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
+time_mode = "full"   # <-- change to "3day", "weekly", or "full"
 
 
 
@@ -162,7 +162,7 @@ if time_mode == "3day"
                 raw_data = reinterpret(Float32, raw_bytes)
                 reshape(raw_data, nx, ny, nz, nt)
             end)
-
+            
             ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
             up_3d  = fu .- ucA
             up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
@@ -590,7 +590,7 @@ elseif time_mode == "full"
     println("Starting buoyancy production calculation for full time average...")
 
 
-    mkpath(joinpath(base2, "BP"))
+    mkpath(joinpath(base2, "BP_bt"))
 
 
     for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -660,7 +660,7 @@ elseif time_mode == "full"
             depth   = sum(DRFfull, dims=3)
             DRFfull[hFacC .== 0] .= 0.0
             mask3D  = hFacC .== 0  
-            
+            #=
             ucA    = sum(fu .* DRFfull, dims=3) ./ depth    # (nx, ny, 1, nt) barotropic
             up_3d  = fu .- ucA
             up_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
@@ -671,7 +671,7 @@ elseif time_mode == "full"
             vp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
             fv = vcA = nothing; GC.gc()
        
-
+            =#
             # --- Adjust N2 to interfaces ---
             N2_adjusted = zeros(Float64, nx, ny, nz+1, nt_avg)
             N2_adjusted[:, :, 1,   :] = N2_phase[:, :, 1,   :]
@@ -775,8 +775,8 @@ elseif time_mode == "full"
                 B_x_t  = @view B_x[:, :, :, t_avg]
                 B_y_t  = @view B_y[:, :, :, t_avg]
                 b_t    = @view b[:, :, :, t]
-                ut     = @view up_3d[:, :, :, t]
-                vt     = @view vp_3d[:, :, :, t]
+                ut     = @view fu[:, :, :, t]
+                vt     = @view fv[:, :, :, t]
 
 
                 temp1 = (b_t ./ n2_val) .* ut .* B_x_t .* DRFfull
@@ -801,7 +801,7 @@ elseif time_mode == "full"
             println("  BP range: $(extrema(BP[isfinite.(BP)]))")
 
 
-            output_dir = joinpath(base2, "BP")
+            output_dir = joinpath(base2, "BP_bt")
             open(joinpath(output_dir, "bp_mean_$suffix.bin"), "w") do io
                 write(io, Float32.(BP))
             end
