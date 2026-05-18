@@ -16,15 +16,12 @@ buf    = 3
 tx, ty = 47, 66
 
 
-# ── Time info ──────────────────────────────────────────────────────────────────
-t_start = DateTime(2023, 5, 1, 0, 0, 0)
-nt      = 558
 
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
 # (varname, filename_suffix, is_3d)
-vars_3d = ["V", "Salt", "Theta", "W"]
-vars_2d = ["Eta", "oceTAUX", "oceTAUY"]
+vars_3d = ["hFacC"]
+vars_2d = ["DXC", "DYC", "RAC"]
 
 
 # ── Readers ────────────────────────────────────────────────────────────────────
@@ -86,16 +83,16 @@ end
 
 # ── Process 3D variables ───────────────────────────────────────────────────────
 for varname in vars_3d
-    input_dir  = joinpath(basein, varname)
+    input_dir  = joinpath(basein, "grid")
     output_dir = joinpath(baseout, varname)
     mkpath(output_dir)
     println("\n── $varname (3D) ──────────────────────────────────────────────")
 
 
-    for ts in 1:nt
-        dt    = t_start + Hour(ts - 1)
-        dtstr = Dates.format(dt, "yyyymmddTHHMMSS")
-        fpath = joinpath(input_dir, "$(varname)_288x468x168.$dtstr")
+    #for ts in 1:nt
+        #dt    = t_start + Hour(ts - 1)
+        #dtstr = Dates.format(dt, "yyyymmddTHHMMSS")
+        fpath = joinpath(input_dir, "$(varname)_288x468x168")
 
 
         if !isfile(fpath)
@@ -109,23 +106,22 @@ for varname in vars_3d
         fld = nothing
         GC.gc()
         #println("done: $ts / $nt  ($dtstr)")
-    end
+    #end
     println("$varname complete → $output_dir")
 end
 
 
 # ── Process 2D variables ───────────────────────────────────────────────────────
 for varname in vars_2d
-    input_dir  = joinpath(basein, varname)
+    input_dir  = joinpath(basein, "grid")
     output_dir = joinpath(baseout, varname)
     mkpath(output_dir)
     println("\n── $varname (2D) ──────────────────────────────────────────────")
 
 
-    for ts in 1:nt
-        dt    = t_start + Hour(ts - 1)
-        dtstr = Dates.format(dt, "yyyymmddTHHMMSS")
-        fpath = joinpath(input_dir, "$(varname)_288x468.$dtstr")
+    #for ts in 1:nt
+       
+        fpath = joinpath(input_dir, "$(varname)_288x468")
 
 
         if !isfile(fpath)
@@ -135,11 +131,11 @@ for varname in vars_2d
 
 
         fld = read_2d(fpath)
-        tile_and_append_2!(fld, output_dir, varname)
+        tile_and_append_2d!(fld, output_dir, varname)
         fld = nothing
         GC.gc()
         #println("done: $ts / $nt  ($dtstr)")
-    end
+    #end
     println("$varname complete → $output_dir")
 end
 
