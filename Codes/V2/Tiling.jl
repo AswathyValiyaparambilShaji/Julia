@@ -45,27 +45,43 @@ end
 
 
 # ── Tiling kernel ──────────────────────────────────────────────────────────────
-function tile_and_append!(fld, output_dir, varname)
+function tile_and_append_3d!(fld, output_dir, varname)
     xn = 1
     for xs in (buf+1):tx:(NX-buf)
         xsb, xeb = xs - buf, xs + tx - 1 + buf
         yn = 1
         for ys in (buf+1):ty:(NY-buf)
             ysb, yeb = ys - buf, ys + ty - 1 + buf
-
-
-            blk = Float32.(fld[xsb:xeb, ysb:yeb, ..])   # works for both 2D and 3D
-
-
+            blk = Float32.(fld[xsb:xeb, ysb:yeb, :])
             tile_file = joinpath(output_dir, @sprintf("%s_v2_%02dx%02d_%d.bin", varname, xn, yn, buf))
-            open(tile_file, "a") do fid
-                write(fid, blk)
-            end
+            open(tile_file, "a") do fid; write(fid, blk); end
             yn += 1
         end
         xn += 1
     end
 end
+
+
+function tile_and_append_2d!(fld, output_dir, varname)
+    xn = 1
+    for xs in (buf+1):tx:(NX-buf)
+        xsb, xeb = xs - buf, xs + tx - 1 + buf
+        yn = 1
+        for ys in (buf+1):ty:(NY-buf)
+            ysb, yeb = ys - buf, ys + ty - 1 + buf
+            blk = Float32.(fld[xsb:xeb, ysb:yeb])
+            tile_file = joinpath(output_dir, @sprintf("%s_v2_%02dx%02d_%d.bin", varname, xn, yn, buf))
+            open(tile_file, "a") do fid; write(fid, blk); end
+            yn += 1
+        end
+        xn += 1
+    end
+end
+
+
+
+
+
 
 
 # ── Process 3D variables ───────────────────────────────────────────────────────
@@ -89,7 +105,7 @@ for varname in vars_3d
 
 
         fld = read_3d(fpath)
-        tile_and_append!(fld, output_dir, varname)
+        tile_and_append_3d!(fld, output_dir, varname)
         fld = nothing
         GC.gc()
         #println("done: $ts / $nt  ($dtstr)")
@@ -119,7 +135,7 @@ for varname in vars_2d
 
 
         fld = read_2d(fpath)
-        tile_and_append!(fld, output_dir, varname)
+        tile_and_append_2d!(fld, output_dir, varname)
         fld = nothing
         GC.gc()
         #println("done: $ts / $nt  ($dtstr)")
