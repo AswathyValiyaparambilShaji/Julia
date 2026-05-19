@@ -179,14 +179,14 @@ for t in 1:nt3
     PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
     BP_tn = BP_3day[:,:,t]   ./ norm
     ET_tn = ET_3day[:,:,t]   ./ norm
-
+    
 
     # Compute residuals and apply depth mask explicitly
     r1 = -(C_tn .- Fd_tn)                                    .* depth_mask
     r2 = -(C_tn .- Fd_tn .- A_tn)                            .* depth_mask
-    r3 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn)                   .* depth_mask
-    r4 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn)          .* depth_mask
-    r5 = -(C_tn .- Fd_tn .- A_tn .+ PS_tn .+ BP_tn .- ET_tn) .* depth_mask
+    r3 = -(C_tn .- Fd_tn .- A_tn .- ET_tn)                   .* depth_mask
+    r4 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ PS_tn)           .* depth_mask
+    r5 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ PS_tn.+ BP_tn )  .* depth_mask
 
 
     R1_ts[t] = area_weighted_mean(r1, RAC_masked);  R1_var[t] = area_weighted_var(r1, RAC_masked, R1_ts[t])
@@ -257,9 +257,9 @@ cols = [
 labels = [
     "Var(R1) = -(C - ∇·F)",
     "Var(R2) = -(C - ∇·F - A)",
-    "Var(R3) = -(C - ∇·F - A + Pₛ)",
-    "Var(R4) = -(C - ∇·F - A + Pₛ + Pᵦ)",
-    "Var(R5) = -(C - ∇·F - A + Pₛ + Pᵦ - ∂E/∂t)",
+    "Var(R3) = -(C - ∇·F - A - ∂E/∂t)",
+    "Var(R4) = -(C - ∇·F - A - ∂E/∂t+ Pₛ )",
+    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pₛ + Pᵦ )",
 ]
 
 
@@ -289,7 +289,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_bcplot_v1.png")
+outpath = joinpath(FIGDIR, "Residual_bcplot_v2.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
