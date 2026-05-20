@@ -20,8 +20,8 @@ tx, ty = 47, 66
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
 # (varname, filename_suffix, is_3d)
-vars_3d = ["hFacC"]
-vars_2d = ["DXC", "DYC", "RAC"]
+vars_3d = ["GEBCO2025_on_LLC4320_v16b"]
+#vars_2d = ["DXC", "DYC", "RAC"]
 
 
 # ── Readers ────────────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ for varname in vars_3d
 end
 
 
-# ── Process 2D variables ───────────────────────────────────────────────────────
+#= ── Process 2D variables ───────────────────────────────────────────────────────
 for varname in vars_2d
     input_dir  = joinpath(basein, "grid")
     output_dir = joinpath(baseout, varname)
@@ -138,7 +138,7 @@ for varname in vars_2d
     #end
     println("$varname complete → $output_dir")
 end
-
+=#
 
 println("\nAll variables tiled → $baseout")
 

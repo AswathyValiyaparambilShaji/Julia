@@ -38,7 +38,7 @@ thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF  = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
-
+sum(thk)
 
 # Initialize global arrays
 Conv         = zeros(NX, NY)
@@ -191,7 +191,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         println("Completed tile $suffix")
     end
 end
-
+println(FH[13,10])
 MF        =  SP_H_full .+ SP_V_full .+ BP_full
 
 # ── figure (unchanged except for the contour! lines below) ─────────────────
