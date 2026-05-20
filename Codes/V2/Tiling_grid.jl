@@ -20,9 +20,9 @@ tx, ty = 47, 66
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
 # (varname, filename_suffix, is_3d)
-vars_3d = ["GEBCO2025_on_LLC4320_v16b"]
+#vars_3d = ["GEBCO2025_on_LLC4320_v16b"]
 #vars_2d = ["DXC", "DYC", "RAC"]
-
+vars_2d = ["GEBCO2025_on_LLC4320_v16b"]
 
 # ── Readers ────────────────────────────────────────────────────────────────────
 function read_3d(fpath)
@@ -81,7 +81,7 @@ end
 
 
 
-# ── Process 3D variables ───────────────────────────────────────────────────────
+#= ── Process 3D variables ───────────────────────────────────────────────────────
 for varname in vars_3d
     input_dir  = joinpath(basein, "grid")
     output_dir = joinpath(baseout, varname)
@@ -109,9 +109,9 @@ for varname in vars_3d
     #end
     println("$varname complete → $output_dir")
 end
+=#
 
-
-#= ── Process 2D variables ───────────────────────────────────────────────────────
+# ── Process 2D variables ───────────────────────────────────────────────────────
 for varname in vars_2d
     input_dir  = joinpath(basein, "grid")
     output_dir = joinpath(baseout, varname)
@@ -138,7 +138,7 @@ for varname in vars_2d
     #end
     println("$varname complete → $output_dir")
 end
-=#
+#
 
 println("\nAll variables tiled → $baseout")
 
