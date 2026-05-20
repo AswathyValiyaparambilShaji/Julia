@@ -246,8 +246,6 @@ println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
 # ==========================================================
 # =================== VISUALIZATION ========================
 # ==========================================================
-
-
 fig = Figure(resolution=(1200, 800))
 
 
@@ -405,10 +403,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V4_bc.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WTG_V5_bc.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V4_bc.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_V5_bc.png "))")
 
 
 
