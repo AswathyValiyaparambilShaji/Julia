@@ -36,6 +36,8 @@ sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 FH = fill(NaN, NX, NY)
+BT = fill(NaN, NX, NY)
+
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -50,8 +52,18 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         DRFfull = hFacC .* DRF3d
         DRFfull[hFacC .== 0] .= 0.0
         H = dropdims(sum(DRFfull, dims=3), dims=3) 
+        Bathy =(open(joinpath(base, "GEBCO2025_on_LLC4320_v16b",  "GEBCO2025_on_LLC4320_v16b_v2_$suffix.bin"), "r") do io
+                raw = read(io,  nx*ny* sizeof(Float32))
+                (reshape(reinterpret(Float32, raw), nx,ny))
+                end)  
+
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        H = dropdims(sum(DRFfull, dims=3), dims=3) 
         FH[xs+2:xe-2,     ys+2:ye-2] .= H[buf:nx-buf+1, buf:ny-buf+1]
+        BT[xs+2:xe-2,     ys+2:ye-2] .= Bathy[buf:nx-buf+1, buf:ny-buf+1]
 
     end
 end
-println(FH[13,10])
+println(FH[1:13,10])
+println(BT[1:13,10])
