@@ -94,7 +94,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_bt", "sp_h_mean_$suffix.bin"), "r") do io
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -108,14 +108,14 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Vertical Shear Production ---
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_bt", "sp_v_mean_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP_bt", "bp_mean_$suffix.bin"), "r") do io
+        bp_mean = Float64.(open(joinpath(base2, "BP", "bp_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -388,10 +388,10 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WTG_fullBT_V1.png"), fig)
+save(joinpath(FIGDIR, "EnergyBudget_with_WTG_MFBT_V1.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_fullBT_V1.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WTG_MFBT_V1.png "))")
 
 
 #=
