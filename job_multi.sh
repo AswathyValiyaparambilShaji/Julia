@@ -2,7 +2,7 @@
 #!/bin/bash
 
 
-BASE=/home3/avaliyap/Documents/Julia_new/Julia/Codes/Budget
+BASE=/home3/avaliyap/Documents/Julia_new/Julia/Codes/
 PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
