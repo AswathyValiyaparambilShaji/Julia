@@ -1,12 +1,13 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using CairoMakie, SparseArrays
 
 
-include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
-config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
+config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base  = cfg["base_path"]
-base2 = cfg["base_path_nt"]
+base = cfg["base_path_V2"]
+base2 = (joinpath(base, "NT"))       
 
 
 # --- Domain & grid ---
@@ -16,26 +17,33 @@ minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
+# --- Domain & grid ---
+NX, NY = 288, 468
+minlat, maxlat = 24.0, 31.91
+minlon, maxlon = 193.0, 199.0
+lat = range(minlat, maxlat, length=NY)
+lon = range(minlon, maxlon, length=NX)
+NZ = 173
 
 # --- Tile & time ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
-nz = 88
+nz = 168
+kz = 1
+nt = 558
 
+# --- Thickness & constants ---
+thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
+                raw = read(io,  NZ * sizeof(Float32))
+                ntoh.(reshape(reinterpret(Float32, raw), NZ))
+            end)
 
-dt  = 25
-dto = 144
-Tts = 366192
-nt  = div(Tts, dto)
-
-
-# --- Thickness ---
-thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
-DRF   = thk[1:nz]
+DRF  = thk[1:nz]
+sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-
+g = 9.81
 
 # ============================================================================
 # ASSEMBLE FULL DOMAIN FROM TILES
@@ -53,7 +61,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        hFacC = read_bin(joinpath(base, "hFacC/hFacC_v2_$suffix.bin"), (nx, ny, nz))
 
 
         # Read 4D time series (nx, ny, nz, nt) — written as Float32
@@ -129,7 +137,7 @@ Uy = DO_TRANSPOSE ? tfy'   : tfy
 
 fig = Figure(resolution = (600, 800))
 ax  = Axis(fig[1, 1],
-    title      = "MITgcm Perturbation Flux (old)",
+    title      = "MITgcm Perturbation Flux",
     xlabel     = "Longitude [°]",
     ylabel     = "Latitude [°]",
     ylabelsize = 22,
@@ -168,7 +176,7 @@ end
 Colorbar(fig[1, 2], hm, label = "(kW/m)")
 
 
-png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V2.png")
+png_file = joinpath(FIGDIR, "Flux_perturbation_NS_timemean_V1.png")
 save(png_file, fig)
 display(fig)
 println("PNG saved: $png_file")
