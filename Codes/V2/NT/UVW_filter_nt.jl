@@ -15,7 +15,7 @@ minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
-
+NZ = 173
 
 # --- Tile & time ---
 buf = 3

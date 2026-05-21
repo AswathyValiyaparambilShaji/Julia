@@ -12,6 +12,7 @@ base = cfg["base_path_V2"]
 
 # --- Domain & grid ---
 NX, NY = 288, 468
+NZ =173
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
