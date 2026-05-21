@@ -7,16 +7,16 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/perturbation_nt.jl  $PBS)
-echo "Job 1 submitted: $JOB1"
+#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/perturbation_nt.jl  $PBS)
+#echo "Job 1 submitted: $JOB1"
 
-JOB2=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Flux_plot_nt.jl  -W depend=afterok:$JOB1 $PBS)
-echo "Job 2 submitted: $JOB2"
+#JOB2=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Flux_plot_nt.jl  -W depend=afterok:$JOB1 $PBS)
+#echo "Job 2 submitted: $JOB2"
 
-JOB3=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/FlxDiv_nt.jl  -W depend=afterok:$JOB2 $PBS)
-echo "Job 3 submitted: $JOB3"
+#JOB3=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/FlxDiv_nt.jl  -W depend=afterok:$JOB2 $PBS)
+#echo "Job 3 submitted: $JOB3"
 
-JOB4=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Flx_Div_Plot_nt.jl  -W depend=afterok:$JOB3 $PBS)
+JOB4=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Flx_Div_Plot_nt.jl  $PBS)
 echo "Job 4 submitted: $JOB4"
 
 JOB5=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Conversion_nt.jl  -W depend=afterok:$JOB4 $PBS)
@@ -46,7 +46,7 @@ JOB11=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/APE_nt.jl -W depend=afterok:$JOB10 $PBS
 echo "Job 11 submitted: $JOB11"
 
 JOB12=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/APE_plot_nt.jl -W depend=afterok:$JOB11 $PBS)
-echo "Job 5 submitted: $JOB12"
+echo "Job 12 submitted: $JOB12"
 # Add as many scripts as you need following the same pattern...
 
 
