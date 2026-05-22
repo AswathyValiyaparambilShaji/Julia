@@ -75,7 +75,7 @@ println("\nBP_full range: $(minimum(skipmissing(BP_full))) to $(maximum(skipmiss
 # ==========================================================
 
 
-fig = Figure(size=(1000, 800))
+fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
@@ -99,7 +99,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "BP_production_v5.png"), fig)
+save(joinpath(FIGDIR, "BP_production_v1.png"), fig)
 
 
 

@@ -3,29 +3,42 @@ using CairoMakie, SparseArrays
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin
-
-
-config_file = get(ENV, "JULIA_CONFIG",
-               joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
+using .FluxUtils: read_bin, bandpassfilter
+config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
+base = cfg["base_path_V2"]
+base2 = (joinpath(base, "NT"))       
 
 
-base  = cfg["base_path"]
-base2 = cfg["base_path_nt"]
-
-
+# --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
+NZ = 173
 
 
+
+# --- Tile & time ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
+nz = 168
+kz = 1
+nt = 558
+
+# --- Thickness & constants ---
+thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
+                raw = read(io,  NZ * sizeof(Float32))
+                ntoh.(reshape(reinterpret(Float32, raw), NZ))
+            end)
+
+DRF  = thk[1:nz]
+sum(thk)
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+g = 9.81
 
 
 U_PE_full = fill(NaN, NX, NY)
@@ -79,7 +92,7 @@ fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
-         title="Depth-Integrated Time-Averaged PE Advection",
+         title="PE Advection",
          xlabel="Longitude [°]",
          ylabel="Latitude [°]")
 #ax.limits[] = (193.0,194.2,24.0, 25.4)
@@ -98,7 +111,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "U_PE_advection_nt_V1.png"), fig)
+save(joinpath(FIGDIR, "U_PE_advection_NS_nt_V1.png"), fig)
 
 
 

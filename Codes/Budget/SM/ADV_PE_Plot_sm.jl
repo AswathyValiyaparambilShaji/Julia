@@ -75,7 +75,7 @@ println("\nU_PE_full range: $(minimum(skipmissing(U_PE_full))) to $(maximum(skip
 # ==========================================================
 
 
-fig = Figure(size=(1000, 800))
+fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],

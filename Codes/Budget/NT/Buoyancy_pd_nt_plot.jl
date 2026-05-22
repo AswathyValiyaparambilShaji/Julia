@@ -74,7 +74,7 @@ println("\nBP_full range: $(minimum(skipmissing(BP_full))) to $(maximum(skipmiss
 # =================== VISUALIZATION ========================
 # ==========================================================
 
-fig = Figure(size=(1000, 800))
+fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
