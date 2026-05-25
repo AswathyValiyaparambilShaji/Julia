@@ -1,19 +1,18 @@
-using Printf, FilePathsBase, Statistics, TOML
-using CairoMakie
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using CairoMakie, SparseArrays
 
 
-include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
+include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
 
 config_file = get(ENV, "JULIA_CONFIG",
-              joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
+               joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 
 
 base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
-
 
 # --- Grid parameters ---
 NX, NY = 288, 468
@@ -28,14 +27,13 @@ buf = 3
 tx, ty = 47, 66
 nx = tx + 2 * buf
 ny = ty + 2 * buf
-dt = 25
-dto = 144
-Tts = 366192
-nt = div(Tts, dto)
+NZ =173
+nz = 168
+nt = 558
 
 
 # Output directory where WPI tiles are saved
-INDIR = joinpath(base2, "WindInput")
+INDIR = joinpath(base2, "WindPowerInput")
 
 
 # Initialize full global array (with time dimension)
@@ -55,7 +53,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read WPI tile (full time series: nx × ny × nt)
-        wpi_tile = Float64.(open(joinpath(INDIR, "wpi_nt_$suffix.bin"), "r") do io
+        wpi_tile = Float64.(open(joinpath(INDIR, "wpi_$suffix.bin"), "r") do io
             nbytes = nx * ny * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
         end)
@@ -106,18 +104,18 @@ fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
-    title = "Time-Averaged Wind Input ",
+    title = "Time-Averaged Wind Power Input (9-15 hr filtered)",
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]")
 
 
-hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean.*1000;
+hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean;
     interpolate = false,
-    colormap    =:bwr,
-    colorrange  = (-0.025, 0.025))
+    colormap    = Reverse(:RdBu),
+    colorrange  = (-wpi_absmax, wpi_absmax))
 
 
-Colorbar(fig[1, 2], hm, label = "Wind Input [mW/m²]")
+Colorbar(fig[1, 2], hm, label = "Wind Power Input [W/m²]")
 
 
 display(fig)
@@ -126,10 +124,10 @@ display(fig)
 # Save figure
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "WindInput_nt_V1.png"), fig)
+save(joinpath(FIGDIR, "Windinput_NS_nt_V1.png"), fig)
 
 
-println("\nFigure saved to: $(joinpath(FIGDIR, "WindInput_nt_V1.png"))")
+println("\nFigure saved to: $(joinpath(FIGDIR, "Windinput_NS_nt_V1.png"))")
 println("\nDone!")
 
 

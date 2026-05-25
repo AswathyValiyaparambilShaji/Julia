@@ -121,7 +121,7 @@ println("\nAPE_full range: $(minimum(skipmissing(APE_full))) to $(maximum(skipmi
 # ==========================================================
 
 
-fig = Figure(resolution=(500, 400))
+fig = Figure(resolution=(600, 800))
 
 
 ax = Axis(fig[1, 1],

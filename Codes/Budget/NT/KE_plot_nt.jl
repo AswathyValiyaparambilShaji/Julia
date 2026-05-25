@@ -91,7 +91,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
     end
 end
-fig = Figure(resolution=(500, 400))
+fig = Figure(resolution=(600, 800))
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
 ax1 = Axis(fig[1, 1], title= rich("KE (KJ/m²"), xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
