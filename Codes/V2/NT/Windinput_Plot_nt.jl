@@ -53,7 +53,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read WPI tile (full time series: nx × ny × nt)
-        wpi_tile = Float64.(open(joinpath(INDIR, "wpi_$suffix.bin"), "r") do io
+        wpi_tile = Float64.(open(joinpath(INDIR, "wpi_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * nt * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
         end)
