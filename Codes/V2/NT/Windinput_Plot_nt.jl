@@ -33,7 +33,7 @@ nt = 558
 
 
 # Output directory where WPI tiles are saved
-INDIR = joinpath(base2, "WindPowerInput")
+INDIR = joinpath(base2, "WindInput")
 
 
 # Initialize full global array (with time dimension)
