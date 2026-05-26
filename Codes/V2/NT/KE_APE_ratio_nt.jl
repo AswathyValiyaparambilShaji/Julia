@@ -66,7 +66,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        # ---- Grid metrics ----
        hFacC   = read_bin(joinpath(base, "hFacC/hFacC_v2_$suffix.bin"), (nx, ny, nz))
        dx      = read_bin(joinpath(base, "DXC/DXC_v2_$suffix.bin"), (nx, ny))
-       dy      = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+       dy      = read_bin(joinpath(base, "DYC/DYC_v2_$suffix.bin"), (nx, ny))
        DRFfull = hFacC .* DRF3d
        depth   = dropdims(sum(DRFfull, dims=3), dims=3)
        DRFfull[hFacC .== 0] .= 0.0
@@ -271,7 +271,7 @@ axislegend(ax1, position=:rt)
 
 FIGDIR        = cfg["fig_base"]
 save(joinpath(FIGDIR, "KE_APE_zonal_binned_nt_v1.png"), fig1)
-println("Saved: KE_APE_zonal_binned_nt_v1.png")
+println("Saved: KE_APE_zonal_binned_NS_nt_v1.png")
 display(fig1)
 
 # ============================================================
@@ -328,7 +328,7 @@ axislegend(ax2, position=:rt, labelsize=11)
 # Save figure
 FIGDIR        = cfg["fig_base"]
 save(joinpath(FIGDIR, "KE_APE_ratio_zonal_binned_nt_v1.png"), fig2)
-println("Saved: KE_APE_ratio_zonal_binned_nt_v1.png")
+println("Saved: KE_APE_ratio_zonal_binned_NS_nt_v1.png")
 display(fig2)
 
 println("\nDone!")

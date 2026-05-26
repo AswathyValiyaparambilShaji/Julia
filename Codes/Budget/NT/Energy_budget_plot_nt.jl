@@ -160,193 +160,172 @@ end
 println("\nCalculating derived terms...")
 
 
-# Total energy fluxes (Flux Divergence + Advective fluxes)
-TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
-MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
-A         = U_KE_full .+ U_PE_full
-PS        = SP_H_full .+ SP_V_full
+
+    # Total energy fluxes (Flux Divergence + Advective fluxes)
+    TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
+    MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
+    A         = U_KE_full .+ U_PE_full
+    PS        = SP_H_full .+ SP_V_full
 
 
-# Residual dissipation -- G terms subtracted as energy lost from IT to NIW
-Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
-Residual2 = Conv .- FDiv
+    # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
+    Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
+    Residual2 = Conv .- FDiv
 
 
-# Calculate spatial standard deviations
-std_residual  = std(Residual,  corrected = false)
-std_residual2 = std(Residual2, corrected = false)
+
+    # Convert WPI to mW/m2 for plotting only
+    WPI_plot = WPI_full 
 
 
-# Convert WPI to mW/m2 for plotting only
-WPI_plot = WPI_full .* 1000
-
-# ==========================================================
-# ============ SAVE DISSIPATION TO BINARY FILE =============
-# ==========================================================
+    fig = Figure(resolution=(1200, 800))
 
 
-println("\nSaving dissipation field...")
+    # Color ranges
+    crange  = (-0.03, 0.03)
+    crange2 = (-0.03, 0.03)
+    cmap = :bwr
 
 
-DISS_DIR = joinpath(base2, "Dissipation")
-mkpath(DISS_DIR)
+    # Row 1, Column 1: Conversion
+    ax1 = Axis(fig[1, 1],
+        title = "(a) <C>",
+        xlabel = "",
+        xticklabelsvisible = false,
+        ylabel = "Latitude [°]"
+    )
+    hm1 = heatmap!(ax1, lon, lat, Conv;
+        interpolate = false,
+        colorrange = crange,
+        colormap = cmap)
 
 
-open(joinpath(DISS_DIR, "dissipation_mean.bin"), "w") do io
-    write(io, Float32.(Residual))
-end
+    # Row 1, Column 2: Flux Divergence
+    ax2 = Axis(fig[1, 2],
+        title = "(b) <∇.F>",
+        xlabel = "",
+        xticklabelsvisible = false,
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm2 = heatmap!(ax2, lon, lat, FDiv;
+        interpolate = false,
+        colorrange = crange,
+        colormap = cmap)
 
 
-println("Dissipation saved to: $(joinpath(DISS_DIR, "dissipation_mean.bin"))")
+    # Row 1, Column 3: Advective fluxes
+    ax3 = Axis(fig[1, 3],
+        title = "(c) <A>",
+        xlabel = "",
+        xticklabelsvisible = false,
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm3 = heatmap!(ax3, lon, lat, A;
+        interpolate = false,
+        colorrange = crange,
+        colormap = cmap)
 
 
-# ==========================================================
-# =================== VISUALIZATION ========================
-# ==========================================================
+
+    # Row 1, Column 4: Dissipation
+    ax4 = Axis(fig[1, 4],
+        title = "(d) <D>",
+        xlabel = "",
+        xticklabelsvisible = false,
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm4 = heatmap!(ax4, lon, lat, Residual;
+        interpolate = false,
+        colorrange = crange,
+        colormap = cmap)
 
 
-fig = Figure(resolution=(1200, 800))
+
+    # Row 2, Column 1: Shear Production
+    ax5 = Axis(fig[2, 1],
+        title = "(e) <Ps> (Vertical)",
+        xlabel = "Longitude [°]",
+        ylabel = "Latitude [°]"
+    )
+    hm5 = heatmap!(ax5, lon, lat, SP_V_full;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
+    # --- bathymetry contours (thicker + labelled) ---
 
 
-# Color ranges
-crange  = (-0.05, 0.05)
-crange2 = (-0.025, 0.025)
-cmap = :bwr
+
+    # Row 2, Column 2: Buoyancy Production
+    ax6 = Axis(fig[2, 3],
+        title = "(g) <Pb>",
+        xlabel = "Longitude [°]",
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm6 = heatmap!(ax6, lon, lat, BP_full;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
 
 
-# Row 1, Column 1: Conversion
-ax1 = Axis(fig[1, 1],
-    title = "(a) <C>",
-    xlabel = "",
-    xticklabelsvisible = false,
-    ylabel = "Latitude [deg]"
-)
-hm1 = heatmap!(ax1, lon, lat, Conv;
-    interpolate = false,
-    colorrange = crange,
-    colormap = cmap)
+
+    # Row 2, Column 3: Energy Tendency
+    ax7 = Axis(fig[2, 4],
+        title = "(h) <dE/dt>",
+        xlabel = "Longitude [°]",
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm7 = heatmap!(ax7, lon, lat, ET_full;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
 
 
-# Row 1, Column 2: Flux Divergence
-ax2 = Axis(fig[1, 2],
-    title = "(b) <∇.F>",
-    xlabel = "",
-    xticklabelsvisible = false,
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm2 = heatmap!(ax2, lon, lat, FDiv;
-    interpolate = false,
-    colorrange = crange,
-    colormap = cmap)
+
+    #= Row 2, Column 4: Wind Power Input (x10^-3)
+    ax8 = Axis(fig[2, 4],
+        title = "(h) <WPI> ",
+        xlabel = "Longitude [°]",
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm8 = heatmap!(ax8, lon, lat, WPI_plot;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
+        =#
+
+    #
+    ax9 = Axis(fig[2, 2],
+        title = "(f) <Ps> (Horizontal) ",
+        xlabel = "Longitude [°]",
+        ylabel = "",
+        yticklabelsvisible = false
+    )
+    hm9 = heatmap!(ax9, lon, lat, SP_H_full;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
+        
 
 
-# Row 1, Column 3: Advective fluxes
-ax3 = Axis(fig[1, 3],
-    title = "(c) <A>",
-    xlabel = "",
-    xticklabelsvisible = false,
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm3 = heatmap!(ax3, lon, lat, A;
-    interpolate = false,
-    colorrange = crange,
-    colormap = cmap)
+    # Add colorbars
+    Colorbar(fig[1, 5], hm4, label = "[W/m2]")
+    Colorbar(fig[2, 5], hm7, label = "[W/m2]")
 
 
-# Row 1, Column 4: Dissipation
-ax4 = Axis(fig[1, 4],
-    title = "(d) <D>",
-    xlabel = "",
-    xticklabelsvisible = false,
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm4 = heatmap!(ax4, lon, lat, Residual;
-    interpolate = false,
-    colorrange = crange,
-    colormap = cmap)
+    display(fig)
 
 
-# Row 2, Column 1: Shear Production
-ax5 = Axis(fig[2, 1],
-    title = "(e) <Ps>",
-    xlabel = "Longitude [deg]",
-    ylabel = "Latitude [deg]"
-)
-hm5 = heatmap!(ax5, lon, lat, PS;
-    interpolate = false,
-    colorrange = crange2,
-    colormap = cmap)
+    # Save figure
+    FIGDIR = cfg["fig_base"]
+    save(joinpath(FIGDIR, "EnergyBudget_nt_V1.png"), fig)
 
-
-# Row 2, Column 2: Buoyancy Production
-ax6 = Axis(fig[2, 2],
-    title = "(f) <Pb>",
-    xlabel = "Longitude [deg]",
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm6 = heatmap!(ax6, lon, lat, BP_full;
-    interpolate = false,
-    colorrange = crange2,
-    colormap = cmap)
-
-
-# Row 2, Column 3: Energy Tendency
-ax7 = Axis(fig[2, 3],
-    title = "(g) <dE/dt>",
-    xlabel = "Longitude [deg]",
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm7 = heatmap!(ax7, lon, lat, ET_full;
-    interpolate = false,
-    colorrange = crange2,
-    colormap = cmap)
-
-
-# Row 2, Column 4: Wind Power Input (x10^-3)
-ax8 = Axis(fig[2, 4],
-    title = "(h) <WPI> [x10^-3]",
-    xlabel = "Longitude [deg]",
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm8 = heatmap!(ax8, lon, lat, WPI_plot;
-    interpolate = false,
-    colorrange = crange2,
-    colormap = cmap)#
-
-
-#= Row 2, Column 5: Total G transfer (IT -> NIW)
-ax9 = Axis(fig[2, 4],
-    title = "(h) <G>",
-    xlabel = "Longitude [deg]",
-    ylabel = "",
-    yticklabelsvisible = false
-)
-hm9 = heatmap!(ax9, lon, lat, G_total;
-    interpolate = false,
-    colorrange = crange2,
-    colormap = cmap)=#
-
-
-# Add colorbars
-Colorbar(fig[1, 5], hm4, label = "[W/m2]")
-Colorbar(fig[2, 5], hm7, label = "[W/m2]")
-
-
-display(fig)
-
-
-# Save figure
-FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EnergyBudget_with_WG_nt_V1.png"), fig)
-
-
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_with_WG_nt_V1.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V1.png"))")
 
 
 
