@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N niw_filter
-#PBS -q normal
+#PBS -q debug
 #PBS -l select=1:ncpus=128:mem=200GB:model=mil_ait
 #PBS -l walltime=3:00:00
 #PBS -o /nobackup/avaliyap/logs/output.out
@@ -14,7 +14,7 @@ export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
-julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Budget/NT/KE_APE_ratio_nt.jl
+julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/V2/NT/Buoyancy_pd_nt.jl
 
 
 
