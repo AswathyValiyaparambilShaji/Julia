@@ -268,7 +268,7 @@ vars = [R1_var, R2_var, R3_var, R4_var, R5_var]
 
 fig_ts = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
 ax_ts  = Axis(fig_ts[1, 1];
-    title  = "Spatial Variance of Residuals — deep points only (H > 500 m, 3-day averages)",
+    title  = "Spatial Variance of Residuals — deep points only (H > 3000 m, 3-day averages)",
     xlabel = "Time  [days]",
     ylabel = "Spatial variance  [×10⁻¹⁶ W² kg⁻²]",
     axis_theme...
