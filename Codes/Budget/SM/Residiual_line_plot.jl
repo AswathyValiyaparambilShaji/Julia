@@ -289,7 +289,7 @@ axislegend(ax_ts; position=:rt, leg_style...)
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_bcplot_v2.png")
+outpath = joinpath(FIGDIR, "Residual_bcplot_v3.png")
 save(outpath, fig_ts, px_per_unit=2)
 println("\nFigure saved → $outpath")
 display(fig_ts)
