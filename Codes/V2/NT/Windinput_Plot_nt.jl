@@ -110,7 +110,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean.*1000;
     interpolate = false,
     colormap    =:bwr,
-    colorrange  = (-0.025, 0.025))
+    colorrange  = (-0.05, 0.05))
 
 
 Colorbar(fig[1, 2], hm, label = "Wind Input [mW/m²]")
@@ -122,10 +122,10 @@ display(fig)
 # Save figure
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "Windinput_NS_nt_V1.png"), fig)
+save(joinpath(FIGDIR, "Windinput_NS_nt_V2.png"), fig)
 
 
-println("\nFigure saved to: $(joinpath(FIGDIR, "Windinput_NS_nt_V1.png"))")
+println("\nFigure saved to: $(joinpath(FIGDIR, "Windinput_NS_nt_V2.png"))")
 println("\nDone!")
 
 
