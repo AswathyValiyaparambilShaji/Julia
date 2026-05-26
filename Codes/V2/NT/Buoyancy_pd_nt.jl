@@ -45,7 +45,7 @@ sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 rho0  = 1027.5
 g     = 9.8
-N2_threshold = 1.0e-8
+N2_threshold = 1.0e-6
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -70,7 +70,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
         for t in 1:nt, k in 1:nz
             rho[hFacC[:,:,k] .== 0, k, t] .= NaN
-        end
+        end#
 
 
         N2_phase = Float64.(open(joinpath(base, "3day_mean", "N2", "N2_3day_$suffix.bin"), "r") do io
@@ -135,7 +135,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             for z in 1:nz, y in 1:ny, x in 1:nx
                 rho_slice = rho[x, y, z, t1:t2]
                 valid_rho = rho_slice[isfinite.(rho_slice)]
-                B[x, y, z, i] = length(valid_rho) > 0 ? -g * (mean(valid_rho) - rho0) / rho0 : NaN
+                if length(valid_rho) > 0
+                    B[x, y, z, i] = -g * (mean(valid_rho) - rho0) / rho0 
+                else
+                    B[x, y, z, i] = NaN
+                end
             end
         end
         rho = nothing; GC.gc()
