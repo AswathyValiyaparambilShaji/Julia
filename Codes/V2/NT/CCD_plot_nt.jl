@@ -96,7 +96,7 @@ bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs=fnq)
 
 
             # Calculate dissipation
-            dispn = C .- fxD
+            dispn = -(C .- fxD)
 
 
             # Calculate tile positions in global grid
