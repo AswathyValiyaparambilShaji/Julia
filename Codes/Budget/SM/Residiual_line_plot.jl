@@ -185,7 +185,7 @@ for t in 1:nt3
     r1 = -(C_tn .- Fd_tn)                                    .* depth_mask
     r2 = -(C_tn .- Fd_tn .- A_tn)                            .* depth_mask
     r3 = -(C_tn .- Fd_tn .- A_tn .- ET_tn)                   .* depth_mask
-    r4 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ PS_tn)           .* depth_mask
+    r4 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ BP_tn)           .* depth_mask
     r5 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ PS_tn.+ BP_tn )  .* depth_mask
 
 
@@ -258,8 +258,8 @@ labels = [
     "Var(R1) = -(C - ∇·F)",
     "Var(R2) = -(C - ∇·F - A)",
     "Var(R3) = -(C - ∇·F - A - ∂E/∂t)",
-    "Var(R4) = -(C - ∇·F - A - ∂E/∂t+ Pₛ )",
-    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pₛ + Pᵦ )",
+    "Var(R4) = -(C - ∇·F - A - ∂E/∂t + Pᵦ )",
+    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pᵦ + Pₛ )",
 ]
 
 
