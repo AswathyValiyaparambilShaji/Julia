@@ -94,8 +94,6 @@ println("WPI_mean range: $(minimum(filter(isfinite, WPI_mean))) to $(maximum(fil
 # =================== VISUALIZATION ========================
 # ==========================================================
 
-
-# Symmetric colorrange around zero
 wpi_absmax = max(abs(minimum(filter(isfinite, WPI_mean))),
                  abs(maximum(filter(isfinite, WPI_mean))))
 
@@ -104,18 +102,18 @@ fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
-    title = "Time-Averaged Wind Power Input (9-15 hr filtered)",
+    title = "Time-Averaged Wind Input ",
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]")
 
 
-hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean;
+hm = CairoMakie.heatmap!(ax, lon, lat, WPI_mean.*1000;
     interpolate = false,
-    colormap    = Reverse(:RdBu),
-    colorrange  = (-wpi_absmax, wpi_absmax))
+    colormap    =:bwr,
+    colorrange  = (-0.025, 0.025))
 
 
-Colorbar(fig[1, 2], hm, label = "Wind Power Input [W/m²]")
+Colorbar(fig[1, 2], hm, label = "Wind Input [mW/m²]")
 
 
 display(fig)
