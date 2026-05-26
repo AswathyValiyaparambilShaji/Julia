@@ -33,13 +33,13 @@ nt_avg = div(nt, timesteps_per_3days)
 
 
 # reference density
-rho0 = 999.8
+rho0 = 1027.5
 
 nt_10avg = div(nt_avg, 10)
 # Initialize arrays for full domain
 KE_surface = zeros(Float64, NX, NY, nt_avg)
-DX_full = zeros(Float64, NX, NY)
-DY_full = zeros(Float64, NX, NY)
+#DX_full = zeros(Float64, NX, NY)
+#DY_full = zeros(Float64, NX, NY)
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -51,8 +51,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
        # --- Read grid spacing ---
-       dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-       dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+       #dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+       #dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
        # --- Read velocity fields (3-day averaged) ---
@@ -86,13 +86,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
       
        # Assign to global arrays
        KE_surface[xs+1:xe-1, ys+1:ye-1, :] .= ke_surface[xsf:xef, ysf:yef, :]
-       DX_full[xs+1:xe-1, ys+1:ye-1] .= dx[xsf:xef, ysf:yef]
-       DY_full[xs+1:xe-1, ys+1:ye-1] .= dy[xsf:xef, ysf:yef]
+       #DX_full[xs+1:xe-1, ys+1:ye-1] .= dx[xsf:xef, ysf:yef]
+       #DY_full[xs+1:xe-1, ys+1:ye-1] .= dy[xsf:xef, ysf:yef]
    end
 end
 
 # --- 10-timestep averaging ---
-println("\nPerforming 10-timestep averaging...")
 KE_10avg = zeros(Float64, NX, NY)
 
 
@@ -140,7 +139,7 @@ println("Total area: $(sum(dA)) m²")
 using CairoMakie
 
 
-fig = Figure(size=(700, 600))
+fig = Figure(size=(600, 800))
 ax = Axis(fig[1, 1],
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
@@ -164,7 +163,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EKE_v3.png"), fig)
+save(joinpath(FIGDIR, "EKE_v4.png"), fig)
 
 #
 
