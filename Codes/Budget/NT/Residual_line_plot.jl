@@ -103,12 +103,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
 
-
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
-
 
         Conv_3day[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
         FDiv_3day[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
@@ -176,7 +174,7 @@ for t in 1:nt3
     C_tn  = Conv_3day[:,:,t] ./ norm
     Fd_tn = FDiv_3day[:,:,t] ./ norm
     A_tn  = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
-    PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
+    PS_tn = (SP_H_3day[:,:,t] .- SP_V_3day[:,:,t])  ./ norm
     BP_tn = BP_3day[:,:,t]   ./ norm
     ET_tn = ET_3day[:,:,t]   ./ norm
     
