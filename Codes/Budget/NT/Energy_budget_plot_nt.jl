@@ -163,7 +163,7 @@ println("\nCalculating derived terms...")
 
     # Total energy fluxes (Flux Divergence + Advective fluxes)
     TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
-    MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
+    MF        = U_KE_full .+ U_PE_full .+ SP_H_full .- SP_V_full .+ BP_full
     A         = U_KE_full .+ U_PE_full
     PS        = SP_H_full .- SP_V_full
 
@@ -250,7 +250,7 @@ println("\nCalculating derived terms...")
         xlabel = "Longitude [°]",
         ylabel = "Latitude [°]"
     )
-    hm5 = heatmap!(ax5, lon, lat, SP_V_full;
+    hm5 = heatmap!(ax5, lon, lat, -SP_V_full;
         interpolate = false,
         colorrange = crange2,
         colormap = cmap)
