@@ -98,9 +98,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         V_z = zeros(Float64, nx, ny, nz, nt_avg)
         for t_avg in 1:nt_avg
             for k in 2:nz-1
-                dz = DRF[k-1]/2.0 + DRF[k] + DRF[k+1]/2.0
-                U_z[:, :, k, t_avg] = (U[:, :, k-1, t_avg] .- U[:, :, k+1, t_avg]) ./ dz
-                V_z[:, :, k, t_avg] = (V[:, :, k-1, t_avg] .- V[:, :, k+1, t_avg]) ./ dz
+                dz = -(DRF[k-1]/2.0 + DRF[k] + DRF[k+1]/2.0)
+                U_z[:, :, k, t_avg] = (U[:, :, k+1, t_avg] .- U[:, :, k-1, t_avg]) ./ dz
+                V_z[:, :, k, t_avg] = (V[:, :, k+1, t_avg] .- V[:, :, k-1, t_avg]) ./ dz
             end
         end
         U = nothing; V = nothing; GC.gc()

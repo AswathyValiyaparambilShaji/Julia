@@ -113,7 +113,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         U_KE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         U_PE_3day[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         SP_H_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
-        SP_V_3day[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        SP_V_3day[xs+2:xe-2, ys+2:ye-2, :] .= -sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         BP_3day[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_3day[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         FH[xs+2:xe-2, ys+2:ye-2]           .= depth[buf:nx-buf+1, buf:ny-buf+1]
@@ -174,7 +174,7 @@ for t in 1:nt3
     C_tn  = Conv_3day[:,:,t] ./ norm
     Fd_tn = FDiv_3day[:,:,t] ./ norm
     A_tn  = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
-    PS_tn = (SP_H_3day[:,:,t] .- SP_V_3day[:,:,t])  ./ norm
+    PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
     BP_tn = BP_3day[:,:,t]   ./ norm
     ET_tn = ET_3day[:,:,t]   ./ norm
     
