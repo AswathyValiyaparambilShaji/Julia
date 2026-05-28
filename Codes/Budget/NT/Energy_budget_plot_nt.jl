@@ -165,11 +165,11 @@ println("\nCalculating derived terms...")
     TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
     MF        = U_KE_full .+ U_PE_full .+ SP_H_full .+ SP_V_full .+ BP_full
     A         = U_KE_full .+ U_PE_full
-    PS        = SP_H_full .+ SP_V_full
+    PS        = SP_H_full .- SP_V_full
 
 
     # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
-    Residual  = -(Conv .- TotalFlux .+ SP_H_full .+ SP_V_full .+ BP_full .+ WPI_full .- ET_full)
+    Residual  = -(Conv .- TotalFlux .+ SP_H_full .- SP_V_full .+ BP_full .+ WPI_full .- ET_full)
     Residual2 = Conv .- FDiv
 
 
@@ -323,9 +323,9 @@ println("\nCalculating derived terms...")
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_V1.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_V2.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V1.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V2.png"))")
 
 
 
