@@ -98,9 +98,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         V_z = zeros(Float64, nx, ny, nz, nt_avg)
         for t_avg in 1:nt_avg
             for k in 2:nz-1
-                dz = -(DRF[k-1]/2.0 + DRF[k] + DRF[k+1]/2.0)
-                U_z[:, :, k, t_avg] = (U[:, :, k+1, t_avg] .- U[:, :, k-1, t_avg]) ./ dz
-                V_z[:, :, k, t_avg] = (V[:, :, k+1, t_avg] .- V[:, :, k-1, t_avg]) ./ dz
+                dz = (DRF[k-1]/2.0 + DRF[k] + DRF[k+1]/2.0)
+                U_z[:, :, k, t_avg] = (U[:, :, k-1, t_avg] .- U[:, :, k+1, t_avg]) ./ dz
+                V_z[:, :, k, t_avg] = (V[:, :, k-1, t_avg] .- V[:, :, k+1, t_avg]) ./ dz
             end
         end
         U = nothing; V = nothing; GC.gc()
@@ -122,7 +122,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         U_z = nothing; V_z = nothing; GC.gc()
 
         spm = dropdims(mean(sp_v, dims=3), dims=3)
-        println(spm[20,1:10])
         open(joinpath(base2, "SP_V", "sp_v_nt_$suffix.bin"), "w") do io
             write(io, Float32.(spm))
         end
