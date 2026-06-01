@@ -46,10 +46,10 @@ BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
 
-# Weekly window from date
-t_origin  = DateTime(2012, 3, 1, 0, 0, 0)
-t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
-t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
+
+t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
 wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
@@ -67,7 +67,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Flux Divergence ---
-        fxD = Float64.(open(joinpath(base2, "FDiv_wkly", "FDiv_wkly_nt_$suffix2.bin"), "r") do io
+        fxD = Float64.(open(joinpath(base2, "FDiv_wkly2", "FDiv_wkly_nt_$suffix2.bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -76,7 +76,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read Conversion ---
-        C = Float64.(open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "r") do io
+        C = Float64.(open(joinpath(base2, "Conv_wkly2", "Conv_wkly_nt_$suffix2.bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
             raw_bytes = read(io, nbytes)
             raw_data = reinterpret(Float32, raw_bytes)
@@ -85,42 +85,42 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # --- Read KE Advection ---
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE_wkly", "u_ke_wkly_nt_$suffix.bin"), "r") do io
+        u_ke_mean = Float64.(open(joinpath(base2, "U_KE_wkly2", "u_ke_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read PE Advection ---
-        u_pe_mean = Float64.(open(joinpath(base2, "U_PE_wkly", "u_pe_wkly_nt_$suffix.bin"), "r") do io
+        u_pe_mean = Float64.(open(joinpath(base2, "U_PE_wkly2", "u_pe_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Shear Production ---
-        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "r") do io
+        sp_h_mean = Float64.(open(joinpath(base2, "SP_H_wkly2", "sp_h_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Energy Tendency ---
-        te_mean = Float64.(open(joinpath(base2, "TE_t_wkly", "te_t_wkly_nt_$suffix.bin"), "r") do io
+        te_mean = Float64.(open(joinpath(base2, "TE_t_wkly2", "te_t_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Vertical Shear Production ---
-        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_wkly", "sp_v_wkly_nt_$suffix.bin"), "r") do io
+        sp_v_mean = Float64.(open(joinpath(base2, "SP_V_wkly2", "sp_v_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
 
 
         # --- Read Buoyancy Production ---
-        bp_mean = Float64.(open(joinpath(base2, "BP_wkly", "bp_wkly_nt_$suffix.bin"), "r") do io
+        bp_mean = Float64.(open(joinpath(base2, "BP_wkly2", "bp_wkly_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -358,7 +358,7 @@ FIGDIR = cfg["fig_base"]
 save(joinpath(FIGDIR, "EnergyBudget_wkly_nt_V2.png"), fig)
 
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_wkly_nt_V2.png "))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_wkly2_nt_V1.png "))")
 
 
 

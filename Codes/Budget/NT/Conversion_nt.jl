@@ -9,7 +9,7 @@ base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
 
 
-for d in ["Conv", "Conv_3day", "Conv_wkly"]
+for d in ["Conv", "Conv_3day", "Conv_wkly2"]
     mkpath(joinpath(base2, d))
 end
 
@@ -34,9 +34,10 @@ n_chunks = div(nt, nt_chunk)
 
 
 # Weekly window from date
-t_origin  = DateTime(2012, 3, 1, 0, 0, 0)
-t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
-t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
+
+t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
 wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
@@ -138,7 +139,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         Conv_3day = nothing; GC.gc()
 
 
-        open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "w") do io
+        open(joinpath(base2, "Conv_wkly2", "Conv_wkly_nt_$suffix2.bin"), "w") do io
             write(io, Float32.(dropdims(mean(c[:, :, wk_start:wk_end], dims=3), dims=3)))
         end
 

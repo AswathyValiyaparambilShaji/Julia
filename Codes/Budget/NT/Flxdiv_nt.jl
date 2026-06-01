@@ -9,7 +9,7 @@ base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
 
 
-for d in ["FDiv", "FDiv_3day", "FDiv_wkly"]
+for d in ["FDiv", "FDiv_3day", "FDiv_wkly2"]
     mkpath(joinpath(base2, d))
 end
 
@@ -27,9 +27,12 @@ Tts = 366192
 nt = div(Tts, dto)
 nt_chunk = 72
 n_chunks = div(nt, nt_chunk)
-wk_start, wk_end = 1249, 1416
 
-
+t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
+wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
@@ -93,7 +96,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         FDiv_3day = nothing
 
 
-        open(joinpath(base2, "FDiv_wkly", "FDiv_wkly_nt_$suffix2.bin"), "w") do io
+        open(joinpath(base2, "FDiv_wkly2", "FDiv_wkly_nt_$suffix2.bin"), "w") do io
             write(io, Float32.(mean(flxD[:, :, wk_start:wk_end], dims=3)))
         end
 

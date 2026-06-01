@@ -9,7 +9,7 @@ base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
 
 
-for d in ["SP_H", "SP_H_3day", "SP_H_wkly"]
+for d in ["SP_H", "SP_H_3day", "SP_H_wkly2"]
     mkpath(joinpath(base2, d))
 end
 
@@ -31,13 +31,12 @@ nt_chunk = 72
 n_chunks = div(nt, nt_chunk)
 
 
+
 t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
-t_wk_start = DateTime(2012, 4, 22, 0, 0, 0)
-t_wk_end   = DateTime(2012, 4, 28, 23, 0, 0)
-wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
-wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
-
-
+t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
+wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
@@ -141,7 +140,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_H_3day = nothing; GC.gc()
 
 
-        open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "w") do io
+        open(joinpath(base2, "SP_H_wkly2", "sp_h_wkly_nt_$suffix.bin"), "w") do io
             write(io, Float32.(dropdims(mean(sp_h[:, :, wk_start:wk_end], dims=3), dims=3)))
         end
 
