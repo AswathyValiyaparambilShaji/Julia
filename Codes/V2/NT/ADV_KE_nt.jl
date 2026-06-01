@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Dates
 #using CairoMakie, SparseArrays
 
 
@@ -13,7 +13,13 @@ base2 = (joinpath(base, "NT"))
     mkpath(joinpath(base2, d))
 end=#
 
-for d in ["U_KE", "U_KE_3day"]
+t_origin   = DateTime(2023, 5, 1, 0, 0, 0)
+t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
+wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+
+for d in ["U_KE", "U_KE_3day","U_KE_wkly"]
     mkpath(joinpath(base2, d))
 end
 
@@ -120,9 +126,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         U_KE_3day = nothing; GC.gc()
 
 
-        #=open(joinpath(base2, "U_KE_wkly", "u_ke_wkly_nt_$suffix.bin"), "w") do io
+        open(joinpath(base2, "U_KE_wkly", "u_ke_wkly_nt_$suffix.bin"), "w") do io
             write(io, Float32.(dropdims(mean(U_KE[:, :, wk_start:wk_end], dims=3), dims=3)))
-        end=#
+        end
 
 
         U_KE = nothing; GC.gc()

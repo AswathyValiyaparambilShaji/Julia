@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Dates
 #using CairoMakie, SparseArrays
 
 
@@ -12,9 +12,17 @@ base2 = (joinpath(base, "NT"))
 #=for d in ["Conv", "Conv_3day", "Conv_wkly"]
     mkpath(joinpath(base2, d))
 end=#
-for d in ["Conv", "Conv_3day"]
+for d in ["Conv", "Conv_3day", "Conv_wkly"]
     mkpath(joinpath(base2, d))
 end
+
+t_origin   = DateTime(2023, 5, 1, 0, 0, 0)
+t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
+wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+println(wk_end)
+println(wk_start)
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -136,10 +144,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end
         Conv_3day = nothing; GC.gc()
 
-
-        #=open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "w") do io
+        Cwk = dropdims(mean(c[:, :, wk_start:wk_end], dims=3), dims=3)
+        println(Cwk[1,1:10])
+        open(joinpath(base2, "Conv_wkly", "Conv_wkly_nt_$suffix2.bin"), "w") do io
             write(io, Float32.(dropdims(mean(c[:, :, wk_start:wk_end], dims=3), dims=3)))
-        end=#
+        end#
 
 
         c = nothing; GC.gc()

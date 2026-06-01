@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Dates
 #using CairoMakie, SparseArrays
 
 
@@ -8,9 +8,13 @@ config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "confi
 cfg = TOML.parsefile(config_file)
 base = cfg["base_path_V2"]
 base2 = (joinpath(base, "NT"))    
+t_origin   = DateTime(2023, 5, 1, 0, 0, 0)
+t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
+wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
-
-for d in ["TE_t", "TE_t_3day"]
+for d in ["TE_t", "TE_t_3day","TE_t_wkly"]
     mkpath(joinpath(base2, d))
 end
 
@@ -100,9 +104,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         TE_3day = nothing; GC.gc()
 
 
-        #=open(joinpath(base2, "TE_t_wkly", "te_t_wkly_nt_$suffix.bin"), "w") do io
+        open(joinpath(base2, "TE_t_wkly", "te_t_wkly_nt_$suffix.bin"), "w") do io
             write(io, Float32.(dropdims(mean(dEdt_di[:, :, wk_start:wk_end], dims=3), dims=3)))
-        end=#
+        end
 
 
         dEdt_di = nothing; GC.gc()

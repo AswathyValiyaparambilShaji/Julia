@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, Dates
 #using CairoMakie, SparseArrays
 
 
@@ -9,8 +9,12 @@ cfg = TOML.parsefile(config_file)
 base = cfg["base_path_V2"]
 base2 = (joinpath(base, "NT"))    
 
-
-for d in ["SP_H", "SP_H_3day"]
+t_origin   = DateTime(2023, 5, 1, 0, 0, 0)
+t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
+wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+for d in ["SP_H", "SP_H_3day","SP_H_wkly"]
     mkpath(joinpath(base2, d))
 end
 
@@ -143,9 +147,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_H_3day = nothing; GC.gc()
 
 
-        #=open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "w") do io
+        open(joinpath(base2, "SP_H_wkly", "sp_h_wkly_nt_$suffix.bin"), "w") do io
             write(io, Float32.(dropdims(mean(sp_h[:, :, wk_start:wk_end], dims=3), dims=3)))
-        end=#
+        end
 
 
         sp_h = nothing; GC.gc()

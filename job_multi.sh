@@ -10,7 +10,7 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 JOB1=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/ADV_KE_nt.jl  $PBS)
 echo "Job 1 submitted: $JOB1"
 
-JOB2=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/ADV_KE_Plot_nt.jl  -W depend=afterok:$JOB1 $PBS)
+JOB2=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/FlxDiv_nt.jl  -W depend=afterok:$JOB1 $PBS)
 echo "Job 2 submitted: $JOB2"
 
 JOB3=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/ADV_PE_nt.jl  -W depend=afterok:$JOB2 $PBS)
@@ -45,10 +45,10 @@ echo "Job 10 submitted: $JOB10"
 JOB11=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Tendency_term_nt.jl -W depend=afterok:$JOB10 $PBS)
 echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Windinput_nt.jl -W depend=afterok:$JOB11 $PBS)
+JOB12=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Conversion_nt.jl -W depend=afterok:$JOB11 $PBS)
 echo "Job 12 submitted: $JOB12"
 
-JOB13=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Energy_budget_nt.jl -W depend=afterok:$JOB12 $PBS)
+JOB13=$(qsub -v JULIA_SCRIPT=$BASE/V2/NT/Energy_budget_wkly_nt.jl -W depend=afterok:$JOB12 $PBS)
 echo "Job 13 submitted: $JOB13"
 # Add as many scripts as you need following the same pattern...
 
