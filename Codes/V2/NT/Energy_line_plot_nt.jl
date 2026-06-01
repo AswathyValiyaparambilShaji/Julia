@@ -313,7 +313,7 @@ axislegend(ax2b; position=:rt, leg_style...)
 
 #rowgap!(fig2.layout, 1, 24)
 
-outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_nt_v1.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_NS_nt_v1.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
