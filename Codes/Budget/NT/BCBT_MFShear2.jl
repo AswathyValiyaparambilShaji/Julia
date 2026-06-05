@@ -9,7 +9,7 @@ base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
 
 
-for d in ["SP_V", "SP_V_3day", "SP_V_wkly2"]
+for d in ["SP2", "SP_V_3day", "SP_V_wkly2"]
     mkpath(joinpath(base2, d))
 end
 
@@ -59,13 +59,25 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         mask3D  = hFacC .== 0
 
 
-        U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
+        UF = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt_avg*sizeof(Float32))), nx, ny, nz, nt_avg)
         end)
-        V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
+        VF = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt_avg*sizeof(Float32))), nx, ny, nz, nt_avg)
         end)
 
+        DRFfull = hFacC .* DRF3d
+        depth   = sum(DRFfull, dims=3)
+        DRFfull[hFacC .== 0] .= 0.0
+        mask3D  = hFacC .== 0
+        UcA    = sum(UF .* DRFfull, dims=3) ./ depth
+        Up_3d  = UF .- UcA
+        Up_3d[repeat(mask3D, 1, 1, 1, nt_avg)] .= 0.0
+        UF = UcA = nothing; GC.gc()
+        VcA    = sum(VF .* DRFfull, dims=3) ./ depth
+        Vp_3d  = VF .- VcA
+        Vp_3d[repeat(mask3D, 1, 1, 1, nt_avg)] .= 0.0
+        VF = VcA = nothing; GC.gc()
 
         fu = Float64.(open(joinpath(base2, "UVW_NT", "fu_nt_$suffix.bin"), "r") do io
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
@@ -88,10 +100,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         fw = Float64.(open(joinpath(base2, "UVW_NT", "fw_nt_$suffix.bin"), "r") do io
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
         end)
-        #wcA   = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d = fw 
-        wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
-        fw = nothing; #wcA = nothing; GC.gc()
+        wcA   = sum(fw .* DRFfull, dims=3) ./ depth
+        
+        fw = nothing; GC.gc()
 
 
         U_z = zeros(Float64, nx, ny, nz, nt_avg)
@@ -99,14 +110,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         for t_avg in 1:nt_avg
             for k in 2:nz-1
                 dz = (DRF[k-1]/2.0 + DRF[k] + DRF[k+1]/2.0)
-                U_z[:, :, k, t_avg] = (U[:, :, k-1, t_avg] .- U[:, :, k+1, t_avg]) ./ dz
-                V_z[:, :, k, t_avg] = (V[:, :, k-1, t_avg] .- V[:, :, k+1, t_avg]) ./ dz
+                U_z[:, :, k, t_avg] = (Up_3d[:, :, k-1, t_avg] .- Up_3d[:, :, k+1, t_avg]) ./ dz
+                V_z[:, :, k, t_avg] = (Vp_3d[:, :, k-1, t_avg] .- Vp_3d[:, :, k+1, t_avg]) ./ dz
             end
         end
         U = nothing; V = nothing; GC.gc()
 
-
-
+print(wcA[10,4:15,1,10])
         sp_v = zeros(Float64, nx, ny, nt)
         for t in 1:nt
             t_avg = min(div(t-1, ts) + 1, nt_avg)
@@ -114,7 +124,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             V_z_t = @view V_z[:, :, :, t_avg]
             ut    = @view up_3d[:, :, :, t]
             vt    = @view vp_3d[:, :, :, t]
-            wt    = @view wp_3d[:, :, :, t]
+            wt    = @view wcA[:, :, 1, t]
             temp1 = wt .* ut .* U_z_t .* DRFfull
             temp2 = wt .* vt .* V_z_t .* DRFfull
             sp_v[:, :, t] = -rho0 .* dropdims(sum(temp1 .+ temp2, dims=3), dims=3)
@@ -123,11 +133,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         U_z = nothing; V_z = nothing; GC.gc()
 
         spm = dropdims(mean(sp_v, dims=3), dims=3)
-        open(joinpath(base2, "SP_V", "sp_v_nt_$suffix.bin"), "w") do io
+        open(joinpath(base2, "SP2", "sp_v_nt_$suffix.bin"), "w") do io
             write(io, Float32.(spm))
         end
 
-
+#=
         SP_V_3day = zeros(Float32, nx, ny, n_chunks)
         for c in 1:n_chunks
             t1 = (c-1)*nt_chunk + 1
@@ -144,7 +154,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             write(io, Float32.(dropdims(mean(sp_v[:, :, wk_start:wk_end], dims=3), dims=3)))
         end
 
-
+=#
         sp_v = nothing; GC.gc()
         println("Completed tile: $suffix")
     end

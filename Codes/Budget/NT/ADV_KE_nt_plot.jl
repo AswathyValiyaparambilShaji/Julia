@@ -44,7 +44,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Read time-averaged KE advection flux
-        u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_nt_$suffix.bin"), "r") do io
+        u_ke_mean = Float64.(open(joinpath(base2, "U_ke", "u_ke_nt_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -79,7 +79,7 @@ fig = Figure(size=(600, 800))
 
 
 ax = Axis(fig[1, 1],
-         title="Depth-Integrated Time-Averaged KE Advection",
+         title="Depth-Integrated Time-Averaged KE Advection new",
          xlabel="Longitude [°]",
          ylabel="Latitude [°]")
 #ax.limits[] = (193.0,194.2,24.0, 25.4)
