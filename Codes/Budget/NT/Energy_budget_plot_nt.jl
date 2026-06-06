@@ -323,9 +323,9 @@ println("\nCalculating derived terms...")
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_V2.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_V3.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V2.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V3.png"))")
 
 
 
