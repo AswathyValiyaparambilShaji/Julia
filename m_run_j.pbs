@@ -7,8 +7,8 @@
 #PBS -e /nobackup/avaliyap/logs/output_m.err
 
 
-export PATH="/home3/avaliyap/.juliaup/bin:$PATH"
-source "/home3/avaliyap/.juliaup/env"
+#export PATH="/home3/avaliyap/.juliaup/bin:$PATH"
+source ~/.bashrc
 export JULIA_NUM_THREADS=128
 
 
