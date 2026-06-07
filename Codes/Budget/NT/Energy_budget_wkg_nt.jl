@@ -49,7 +49,7 @@ WPI_full     = zeros(NX, NY)
 
 FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
-
+rho0=1027
 println("Loading energy budget terms...")
 
 
