@@ -44,10 +44,9 @@ SP_V_full    = zeros(NX, NY)
 BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
-∇H  = zeros(NX, NY)
+
 FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
-
 
 println("Loading energy budget terms...")
 
@@ -59,8 +58,18 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
 
-        
+
+            DRFfull = hFacC .* DRF3d
+            depth = sum(DRFfull, dims=3)
+            DRFfull[hFacC .== 0] .= 0.0
+
+        dx  = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+        dy  = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+        rac = dx .* dy
+        H   = depth
+
         # --- Read Flux Divergence ---
         fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin"), "r") do io
             nbytes = (nx-2) * (ny-2) * sizeof(Float32)
@@ -152,25 +161,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
         ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
         WPI_full[xs+2:xe-2,     ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
-        
-
+        FH[xs+2:xe-2,  ys+2:ye-2] .= H[buf:nx-buf+1,   buf:ny-buf+1]
+        RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
         println("Completed tile $suffix")
     end
 end
 
-
-println("\nCalculating derived terms...")
-
-
-
-    # Total energy fluxes (Flux Divergence + Advective fluxes)
-    TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
-    MF        = U_KE_full .+ U_PE_full .+ SP_H_full .- SP_V_full .+ BP_full
-    A         = U_KE_full .+ U_PE_full
-    PS        = SP_H_full .- SP_V_full
-
-
-    # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
+ # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
     Residual  = -(Conv .- TotalFlux .+ SP_H_full .- SP_V_full .+ BP_full .+ WPI_full .- ET_full)
     Residual2 = Conv .- FDiv
 
@@ -184,8 +181,8 @@ println("\nCalculating derived terms...")
 
 
     # Color ranges
-    crange  = (-0.03, 0.03)
-    crange2 = (-0.03, 0.03)
+    crange  = (-1.1, 1.1)
+    crange2 = (-1.1, 1.1)
     cmap = :bwr
 
 
@@ -196,7 +193,7 @@ println("\nCalculating derived terms...")
         xticklabelsvisible = false,
         ylabel = "Latitude [°]"
     )
-    hm1 = heatmap!(ax1, lon, lat, Conv;
+    hm1 = heatmap!(ax1, lon, lat, (Conv./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
@@ -210,7 +207,7 @@ println("\nCalculating derived terms...")
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm2 = heatmap!(ax2, lon, lat, FDiv;
+    hm2 = heatmap!(ax2, lon, lat, (FDiv./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
@@ -224,7 +221,7 @@ println("\nCalculating derived terms...")
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm3 = heatmap!(ax3, lon, lat, A;
+    hm3 = heatmap!(ax3, lon, lat, (A./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
@@ -239,7 +236,7 @@ println("\nCalculating derived terms...")
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm4 = heatmap!(ax4, lon, lat, Residual;
+    hm4 = heatmap!(ax4, lon, lat,(Residual./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
@@ -252,7 +249,7 @@ println("\nCalculating derived terms...")
         xlabel = "Longitude [°]",
         ylabel = "Latitude [°]"
     )
-    hm5 = heatmap!(ax5, lon, lat, SP_V_full;
+    hm5 = heatmap!(ax5, lon, lat, (SP_V_full./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange2,
         colormap = cmap)
@@ -267,7 +264,7 @@ println("\nCalculating derived terms...")
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm6 = heatmap!(ax6, lon, lat, BP_full;
+    hm6 = heatmap!(ax6, lon, lat, (BP_full./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange2,
         colormap = cmap)
@@ -290,12 +287,12 @@ println("\nCalculating derived terms...")
 
     # Row 2, Column 4: Wind Power Input (x10^-3)
     ax8 = Axis(fig[2, 4],
-        title = "(h) <WPI> (mW/m²)",
+        title = rich("(h) <WPI>[x 10", superscript("-3"),"]"),
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm8 = heatmap!(ax8, lon, lat, WPI_plot;
+    hm8 = heatmap!(ax8, lon, lat, (WPI_plot./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange2,
         colormap = cmap)
@@ -308,7 +305,7 @@ println("\nCalculating derived terms...")
         ylabel = "",
         yticklabelsvisible = false
     )
-    hm9 = heatmap!(ax9, lon, lat, SP_H_full;
+    hm9 = heatmap!(ax9, lon, lat, (SP_H_full./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange2,
         colormap = cmap)
@@ -316,8 +313,8 @@ println("\nCalculating derived terms...")
 
 
     # Add colorbars
-    Colorbar(fig[1, 5], hm4, label = "[W/m²]")
-    Colorbar(fig[2, 5], hm7, label = "[W/m²]")
+    Colorbar(fig[1, 5], hm4, label=rich("[x 10", superscript("-8"), "W/kg]"))
+    Colorbar(fig[2, 5], hm7, label=rich("[x 10", superscript("-8"), "W/kg]"))
 
 
     display(fig)
@@ -325,10 +322,8 @@ println("\nCalculating derived terms...")
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_V4.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V1.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_V4.png"))")
-
-
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V1.png"))")
 
 
