@@ -191,8 +191,8 @@ println("\nCalculating derived terms...")
 
 
     # Color ranges
-    crange  = (-1.1, 1.1)
-    crange2 = (-1.1, 1.1)
+    crange  = (-1.0, 1.0)
+    crange2 = (-0.5, 0.5)
     cmap = :bwr
 
 
@@ -224,16 +224,15 @@ println("\nCalculating derived terms...")
 
 
     # Row 1, Column 3: Advective fluxes
-    ax3 = Axis(fig[1, 3],
-        title = "(c) <A>",
-        xlabel = "",
-        xticklabelsvisible = false,
+    ax3 = Axis(fig[2, 4],
+        title = "(h) <A>",
+        xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false
     )
     hm3 = heatmap!(ax3, lon, lat, (A./(rho0.*FH))*10^8;
         interpolate = false,
-        colorrange = crange,
+        colorrange = crange2,
         colormap = cmap)
 
 
@@ -296,15 +295,15 @@ println("\nCalculating derived terms...")
 
 
     # Row 2, Column 4: Wind Power Input (x10^-3)
-    ax8 = Axis(fig[2, 4],
-        title = rich("(h) <WPI>[x 10", superscript("-3"),"]"),
-        xlabel = "Longitude [°]",
+    ax8 = Axis(fig[1, 3],
+        title = rich("(c) <WPI>[x 10", superscript("-3"),"]"),
+        xlabel = "",
         ylabel = "",
         yticklabelsvisible = false
     )
     hm8 = heatmap!(ax8, lon, lat, (WPI_plot./(rho0.*FH))*10^8;
         interpolate = false,
-        colorrange = crange2,
+        colorrange = crange,
         colormap = cmap)
         #
 
@@ -324,7 +323,7 @@ println("\nCalculating derived terms...")
 
     # Add colorbars
     Colorbar(fig[1, 5], hm4, label=rich("[x 10", superscript("-8"), "W/kg]"))
-    Colorbar(fig[2, 5], hm8, label=rich("[x 10", superscript("-8"), "W/kg]"))
+    Colorbar(fig[2, 5], hm9, label=rich("[x 10", superscript("-8"), "W/kg]"))
 
 
     display(fig)
@@ -332,8 +331,8 @@ println("\nCalculating derived terms...")
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V1.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V2.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V1.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V2.png"))")
 
 
