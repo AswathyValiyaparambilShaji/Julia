@@ -324,7 +324,7 @@ println("\nCalculating derived terms...")
 
     # Add colorbars
     Colorbar(fig[1, 5], hm4, label=rich("[x 10", superscript("-8"), "W/kg]"))
-    Colorbar(fig[2, 5], hm7, label=rich("[x 10", superscript("-8"), "W/kg]"))
+    Colorbar(fig[2, 5], hm8, label=rich("[x 10", superscript("-8"), "W/kg]"))
 
 
     display(fig)
