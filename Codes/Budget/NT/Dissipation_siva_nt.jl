@@ -287,7 +287,7 @@ Budget_Diss_norm = (Budget_Diss ./ (rho0 .* FH)) * 10^8
 fig = Figure(resolution=(600, 400))
 
 
-crange = (-1.2, 1.2)
+crange = (-1.0, 1.0)
 cmap = :bwr
 
 
@@ -322,8 +322,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v2.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v2.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v3.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v3.png"))")
 
 
 
