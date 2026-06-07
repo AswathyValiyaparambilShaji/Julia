@@ -284,7 +284,7 @@ Budget_Diss_norm = (Budget_Diss ./ (rho0 .* FH)) * 10^8
 
 
 # Create comparison figure
-fig = Figure(resolution=(800, 400))
+fig = Figure(resolution=(600, 400))
 
 
 crange = (-1.2, 1.2)
@@ -293,7 +293,7 @@ cmap = :bwr
 
 # Plot 1: Siva Dissipation
 ax1 = Axis(fig[1, 1],
-    title="(a) Direct Dissipation",
+    title="(a) Spectral Dissipation",
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
     ylabelsize=16,
@@ -322,8 +322,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v1.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v1.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v2.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v2.png"))")
 
 
 

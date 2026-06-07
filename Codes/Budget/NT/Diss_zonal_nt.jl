@@ -356,7 +356,7 @@ ax = Axis(fig[1, 1],
 
 
 lines!(ax, Siva_zonal_scaled, lat,
-    label="Direct Dissipation",
+    label="Spectral Dissipation",
     color=:red,
     linewidth=2.5)
 

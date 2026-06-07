@@ -168,7 +168,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         println("Completed tile $suffix")
     end
 end
+println("\nCalculating derived terms...")
 
+
+
+    # Total energy fluxes (Flux Divergence + Advective fluxes)
+    TotalFlux = FDiv .+ U_KE_full .+ U_PE_full
+    MF        = U_KE_full .+ U_PE_full .+ SP_H_full .- SP_V_full .+ BP_full
+    A         = U_KE_full .+ U_PE_full
+    PS        = SP_H_full .- SP_V_full
  # Residual dissipation -- G terms subtracted as energy lost from IT to NIW
     Residual  = -(Conv .- TotalFlux .+ SP_H_full .- SP_V_full .+ BP_full .+ WPI_full .- ET_full)
     Residual2 = Conv .- FDiv

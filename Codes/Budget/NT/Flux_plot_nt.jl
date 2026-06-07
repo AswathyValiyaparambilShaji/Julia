@@ -129,7 +129,7 @@ Uy = DO_TRANSPOSE ? tfy'   : tfy
 
 fig = Figure(resolution = (600, 800))
 ax  = Axis(fig[1, 1],
-    title      = "MITgcm Perturbation Flux (old)",
+    title      = "MITgcm  Flux ",
     xlabel     = "Longitude [°]",
     ylabel     = "Latitude [°]",
     ylabelsize = 22,
@@ -168,7 +168,7 @@ end
 Colorbar(fig[1, 2], hm, label = "(kW/m)")
 
 
-png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V2.png")
+png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V3.png")
 save(png_file, fig)
 display(fig)
 println("PNG saved: $png_file")

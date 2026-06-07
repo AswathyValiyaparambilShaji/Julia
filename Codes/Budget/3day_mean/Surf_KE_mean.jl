@@ -109,7 +109,7 @@ println("Total frames: $nt_avg")
 
 # Create individual frames
 for t in 1:nt_avg
-    fig = Figure(size=(1000, 800))
+    fig = Figure(size=(600, 800))
     ax = Axis(fig[1, 1],
         xlabel="Longitude (°E)",
         ylabel="Latitude (°N)",
