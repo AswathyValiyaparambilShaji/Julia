@@ -33,7 +33,9 @@ dto = 144
 Tts = 366192
 nt = div(Tts, dto)
 nz = 88
-
+thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF   = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 # Initialize global arrays
 Conv         = zeros(NX, NY)
 FDiv         = zeros(NX, NY)
