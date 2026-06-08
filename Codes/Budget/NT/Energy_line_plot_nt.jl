@@ -257,7 +257,7 @@ fig2 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
 
 # --- Subplot 1: all budget terms including tendency ---
 ax2a = Axis(fig2[1, 1];
-    title  = "Temporal evolution of Budget Term",
+    title  = "Temporal evolution of budget terms",
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     axis_theme...)
