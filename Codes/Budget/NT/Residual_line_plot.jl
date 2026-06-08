@@ -192,15 +192,14 @@ for t in 1:nt3
     # Figure 1 residuals: combined shear production
     r1 = -(C_tn .- Fd_tn)                                           .* depth_mask
     r2 = -(C_tn .- Fd_tn .- A_tn)                                   .* depth_mask
-    r3 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn)                          .* depth_mask
-    r4 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PS_tn)                 .* depth_mask
-    r5 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PS_tn .- ET_tn)        .* depth_mask
+    r3 = -(C_tn .- Fd_tn .- A_tn .- ET_tn)                          .* depth_mask
+    r4 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ BP_tn )                 .* depth_mask
+    r5 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ BP_tn .+ PS_tn )        .* depth_mask
 
 
     # Figure 2 residuals: split shear production (Psh first, then Psv)
-    r6 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn)               .* depth_mask
-    r7 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn .+ PSv_tn)     .* depth_mask
-    r8 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn .+ PSv_tn .- ET_tn) .* depth_mask
+    r6 = -(C_tn .- Fd_tn .- A_tn .- ET_tn .+ BP_tn .+ PSh_tn)               .* depth_mask
+    r7 = -(C_tn .- Fd_tn .- A_tn .- ET_tn .+ BP_tn .+ PSh_tn .+ PSv_tn)     .* depth_mask
 
 
     R1_ts[t] = area_weighted_mean(r1, RAC_masked);  R1_var[t] = area_weighted_var(r1, RAC_masked, R1_ts[t])
@@ -210,7 +209,6 @@ for t in 1:nt3
     R5_ts[t] = area_weighted_mean(r5, RAC_masked);  R5_var[t] = area_weighted_var(r5, RAC_masked, R5_ts[t])
     R6_ts[t] = area_weighted_mean(r6, RAC_masked);  R6_var[t] = area_weighted_var(r6, RAC_masked, R6_ts[t])
     R7_ts[t] = area_weighted_mean(r7, RAC_masked);  R7_var[t] = area_weighted_var(r7, RAC_masked, R7_ts[t])
-    R8_ts[t] = area_weighted_mean(r8, RAC_masked);  R8_var[t] = area_weighted_var(r8, RAC_masked, R8_ts[t])
 end
 
 
@@ -283,16 +281,16 @@ cols1 = [
 labels1 = [
     "Var(R1) = -(C - ∇·F)",
     "Var(R2) = -(C - ∇·F - A)",
-    "Var(R3) = -(C - ∇·F - A + Pᵦ)",
-    "Var(R4) = -(C - ∇·F - A + Pᵦ + Pₛ)",
-    "Var(R5) = -(C - ∇·F - A + Pᵦ + Pₛ - ∂E/∂t)",
+    "Var(R3) = -(C - ∇·F - A - ∂E/∂t)",
+    "Var(R4) = -(C - ∇·F - A - ∂E/∂t + Pᵦ )",
+    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pᵦ + Pₛ)",
 ]
 
 
 vars1 = [R1_var, R2_var, R3_var, R4_var, R5_var]
 
 
-fig_ts1 = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
+fig_ts1 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
 ax_ts1  = Axis(fig_ts1[1, 1];
     title  = "Spatial Variance of Residuals",
     xlabel = "Time  [days]",
@@ -313,7 +311,7 @@ end
 axislegend(ax_ts1; position=:rt, leg_style...)
 
 
-outpath1 = joinpath(FIGDIR, "Residual_bcplot_nt_v5.png")
+outpath1 = joinpath(FIGDIR, "Residual_bcplot_nt_v6.png")
 save(outpath1, fig_ts1, px_per_unit=2)
 println("\nFigure 1 saved → $outpath1")
 display(fig_ts1)
@@ -339,18 +337,17 @@ cols2 = [
 labels2 = [
     "Var(R1) = -(C - ∇·F)",
     "Var(R2) = -(C - ∇·F - A)",
-    "Var(R3) = -(C - ∇·F - A + Pᵦ)",
-    "Var(R4) = -(C - ∇·F - A + Pᵦ + Pₛ)",
-    "Var(R6) = -(C - ∇·F - A + Pᵦ + Pₛₕ)",
-    "Var(R7) = -(C - ∇·F - A + Pᵦ + Pₛₕ + Pₛᵥ)",
-    "Var(R8) = -(C - ∇·F - A + Pᵦ + Pₛₕ + Pₛᵥ - ∂E/∂t)",
+    "Var(R3) = -(C - ∇·F - A - ∂E/∂t )",
+    "Var(R4) = -(C - ∇·F - A - ∂E/∂t + Pᵦ )",
+    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pᵦ + Pₛₕ )",
+    "Var(R6) = -(C - ∇·F - A - ∂E/∂t + Pᵦ + Pₛₕ + Pₛᵥ )",
 ]
 
 
-vars2 = [R1_var, R2_var, R3_var, R4_var, R6_var, R7_var, R8_var]
+vars2 = [R1_var, R2_var, R3_var, R4_var, R6_var, R7_var]
 
 
-fig_ts2 = Figure(resolution=(1200, 450), fontsize=14, backgroundcolor=:white)
+fig_ts2 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
 ax_ts2  = Axis(fig_ts2[1, 1];
     title  = "Spatial Variance of Residuals",
     xlabel = "Time  [days]",
@@ -371,7 +368,7 @@ end
 axislegend(ax_ts2; position=:rt, leg_style...)
 
 
-outpath2 = joinpath(FIGDIR, "Residual_bcplot_nt_v5_vh.png")
+outpath2 = joinpath(FIGDIR, "Residual_bcplot_nt_v7_vh.png")
 save(outpath2, fig_ts2, px_per_unit=2)
 println("\nFigure 2 saved → $outpath2")
 display(fig_ts2)
