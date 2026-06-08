@@ -24,7 +24,7 @@ nx = tx + 2*buf
 ny = ty + 2*buf
 
 
-rho0 = 999.8
+rho0 = 1027.5
 nz   = 88
 
 
@@ -103,10 +103,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
         end)
 
+
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
+
 
         Conv_3day[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
         FDiv_3day[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
@@ -146,6 +148,7 @@ function area_weighted_mean(field, area)
     return sum(field[valid_mask] .* area[valid_mask]) / sum(area[valid_mask])
 end
 
+
 function area_weighted_var(field, area, weighted_mean)
     valid_mask = .!(isnan.(field) .| isinf.(field)) .& (area .> 0.0)
     w = area[valid_mask]
@@ -153,9 +156,11 @@ function area_weighted_var(field, area, weighted_mean)
     return sum(w .* (f .- weighted_mean).^2) / sum(w)
 end
 
+
 # ==========================================================
 # 3-DAY TIMESERIES: mean + spatial variance (deep points only)
 # ==========================================================
+
 
 println("Calculating residual timeseries + spatial variance...")
 
@@ -165,26 +170,37 @@ R2_ts = zeros(nt3);  R2_var = zeros(nt3)
 R3_ts = zeros(nt3);  R3_var = zeros(nt3)
 R4_ts = zeros(nt3);  R4_var = zeros(nt3)
 R5_ts = zeros(nt3);  R5_var = zeros(nt3)
+R6_ts = zeros(nt3);  R6_var = zeros(nt3)
+R7_ts = zeros(nt3);  R7_var = zeros(nt3)
+R8_ts = zeros(nt3);  R8_var = zeros(nt3)
 
 
 for t in 1:nt3
     norm  = rho0 .* FH
 
 
-    C_tn  = Conv_3day[:,:,t] ./ norm
-    Fd_tn = FDiv_3day[:,:,t] ./ norm
-    A_tn  = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
-    PS_tn = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
-    BP_tn = BP_3day[:,:,t]   ./ norm
-    ET_tn = ET_3day[:,:,t]   ./ norm
-    
+    C_tn   = Conv_3day[:,:,t] ./ norm
+    Fd_tn  = FDiv_3day[:,:,t] ./ norm
+    A_tn   = (U_KE_3day[:,:,t] .+ U_PE_3day[:,:,t]) ./ norm
+    PS_tn  = (SP_H_3day[:,:,t] .+ SP_V_3day[:,:,t])  ./ norm
+    BP_tn  = BP_3day[:,:,t]   ./ norm
+    ET_tn  = ET_3day[:,:,t]   ./ norm
+    PSh_tn = SP_H_3day[:,:,t] ./ norm
+    PSv_tn = SP_V_3day[:,:,t] ./ norm
 
-    # Compute residuals and apply depth mask explicitly
-    r1 = -(C_tn .- Fd_tn)                                    .* depth_mask
-    r2 = -(C_tn .- Fd_tn .- A_tn)                            .* depth_mask
-    r3 = -(C_tn .- Fd_tn .- A_tn .- ET_tn)                   .* depth_mask
-    r4 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ BP_tn)           .* depth_mask
-    r5 = -(C_tn .- Fd_tn .- A_tn .- ET_tn.+ PS_tn.+ BP_tn )  .* depth_mask
+
+    # Figure 1 residuals: combined shear production
+    r1 = -(C_tn .- Fd_tn)                                           .* depth_mask
+    r2 = -(C_tn .- Fd_tn .- A_tn)                                   .* depth_mask
+    r3 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn)                          .* depth_mask
+    r4 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PS_tn)                 .* depth_mask
+    r5 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PS_tn .- ET_tn)        .* depth_mask
+
+
+    # Figure 2 residuals: split shear production (Psh first, then Psv)
+    r6 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn)               .* depth_mask
+    r7 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn .+ PSv_tn)     .* depth_mask
+    r8 = -(C_tn .- Fd_tn .- A_tn .+ BP_tn .+ PSh_tn .+ PSv_tn .- ET_tn) .* depth_mask
 
 
     R1_ts[t] = area_weighted_mean(r1, RAC_masked);  R1_var[t] = area_weighted_var(r1, RAC_masked, R1_ts[t])
@@ -192,6 +208,9 @@ for t in 1:nt3
     R3_ts[t] = area_weighted_mean(r3, RAC_masked);  R3_var[t] = area_weighted_var(r3, RAC_masked, R3_ts[t])
     R4_ts[t] = area_weighted_mean(r4, RAC_masked);  R4_var[t] = area_weighted_var(r4, RAC_masked, R4_ts[t])
     R5_ts[t] = area_weighted_mean(r5, RAC_masked);  R5_var[t] = area_weighted_var(r5, RAC_masked, R5_ts[t])
+    R6_ts[t] = area_weighted_mean(r6, RAC_masked);  R6_var[t] = area_weighted_var(r6, RAC_masked, R6_ts[t])
+    R7_ts[t] = area_weighted_mean(r7, RAC_masked);  R7_var[t] = area_weighted_var(r7, RAC_masked, R7_ts[t])
+    R8_ts[t] = area_weighted_mean(r8, RAC_masked);  R8_var[t] = area_weighted_var(r8, RAC_masked, R8_ts[t])
 end
 
 
@@ -199,7 +218,7 @@ println("Done. nt3 = $nt3 periods")
 
 
 # ==========================================================
-# PLOT: spatial variance — 5 lines
+# SHARED PLOT THEME
 # ==========================================================
 
 
@@ -243,7 +262,16 @@ leg_style = (
 )
 
 
-cols = [
+FIGDIR = cfg["fig_base"]
+mkpath(FIGDIR)
+
+
+# ==========================================================
+# FIGURE 1: spatial variance — combined shear production (5 lines)
+# ==========================================================
+
+
+cols1 = [
     RGBf(0.10, 0.40, 0.75),
     RGBf(0.80, 0.50, 0.00),
     RGBf(0.10, 0.60, 0.30),
@@ -252,45 +280,101 @@ cols = [
 ]
 
 
-labels = [
+labels1 = [
     "Var(R1) = -(C - ∇·F)",
     "Var(R2) = -(C - ∇·F - A)",
-    "Var(R3) = -(C - ∇·F - A - ∂E/∂t)",
-    "Var(R4) = -(C - ∇·F - A - ∂E/∂t + Pᵦ )",
-    "Var(R5) = -(C - ∇·F - A - ∂E/∂t + Pᵦ + Pₛ )",
+    "Var(R3) = -(C - ∇·F - A + Pᵦ)",
+    "Var(R4) = -(C - ∇·F - A + Pᵦ + Pₛ)",
+    "Var(R5) = -(C - ∇·F - A + Pᵦ + Pₛ - ∂E/∂t)",
 ]
 
 
-vars = [R1_var, R2_var, R3_var, R4_var, R5_var]
+vars1 = [R1_var, R2_var, R3_var, R4_var, R5_var]
 
 
-fig_ts = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
-ax_ts  = Axis(fig_ts[1, 1];
-    title  = "Spatial Variance of Residuals — deep points only (H > 3000 m, 3-day averages)",
+fig_ts1 = Figure(resolution=(1100, 450), fontsize=14, backgroundcolor=:white)
+ax_ts1  = Axis(fig_ts1[1, 1];
+    title  = "Spatial Variance of Residuals",
     xlabel = "Time  [days]",
-    ylabel = "Spatial variance  [×10⁻¹⁶ W² kg⁻²]",
+    ylabel = "Spatial variance  [×10⁻¹⁶ W²kg⁻²]",
     axis_theme...
 )
 
 
-hlines!(ax_ts, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
+hlines!(ax_ts1, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 
 
-for (i, (v, c, lbl)) in enumerate(zip(vars, cols, labels))
+for (i, (v, c, lbl)) in enumerate(zip(vars1, cols1, labels1))
     lw = i == 5 ? 2.0 : 1.8
-    lines!(ax_ts, t_axis, v .* sc2; color=c, linewidth=lw, label=lbl)
+    lines!(ax_ts1, t_axis, v .* sc2; color=c, linewidth=lw, label=lbl)
 end
 
 
-axislegend(ax_ts; position=:rt, leg_style...)
+axislegend(ax_ts1; position=:rt, leg_style...)
 
 
-FIGDIR = cfg["fig_base"]
-mkpath(FIGDIR)
-outpath = joinpath(FIGDIR, "Residual_bcplot_nt_v4.png")
-save(outpath, fig_ts, px_per_unit=2)
-println("\nFigure saved → $outpath")
-display(fig_ts)
+outpath1 = joinpath(FIGDIR, "Residual_bcplot_nt_v5.png")
+save(outpath1, fig_ts1, px_per_unit=2)
+println("\nFigure 1 saved → $outpath1")
+display(fig_ts1)
+
+
+# ==========================================================
+# FIGURE 2: spatial variance — split shear production (7 lines)
+#           R1→R4 same as fig1, then +Psh, +Psh+Psv, -dE/dt
+# ==========================================================
+
+
+cols2 = [
+    RGBf(0.10, 0.40, 0.75),   # R1
+    RGBf(0.80, 0.50, 0.00),   # R2
+    RGBf(0.10, 0.60, 0.30),   # R3
+    RGBf(0.60, 0.10, 0.70),   # R4 (+ Pb + Ps combined)
+    RGBf(0.85, 0.15, 0.15),   # R6 (+ Pb + Psh only)
+    RGBf(0.00, 0.65, 0.75),   # R7 (+ Pb + Psh + Psv)
+    RGBf(0.00, 0.00, 0.00),   # R8 (+ Pb + Psh + Psv - dE/dt)
+]
+
+
+labels2 = [
+    "Var(R1) = -(C - ∇·F)",
+    "Var(R2) = -(C - ∇·F - A)",
+    "Var(R3) = -(C - ∇·F - A + Pᵦ)",
+    "Var(R4) = -(C - ∇·F - A + Pᵦ + Pₛ)",
+    "Var(R6) = -(C - ∇·F - A + Pᵦ + Pₛₕ)",
+    "Var(R7) = -(C - ∇·F - A + Pᵦ + Pₛₕ + Pₛᵥ)",
+    "Var(R8) = -(C - ∇·F - A + Pᵦ + Pₛₕ + Pₛᵥ - ∂E/∂t)",
+]
+
+
+vars2 = [R1_var, R2_var, R3_var, R4_var, R6_var, R7_var, R8_var]
+
+
+fig_ts2 = Figure(resolution=(1200, 450), fontsize=14, backgroundcolor=:white)
+ax_ts2  = Axis(fig_ts2[1, 1];
+    title  = "Spatial Variance of Residuals",
+    xlabel = "Time  [days]",
+    ylabel = "Spatial variance  [×10⁻¹⁶ W²kg⁻²]",
+    axis_theme...
+)
+
+
+hlines!(ax_ts2, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
+
+
+for (i, (v, c, lbl)) in enumerate(zip(vars2, cols2, labels2))
+    lw = i == 7 ? 2.0 : 1.8
+    lines!(ax_ts2, t_axis, v .* sc2; color=c, linewidth=lw, label=lbl)
+end
+
+
+axislegend(ax_ts2; position=:rt, leg_style...)
+
+
+outpath2 = joinpath(FIGDIR, "Residual_bcplot_nt_v5_vh.png")
+save(outpath2, fig_ts2, px_per_unit=2)
+println("\nFigure 2 saved → $outpath2")
+display(fig_ts2)
 
 
 
