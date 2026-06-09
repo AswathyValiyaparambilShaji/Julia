@@ -242,7 +242,13 @@ dp = compute_avgs(deep_mask, total_area_deep)
 # ============================================================
 # Plot theme
 # ============================================================
-FONT = "MathJax_Main"
+#FONT = "MathJax_Main"
+#FONT = "FreeSans"
+FONT = "FreeSerif"
+#FONT = "MathJax_Math"
+#FONT = "Liberation Sans"
+#FONT = "Liberation Serif"
+
 
 
 c_conv = RGBf(0.80, 0.10, 0.10)
