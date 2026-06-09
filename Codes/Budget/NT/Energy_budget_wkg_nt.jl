@@ -299,7 +299,8 @@ println("\nCalculating derived terms...")
         title = rich("(c) <WPI>[x 10", superscript("-3"),"]"),
         xlabel = "",
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+        xticklabelsvisible = false
     )
     hm8 = heatmap!(ax8, lon, lat, (WPI_plot./(rho0.*FH))*10^8;
         interpolate = false,
