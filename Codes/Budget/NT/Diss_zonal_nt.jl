@@ -340,19 +340,24 @@ end
 # PART 5: PLOT ZONAL AVERAGES
 # ============================================================================
 
-
-fig = Figure(resolution=(600, 800))
-
+FONT = "FreeSerif Bold"
+fig = Figure(resolution=(450, 800), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 
 ax = Axis(fig[1, 1],
     title="Zonal Average Dissipation",
     xlabel="Dissipation [×10⁻⁸ W/kg]",
     ylabel="Latitude [°]",
-   ylabelsize = 22,
-       xlabelsize = 22,
-       titlesize = 26,
-       xticklabelsize=16,
-       yticklabelsize=16)
+   ylabelsize = 16,
+       xlabelsize = 16,
+       titlesize = 18,
+       xticklabelsize=12,
+       yticklabelsize=12,
+       titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,)
 
 
 lines!(ax, Siva_zonal_scaled, lat,
@@ -370,7 +375,7 @@ lines!(ax, Budget_zonal_scaled_smooth, lat,
 vlines!(ax, [0], color=:gray, linestyle=:dash, linewidth=1)
 
 
-axislegend(ax, position=:lt, framevisible=true, labelsize=18)
+axislegend(ax, position=:lt, framevisible=true, labelsize=14)
 
 
 display(fig)
@@ -378,8 +383,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v1.png"))")
+save(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "Dissipation_Zonal_Deep_nt_v2.png"))")
 
 
 

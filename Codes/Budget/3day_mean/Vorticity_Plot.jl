@@ -71,11 +71,11 @@ ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
     title = "Normalized Vorticity ",
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 18,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -87,7 +87,7 @@ hm = CairoMakie.heatmap!(ax, lon, lat, zf,
     interpolate = false,colorrange=(-0.5, 0.5), colormap=Reverse(:RdBu))
 
 
-Colorbar(fig[1, 2], hm, label = "ζ/f", labelsize = 12, ticklabelsize=12 , width = 5)
+Colorbar(fig[1, 2], hm, label = "ζ/f", labelsize = 14, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
 

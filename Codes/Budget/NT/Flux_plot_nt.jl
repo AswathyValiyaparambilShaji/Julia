@@ -139,11 +139,11 @@ ax  = Axis(fig[1, 1],
     title      = "MITgcm  Flux ",
     xlabel     = "Longitude [°]",
     ylabel     = "Latitude [°]",
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 18,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -187,7 +187,7 @@ contour!(ax, lon, lat, FH;
     labels     = true,
     labelsize  = 10,
     labelcolor = :black)
-Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 12, ticklabelsize=12 , width = 5)
+Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 14, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
 png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V4.png")

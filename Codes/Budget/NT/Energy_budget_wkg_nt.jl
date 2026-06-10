@@ -184,10 +184,12 @@ println("\nCalculating derived terms...")
 
 
     # Convert WPI to mW/m2 for plotting only
-    WPI_plot = WPI_full .*1000
+    WPI_plot = WPI_full 
+    CWI = Conv .+ WPI_full
 
-
-    fig = Figure(resolution=(1200, 800))
+FONT = "FreeSerif Bold"
+    fig = Figure(resolution=(1200, 800), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 
 
     # Color ranges
@@ -198,12 +200,22 @@ println("\nCalculating derived terms...")
 
     # Row 1, Column 1: Conversion
     ax1 = Axis(fig[1, 1],
-        title = "(a) <C>",
+        title = "(a) <C> + <WI>",
         xlabel = "",
         xticklabelsvisible = false,
-        ylabel = "Latitude [°]"
+        ylabel = "Latitude [°]",
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
-    hm1 = heatmap!(ax1, lon, lat, (Conv./(rho0.*FH))*10^8;
+    hm1 = heatmap!(ax1, lon, lat, (CWI./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
@@ -215,7 +227,17 @@ println("\nCalculating derived terms...")
         xlabel = "",
         xticklabelsvisible = false,
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm2 = heatmap!(ax2, lon, lat, (FDiv./(rho0.*FH))*10^8;
         interpolate = false,
@@ -228,7 +250,17 @@ println("\nCalculating derived terms...")
         title = "(h) <A>",
         xlabel = "Longitude [°]",
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm3 = heatmap!(ax3, lon, lat, (A./(rho0.*FH))*10^8;
         interpolate = false,
@@ -243,7 +275,17 @@ println("\nCalculating derived terms...")
         xlabel = "",
         xticklabelsvisible = false,
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm4 = heatmap!(ax4, lon, lat,(Residual./(rho0.*FH))*10^8;
         interpolate = false,
@@ -256,7 +298,17 @@ println("\nCalculating derived terms...")
     ax5 = Axis(fig[2, 1],
         title = "(e) <Ps> (Vertical)",
         xlabel = "Longitude [°]",
-        ylabel = "Latitude [°]"
+        ylabel = "Latitude [°]",
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm5 = heatmap!(ax5, lon, lat, (SP_V_full./(rho0.*FH))*10^8;
         interpolate = false,
@@ -271,7 +323,17 @@ println("\nCalculating derived terms...")
         title = "(g) <Pb>",
         xlabel = "Longitude [°]",
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm6 = heatmap!(ax6, lon, lat, (BP_full./(rho0.*FH))*10^8;
         interpolate = false,
@@ -280,40 +342,72 @@ println("\nCalculating derived terms...")
 
 
 
-    #= Row 2, Column 3: Energy Tendency
-    ax7 = Axis(fig[2, 4],
-        title = "(h) <dE/dt>",
-        xlabel = "Longitude [°]",
-        ylabel = "",
-        yticklabelsvisible = false
-    )
-    hm7 = heatmap!(ax7, lon, lat, ET_full;
-        interpolate = false,
-        colorrange = crange2,
-        colormap = cmap)
-=#
-
-
-    # Row 2, Column 4: Wind Power Input (x10^-3)
-    ax8 = Axis(fig[1, 3],
-        title = rich("(c) <WPI>[x 10", superscript("-3"),"]"),
+    # Row 2, Column 3: Energy Tendency
+    ax7 = Axis(fig[1, 3],
+        title = "(c) <dE/dt>",
         xlabel = "",
         ylabel = "",
         yticklabelsvisible = false,
-        xticklabelsvisible = false
+                xticklabelsvisible = false,
+
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    )
+    hm7 = heatmap!(ax7, lon, lat, (ET_full./(rho0.*FH))*10^8;
+        interpolate = false,
+        colorrange = crange2,
+        colormap = cmap)
+#
+
+
+    #= Row 2, Column 4: Wind Power Input (x10^-3)
+    ax8 = Axis(fig[1, 3],
+        title = rich("(c) <WI>"),#[x 10", superscript("-3"),"]"),
+        xlabel = "",
+        ylabel = "",
+        yticklabelsvisible = false,
+        xticklabelsvisible = false,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm8 = heatmap!(ax8, lon, lat, (WPI_plot./(rho0.*FH))*10^8;
         interpolate = false,
         colorrange = crange,
         colormap = cmap)
-        #
+        =#
 
     #
     ax9 = Axis(fig[2, 2],
         title = "(f) <Ps> (Horizontal) ",
         xlabel = "Longitude [°]",
         ylabel = "",
-        yticklabelsvisible = false
+        yticklabelsvisible = false,
+    ylabelsize = 16,
+    xlabelsize = 16,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
     hm9 = heatmap!(ax9, lon, lat, (SP_H_full./(rho0.*FH))*10^8;
         interpolate = false,
@@ -323,17 +417,20 @@ println("\nCalculating derived terms...")
 
 
     # Add colorbars
-    Colorbar(fig[1, 5], hm4, label=rich("[x 10", superscript("-8"), "W/kg]"))
-    Colorbar(fig[2, 5], hm9, label=rich("[x 10", superscript("-8"), "W/kg]"))
-
-
+    Colorbar(fig[1, 5], hm4, label=rich("[x 10", superscript("-8"), "W/kg]"), labelsize = 14, ticklabelsize=12 , width = 5)
+    Colorbar(fig[2, 5], hm9, label=rich("[x 10", superscript("-8"), "W/kg]"), labelsize = 14, ticklabelsize=12 , width = 5)
+colgap!(fig.layout,1,5)
+colgap!(fig.layout,2,5)
+colgap!(fig.layout,3,5)
+colgap!(fig.layout,4,5)
+rowgap!(fig.layout,1,5)
     display(fig)
 
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V2.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V3.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V2.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V3.png"))")
 
 

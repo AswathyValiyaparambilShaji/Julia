@@ -284,9 +284,10 @@ Budget_Diss_norm = (Budget_Diss ./ (rho0 .* FH)) * 10^8
 
 
 # Create comparison figure
-fig = Figure(resolution=(600, 400))
+FONT = "FreeSerif Bold"
 
-
+fig = Figure(resolution = (700, 450), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 crange = (-1.0, 1.0)
 cmap = :bwr
 
@@ -298,7 +299,12 @@ ax1 = Axis(fig[1, 1],
     ylabel="Latitude [°]",
     ylabelsize=16,
     xlabelsize=16,
-    titlesize=18)
+    titlesize=18,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,)
 hm1 = heatmap!(ax1, lon, lat, Siva_Diss_norm,
     colormap=cmap, colorrange=crange)
 
@@ -309,21 +315,30 @@ ax2 = Axis(fig[1, 2],
     xlabel="Longitude [°]",
     ylabel="",
     yticklabelsvisible=false,
-    ylabelsize=16,
-    xlabelsize=16,
-    titlesize=18)
+    ylabelsize = 16,
+    xlabelsize = 16,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 18,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,)
 hm2 = heatmap!(ax2, lon, lat, Budget_Diss_norm,
     colormap=cmap, colorrange=crange)
-Colorbar(fig[1, 3], hm2, label=rich("[x 10", superscript("-8"), " W/kg]"))
+Colorbar(fig[1, 3], hm2, label=rich("[x 10", superscript("-8"), " W/kg]"), labelsize = 14, ticklabelsize=12 , width = 5)
 
+colgap!(fig.layout,1,5)
+colgap!(fig.layout,2,5)
 
 display(fig)
 
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v3.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v3.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v4.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v4.png"))")
 
 
 
