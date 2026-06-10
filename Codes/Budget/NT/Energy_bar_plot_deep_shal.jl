@@ -37,18 +37,6 @@ rho0 = 1027.5
 DEPTH_THRESHOLD = 3000.0
 
 
-# --- Date axis ---
-t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
-dates_3day = [t_origin + Day(3*(i-1)) + Hour(36) for i in 1:nt3]
-t_numeric  = [Dates.value(d - t_origin) / (1000*3600*24) for d in dates_3day]
-
-
-tick_every  = 5
-tick_inds   = 1:tick_every:nt3
-tick_vals   = t_numeric[tick_inds]
-tick_labels = [Dates.format(dates_3day[i], "u dd\nyyyy") for i in tick_inds]
-
-
 # --- Thickness ---
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
@@ -161,13 +149,13 @@ end
 # Depth masks
 # ============================================================
 valid_mask   = (RAC .> 0.0) .& (FH .> 0.0)
-shallow_mask = valid_mask .& (FH .< DEPTH_THRESHOLD)
+shallow_mask = valid_mask .& (FH .<  DEPTH_THRESHOLD)
 deep_mask    = valid_mask .& (FH .>= DEPTH_THRESHOLD)
 
 
 println("\nValid points         : $(sum(valid_mask))")
 println("Shallow (<$(Int(DEPTH_THRESHOLD)) m) : $(sum(shallow_mask))")
-println("Deep    (≥$(Int(DEPTH_THRESHOLD)) m) : $(sum(deep_mask))")
+println("Deep    (>==$(Int(DEPTH_THRESHOLD)) m) : $(sum(deep_mask))")
 
 
 total_area_shallow = sum(RAC[shallow_mask])
@@ -237,69 +225,10 @@ dp = compute_avgs(deep_mask, total_area_deep)
 # ============================================================
 # Plot theme
 # ============================================================
-FONT = "FreeSerif"
-
-
-c_conv = RGBf(0.80, 0.10, 0.10)
-c_fdiv = RGBf(0.10, 0.40, 0.75)
-c_res  = RGBf(0.15, 0.15, 0.15)
-c_ps   = RGBf(0.10, 0.60, 0.30)
-c_psv  = RGBf(0.00, 0.78, 0.65)
-c_bp   = RGBf(0.80, 0.40, 0.00)
-c_a    = RGBf(0.50, 0.15, 0.75)
-c_et   = RGBf(0.55, 0.40, 0.05)
-
-
+FONT     = "FreeSerif Bold"
 tick_col = RGBf(0.20, 0.20, 0.20)
 grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
-
-
-axis_theme = (
-    backgroundcolor   = :white,
-    xgridcolor        = grid_col,
-    ygridcolor        = grid_col,
-    xgridwidth        = 0.6,
-    ygridwidth        = 0.6,
-    xtickcolor        = tick_col,
-    ytickcolor        = tick_col,
-    xticklabelcolor   = tick_col,
-    yticklabelcolor   = tick_col,
-    xlabelcolor       = RGBf(0.10, 0.10, 0.10),
-    ylabelcolor       = RGBf(0.10, 0.10, 0.10),
-    titlecolor        = RGBf(0.05, 0.05, 0.05),
-    titlesize         = 15,
-    titlealign        = :left,
-    xlabelsize        = 13,
-    ylabelsize        = 13,
-    xticklabelsize    = 10,
-    yticklabelsize    = 11,
-    spinewidth        = 0.8,
-    topspinevisible   = false,
-    rightspinevisible = false,
-    leftspinecolor    = tick_col,
-    bottomspinecolor  = tick_col,
-    titlefont         = FONT,
-    xlabelfont        = FONT,
-    ylabelfont        = FONT,
-    xticklabelfont    = FONT,
-    yticklabelfont    = FONT,
-    xticks            = (tick_vals, tick_labels),
-)
-
-
-sc = 1e8
-
-
-leg_style = (
-    framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
-    backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
-    labelcolor      = RGBf(0.10, 0.10, 0.10),
-    labelsize       = 11,
-    rowgap          = 3,
-    patchsize       = (22, 2),
-    nbanks          = 2,
-    labelfont       = FONT,
-)
+sc       = 1e8
 
 
 FIGDIR = cfg["fig_base"]
@@ -307,65 +236,8 @@ mkpath(FIGDIR)
 
 
 # ============================================================
-# Figure 1 — Time series (shallow top, deep bottom)
-# ============================================================
-println("\nCreating time series figure...")
-
-
-fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white,
-             fonts=(; regular=FONT))
-
-
-function add_budget_lines!(ax, d, t_numeric, sc)
-    hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
-    lines!(ax, t_numeric, d.Conv     .* sc; label="⟨C⟩  Conversion",          color=c_conv, linewidth=1.8)
-    lines!(ax, t_numeric, d.FDiv     .* sc; label="⟨∇·F⟩  Flux divergence",    color=c_fdiv, linewidth=1.8)
-    lines!(ax, t_numeric, d.SP_H     .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
-    lines!(ax, t_numeric, d.SP_V     .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.",  color=c_psv,  linewidth=1.8)
-    lines!(ax, t_numeric, d.BP       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",      color=c_bp,   linewidth=1.8)
-    lines!(ax, t_numeric, d.A        .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
-    lines!(ax, t_numeric, d.ET       .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-    lines!(ax, t_numeric, d.Residual .* sc; label="⟨R⟩  Residual (D)",         color=c_res,  linewidth=1.8)
-end
-
-
-ax_sh = Axis(fig[1, 1];
-    title  = "Shallow region  (H < $(Int(DEPTH_THRESHOLD)) m)",
-    ylabel = "Energy rate  [×10⁻⁸ W/kg]",
-    xticklabelsvisible = false,
-    axis_theme...)
-
-
-ax_dp = Axis(fig[2, 1];
-    title  = "Deep region  (H ≥ $(Int(DEPTH_THRESHOLD)) m)",
-    ylabel = "Energy rate  [×10⁻⁸ W/kg]",
-    axis_theme...)
-
-
-add_budget_lines!(ax_sh, sh, t_numeric, sc)
-add_budget_lines!(ax_dp, dp, t_numeric, sc)
-
-
-axislegend(ax_sh; position=:rt, leg_style...)
-axislegend(ax_dp; position=:rt, leg_style...)
-
-
-linkxaxes!(ax_sh, ax_dp)
-
-
-outpath_ts = joinpath(FIGDIR, "Budget_TimeSeries_3day_DepthSplit.png")
-save(outpath_ts, fig, px_per_unit=2)
-println("Time series figure saved → $outpath_ts")
-display(fig)
-
-
-# ============================================================
-# Figure 2 — Bar plot of time-averaged terms
-# ============================================================
-println("\nCreating bar plot figure...")
-
-
 # Time-average each term
+# ============================================================
 function time_mean_terms(d, sc)
     return (
         Conv     = mean(d.Conv)     * sc,
@@ -384,25 +256,32 @@ sh_mean = time_mean_terms(sh, sc)
 dp_mean = time_mean_terms(dp, sc)
 
 
-# Labels and values — bottom to top order (barplot y order)
+# ============================================================
+# Labels and values — bottom to top order
+# ============================================================
 labels = [
-    "⟨R⟩ Residual (D)",
-    "⟨A⟩ Advection",
-    "⟨Pᵦ⟩ Buoyancy prod.",
-    "⟨Pₛᵛ⟩ Vert. shear prod.",
-    "⟨Pₛᴴ⟩ Horiz. shear prod.",
-    "⟨∂E/∂t⟩ Tendency",
-    "⟨∇·F⟩ Flux divergence",
-    "⟨C⟩ Conversion",
+    "⟨R⟩  Residual ",
+    "⟨A⟩  Advection",
+    "⟨Pᵦ⟩  Buoyancy prod.",
+    "⟨Pₛᵛ⟩  Vert. shear prod.",
+    "⟨Pₛᴴ⟩  Horiz. shear prod.",
+    "⟨∂E/∂t⟩  Tendency",
+    "⟨∇·F⟩  Flux divergence",
+    "⟨C⟩  Conversion",
 ]
 
 
-# Colors matching time series lines
-line_colors = [c_res, c_a, c_bp, c_psv, c_ps, c_et, c_fdiv, c_conv]
-
-
 function extract_vals(d)
-    return [d.Residual, d.A, d.BP, d.SP_V, d.SP_H, d.ET, d.FDiv, d.Conv]
+    return [
+        d.Residual,
+        d.A,
+        d.BP,
+        d.SP_V,
+        d.SP_H,
+        d.ET,
+        d.FDiv,
+        d.Conv,
+    ]
 end
 
 
@@ -414,7 +293,19 @@ n     = length(labels)
 y_pos = collect(1:n)
 
 
-bar_axis_theme = (
+# Blue for negative, red for positive
+c_pos = RGBf(0.75, 0.15, 0.15)
+c_neg = RGBf(0.20, 0.40, 0.75)
+
+
+sh_colors = [v >= 0 ? c_pos : c_neg for v in sh_vals]
+dp_colors = [v >= 0 ? c_pos : c_neg for v in dp_vals]
+
+
+# ============================================================
+# Shared axis theme
+# ============================================================
+bar_theme = (
     backgroundcolor   = :white,
     xgridcolor        = grid_col,
     ygridcolor        = RGBAf(0, 0, 0, 0),
@@ -445,53 +336,62 @@ bar_axis_theme = (
 )
 
 
-fig2 = Figure(resolution=(900, 480), backgroundcolor=:white,
-              fonts=(; regular=FONT))
+# ============================================================
+# Figure — two panels side by side
+# ============================================================
+println("\nCreating bar plot of time-averaged budget terms...")
 
 
-# Shallow panel
-ax_sh2 = Axis(fig2[1, 1];
+fig = Figure(resolution=(900, 480), backgroundcolor=:white,
+             fonts=(; regular=FONT))
+
+
+# Shallow panel (left)
+ax_sh = Axis(fig[1, 1];
     title  = "(a)  Shallow region  (H < $(Int(DEPTH_THRESHOLD)) m)",
     xlabel = "Energy rate  [×10⁻⁸ W/kg]",
-    bar_axis_theme...)
+    bar_theme...)
 
 
-# Deep panel
-ax_dp2 = Axis(fig2[1, 2];
+# Deep panel (right)
+ax_dp = Axis(fig[1, 2];
     title  = "(b)  Deep region  (H ≥ $(Int(DEPTH_THRESHOLD)) m)",
     xlabel = "Energy rate  [×10⁻⁸ W/kg]",
     yticklabelsvisible = false,
-    bar_axis_theme...)
+    bar_theme...)
 
 
-for (ax, vals) in [(ax_sh2, sh_vals), (ax_dp2, dp_vals)]
+for (ax, vals, cols) in [(ax_sh, sh_vals, sh_colors), (ax_dp, dp_vals, dp_colors)]
 
 
-    # Zero reference line
+    # Zero reference dashed line
     vlines!(ax, [0.0]; color=RGBAf(0, 0, 0, 0.4), linewidth=0.9, linestyle=:dash)
 
 
-    # Bars — use same colors as time series lines
+    # Horizontal bars
     barplot!(ax, y_pos, vals;
         direction   = :x,
-        color       = line_colors,
+        color       = cols,
         bar_labels  = [@sprintf("%.3f", v) for v in vals],
         label_size  = 10,
         label_font  = FONT,
         label_color = RGBf(0.15, 0.15, 0.15),
-        gap         = 0.3,
+        gap         = 0.25,
     )
 end
 
 
-linkyaxes!(ax_sh2, ax_dp2)
-colgap!(fig2.layout, 1, 8)
+# Align y-axes across panels
+linkyaxes!(ax_sh, ax_dp)
 
 
-outpath_bar = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_DepthSplit.png")
-save(outpath_bar, fig2, px_per_unit=2)
-println("Bar plot saved → $outpath_bar")
-display(fig2)
+colgap!(fig.layout, 1, 8)
+
+
+outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_DepthSplit.png")
+save(outpath, fig, px_per_unit=2)
+println("Bar plot saved → $outpath")
+display(fig)
 
 
 

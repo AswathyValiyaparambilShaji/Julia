@@ -244,7 +244,7 @@ dp = compute_avgs(deep_mask, total_area_deep)
 # ============================================================
 #FONT = "MathJax_Main"
 #FONT = "FreeSans"
-FONT = "FreeSerif"
+FONT = "FreeSerif Bold"
 #FONT = "MathJax_Math"
 #FONT = "Liberation Sans"
 #FONT = "Liberation Serif"
@@ -336,7 +336,7 @@ function add_budget_lines!(ax, d, t_numeric, sc)
     lines!(ax, t_numeric, d.BP       .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",      color=c_bp,   linewidth=1.8)
     lines!(ax, t_numeric, d.A        .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
     lines!(ax, t_numeric, d.ET       .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-    lines!(ax, t_numeric, d.Residual .* sc; label="⟨R⟩  Residual (D)",         color=c_res,  linewidth=1.8)
+    lines!(ax, t_numeric, d.Residual .* sc; label="⟨D⟩  Residual ",         color=c_res,  linewidth=1.8)
 end
 
 

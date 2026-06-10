@@ -63,27 +63,39 @@ end
 
 zf = ζ_full[ :,:,1]
 # Create figure
-fig = Figure(resolution=(600, 800))
+FONT = "FreeSerif Bold"
+
+fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 ax = Axis(fig[1, 1],
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]",
     title = "Normalized Vorticity ",
-    titlesize=26,
-    ylabelsize = 22,
-    xlabelsize = 22,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
 
 hm = CairoMakie.heatmap!(ax, lon, lat, zf,
     interpolate = false,colorrange=(-0.5, 0.5), colormap=Reverse(:RdBu))
 
 
-Colorbar(fig[1, 2], hm, label = "ζ/f")
+Colorbar(fig[1, 2], hm, label = "ζ/f", labelsize = 12, ticklabelsize=12 , width = 5)
 
+colgap!(fig.layout,1,5)
 
 display(fig)
 
 
 # Save figure
 FIGDIR        = cfg["fig_base"]
-save(joinpath(FIGDIR, "Vorticity_v2.png"), fig)
-
+save(joinpath(FIGDIR, "Vorticity_v3.png"), fig)
+png_file = joinpath(FIGDIR, "Vorticity_v3.png")
+println("PNG saved: $png_file")

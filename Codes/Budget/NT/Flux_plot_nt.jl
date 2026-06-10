@@ -118,7 +118,7 @@ QUIVER_STEP   = 20
 ARROW_SCALEUP = 5.0
 DO_TRANSPOSE  = false
 
-FONT = "FreeSerif"
+FONT = "FreeSerif Bold"
 
 mkpath(FIGDIR)
 

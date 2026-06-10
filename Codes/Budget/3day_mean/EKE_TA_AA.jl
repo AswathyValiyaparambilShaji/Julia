@@ -138,6 +138,7 @@ println("Total area: $(sum(dA)) m²")
 =#
 using CairoMakie
 
+FONT = "FreeSerif Bold"
 
 fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5),
              fonts=(; regular=FONT))
@@ -163,7 +164,8 @@ hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg,
     interpolate=false)
 
 
-Colorbar(fig[1, 2], hm, label="[J/m³]")
+Colorbar(fig[1, 2], hm, label="[J/m³]", labelsize = 12, ticklabelsize=12 , width = 5)
+colgap!(fig.layout,1,5)
 
 
 display(fig)
@@ -171,7 +173,9 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "EKE_v4.png"), fig)
+png_file =joinpath(FIGDIR, "EKE_v5.png")
+save(joinpath(FIGDIR, "EKE_v5.png"), fig)
+println("PNG saved: $png_file")
 
 #
 
