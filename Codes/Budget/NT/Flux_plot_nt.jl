@@ -46,6 +46,7 @@ println("Reading time series flux files and computing time + depth averages...")
 
 tfx = zeros(NX, NY)
 tfy = zeros(NX, NY)
+FH = fill(NaN, NX, NY)
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -67,8 +68,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
             raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
             reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
         end)
-
-
+    # --- depth from hFacC ---
+        hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        depth   = dropdims(sum(DRFfull, dims=3), dims=3)
+        DRFfull[hFacC .== 0] .= 0.0
         # Time average over dim=4
         fx_tmean = mean(fx, dims=4)[:, :, :, 1]   # (nx, ny, nz)
         fy_tmean = mean(fy, dims=4)[:, :, :, 1]   # (nx, ny, nz)
@@ -93,7 +98,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         tfx[xs+1:xe-1, ys+1:ye-1] .= fxX[xsf:xef, ysf:yef, 1]
         tfy[xs+1:xe-1, ys+1:ye-1] .= fyY[xsf:xef, ysf:yef, 1]
-
+        FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
 
         fx = fy = fx_tmean = fy_tmean = nothing; GC.gc()
         println("Completed tile: $suffix")
@@ -127,20 +132,22 @@ Ux = DO_TRANSPOSE ? tfx'   : tfx
 Uy = DO_TRANSPOSE ? tfy'   : tfy
 
 
-fig = Figure(resolution = (600, 800))
+fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5))
 ax  = Axis(fig[1, 1],
     title      = "MITgcm  Flux ",
     xlabel     = "Longitude [°]",
     ylabel     = "Latitude [°]",
-    ylabelsize = 22,
-    xlabelsize = 22,
-    titlesize  = 26)
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16)
 
 
 hm = CairoMakie.heatmap!(ax, lon, lat, F,
     interpolate = false,
     colorrange  = (0, HEAT_CBAR_MAX),
-    colormap    = :Spectral_9)
+    colormap    = cgrad(:Spectral_9,rev = true))
 
 
 pos    = Point2f[]
@@ -164,10 +171,17 @@ if !isempty(arrvec)
     arrows!(ax, pos, scale .* arrvec, color=:black, arrowsize=8, linewidth=1.5)
 end
 
+contour!(ax, lon, lat, FH;
+    levels     = [500, 1500, 3000.0],
+    color      = :black,
+    linewidth  = 2,
+    linestyle  = :solid,
+    labels     = true,
+    labelsize  = 10,
+    labelcolor = :black)
+Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 12, ticklabelsize=12 , width = 5)
 
-Colorbar(fig[1, 2], hm, label = "(kW/m)")
-
-
+colgap!(fig.layout,1,5)
 png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V3.png")
 save(png_file, fig)
 display(fig)

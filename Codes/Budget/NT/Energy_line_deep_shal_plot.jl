@@ -34,7 +34,7 @@ nt3 = div(nt, 3*24)
 
 
 rho0 = 1027.5
-DEPTH_THRESHOLD = 3500.0
+DEPTH_THRESHOLD = 3000.0
 
 
 # --- Date axis ---
