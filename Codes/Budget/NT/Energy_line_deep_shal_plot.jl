@@ -37,8 +37,20 @@ rho0 = 1027.5
 DEPTH_THRESHOLD = 3000.0
 
 
+
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+@info "Safe 3-day chunks: $(length(safe_chunks)) of $n_chunks  (chunks $(safe_chunks[1])–$(safe_chunks[end]))"
+
 # --- Date axis ---
-t_origin = DateTime(2012, 3, 1, 0, 0, 0)
+t_origin = DateTime(2012, 3, 4, 0, 0, 0)
 # Each 3-day period: centre date at origin + (i-1)*3 days + 1.5 days offset
 dates_3day = [t_origin + Day(3*(i-1)) + Hour(36) for i in 1:nt3]
 

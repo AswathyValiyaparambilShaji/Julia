@@ -27,6 +27,15 @@ Tts = 366192
 nt = div(Tts, dto)
 nt_chunk = 72
 n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 
 t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
 t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
@@ -80,15 +89,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         open(joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin"), "w") do io
-            write(io, Float32.(mean(flxD, dims=3)))
+            write(io, Float32.(mean(flxD[:, :, t_safe_start:t_safe_end], dims=3)))
         end
 
 
-        FDiv_3day = zeros(Float32, nx-2, ny-2, n_chunks)
-        for c in 1:n_chunks
+        FDiv_3day = zeros(Float32, nx-2, ny-2, length(safe_chunks))
+        for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            FDiv_3day[:, :, c] = Float32.(mean(flxD[:, :, t1:t2], dims=3)[:, :, 1])
+            FDiv_3day[:, :, i] = Float32.(mean(flxD[:, :, t1:t2], dims=3)[:, :, 1])
         end
         open(joinpath(base2, "FDiv_3day", "FDiv_3day_nt_$suffix2.bin"), "w") do io
             write(io, FDiv_3day)

@@ -34,6 +34,16 @@ dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
 
 rho0 = 1027.5
 
@@ -221,7 +231,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Time average the WPI
-        wpi_mean = mean(wpi_tile, dims=3)[:, :, 1]
+        wpi_mean = mean(wpi_tile[:, :, t_safe_start:t_safe_end], dims=3)[:, :, 1]
 
        
 
@@ -242,7 +252,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_V_full[xs+2:xe-2,    ys+2:ye-2] .= sp_v_mean[buf:nx-buf+1, buf:ny-buf+1]
         BP_full[xs+2:xe-2,      ys+2:ye-2] .= bp_mean[buf:nx-buf+1,   buf:ny-buf+1]
         ET_full[xs+2:xe-2,      ys+2:ye-2] .= te_mean[buf:nx-buf+1,   buf:ny-buf+1]
-        
+        WPI_full[xs+2:xe-2,     ys+2:ye-2] .= wpi_mean[buf:nx-buf+1,  buf:ny-buf+1]
+  
     end
 end
 

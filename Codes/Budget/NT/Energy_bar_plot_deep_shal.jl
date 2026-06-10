@@ -43,6 +43,16 @@ DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 println("Computing area-averaged budget terms for $nt3 3-day periods...")
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+@info "Safe 3-day chunks: $(length(safe_chunks)) of $n_chunks  (chunks $(safe_chunks[1])–$(safe_chunks[end]))"
 
 # --- Global arrays ---
 Conv_full = zeros(NX, NY, nt3)
@@ -52,7 +62,9 @@ U_PE_full = zeros(NX, NY, nt3)
 SP_H_full = zeros(NX, NY, nt3)
 SP_V_full = zeros(NX, NY, nt3)
 BP_full   = zeros(NX, NY, nt3)
-ET_full   = zeros(NX, NY, nt3)
+ET_full   = zeros(NX, NY, nt3-2)
+WPI_full   = zeros(NX, NY, nt3-2)
+
 FH        = zeros(NX, NY)
 RAC       = zeros(NX, NY)
 
@@ -76,15 +88,6 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         rac = dx .* dy
 
 
-        println("  Reading KE...")
-        DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))
-        ke_di = open(joinpath(base2, "KE", "ke_t_nt_$suffix.bin"), "r") do io
-            ke_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
-            Float64.(dropdims(sum(ke_raw .* DRFfull4_f32, dims=3), dims=3))
-        end
-
-
-        println("  Reading APE...")
         DRF3d4_f32 = Float32.(reshape(DRF3d, nx, ny, nz, 1))
 
 
@@ -118,7 +121,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         end)
         te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        # --- Read Wind Power Input (with time dimension) ---
+        wpi_tile = Float64.(open(joinpath(base2, "WindInput", "wpi_nt_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
         end)
 
 
@@ -127,7 +135,13 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
 
-
+        # Time average the WPI
+        wpi_3day = zeros(nx,ny,nt3-2)
+        for (i, c) in enumerate(safe_chunks)
+             t1 = (c-1)*nt_chunk + 1
+            t2 = c*nt_chunk
+            wpi_3day[:, :, i] = Float32.(dropdims(mean(wpi_tile[:, :, t1:t2], dims=3), dims=3))
+        end
         Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
         FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
         U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
@@ -136,6 +150,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        WPI_full[xs+2:xe-2, ys+2:ye-2,:] .= wpi_3day[buf:nx-buf+1,  buf:ny-buf+1,:]
         FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
         RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
@@ -143,7 +158,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         println("  Done.")
     end
 end
-
+size(Conv_full)
 
 # ============================================================
 # Depth masks
@@ -185,7 +200,7 @@ end
 
 
 function compute_avgs(mask, area)
-    Conv_n = norm_field(Conv_full, mask, FH)
+    Conv_n = norm_field(Conv_full[:,:,2:nt3-1], mask, FH) .+ norm_field(WPI_full,   mask, FH)
     FDiv_n = norm_field(FDiv_full, mask, FH)
     U_KE_n = norm_field(U_KE_full, mask, FH)
     U_PE_n = norm_field(U_PE_full, mask, FH)
@@ -198,7 +213,7 @@ function compute_avgs(mask, area)
     A_n         = U_KE_n .+ U_PE_n
     TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
     PS_n        = SP_H_n .+ SP_V_n
-    Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+    Residual_n  = -(Conv_n.- TotalFlux_n[:,:,2:nt3-1] .+ PS_n[:,:,2:nt3-1] .+ BP_n[:,:,2:nt3-1] .- ET_n)
 
 
     return (
@@ -210,10 +225,11 @@ function compute_avgs(mask, area)
         A        = area_avg(A_n,        mask, RAC, area),
         ET       = area_avg(ET_n,       mask, RAC, area),
         Residual = area_avg(Residual_n, mask, RAC, area),
+        
     )
 end
 
-
+#cwi = Conv .+ 
 println("\nComputing shallow averages...")
 sh = compute_avgs(shallow_mask, total_area_shallow)
 
@@ -248,6 +264,7 @@ function time_mean_terms(d, sc)
         A        = mean(d.A)        * sc,
         ET       = mean(d.ET)       * sc,
         Residual = mean(d.Residual) * sc,
+
     )
 end
 
@@ -268,7 +285,7 @@ labels = [
     "⟨Pₛᴴ⟩  Horiz. shear prod.",
     "⟨∂E/∂t⟩  Tendency",
     "⟨∇·F⟩  Flux divergence",
-    "⟨C⟩  Conversion",
+    "⟨C⟩  + ⟨WI⟩",
 ] #
 #=
 labels = [

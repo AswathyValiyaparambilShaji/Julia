@@ -30,6 +30,15 @@ nt_avg = div(nt, ts)
 nt_chunk = 72
 n_chunks = div(nt, nt_chunk)
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 
 
 t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
@@ -136,15 +145,15 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         open(joinpath(base2, "U_PE", "u_pe_nt_$suffix.bin"), "w") do io
-            write(io, Float32.(dropdims(mean(U_PE, dims=3), dims=3)))
+            write(io, Float32.(dropdims(mean(U_PE[:, :, t_safe_start:t_safe_end], dims=3), dims=3)))
         end
 
 
-        U_PE_3day = zeros(Float32, nx, ny, n_chunks)
-        for c in 1:n_chunks
+        U_PE_3day = zeros(Float32, nx, ny, length(safe_chunks))
+        for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            U_PE_3day[:, :, c] = Float32.(dropdims(mean(U_PE[:, :, t1:t2], dims=3), dims=3))
+            U_PE_3day[:, :, i] = Float32.(dropdims(mean(U_PE[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "U_PE_3day", "u_pe_3day_nt_$suffix.bin"), "w") do io
             write(io, U_PE_3day)

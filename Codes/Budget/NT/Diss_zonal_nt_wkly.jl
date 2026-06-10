@@ -129,6 +129,16 @@ Siva_Diss_integrated = dropdims(sum(F_masked .* DRF3d_full .* hFacC_full, dims=3
 # ============================================================================
 # PART 3: CALCULATE ENERGY BUDGET DISSIPATION (RESIDUAL)
 # ============================================================================
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
 
 
 # Initialize arrays for energy budget terms

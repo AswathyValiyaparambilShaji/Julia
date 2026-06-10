@@ -32,11 +32,24 @@ dt_output = dt * dto
 
 
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
+
 t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
 t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
 t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
 wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+# Weekly window is in May — well clear of the March ringing zone, no change needed
+
 
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
@@ -61,11 +74,9 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         dEdt = zeros(Float64, nx, ny, nz, nt)
-        dEdt[:, :, :, 1]    = (TE[:, :, :, 2]  .- TE[:, :, :, 1])    ./ dt_output
         for t in 2:nt-1
             dEdt[:, :, :, t] = (TE[:, :, :, t+1] .- TE[:, :, :, t-1]) ./ (2 * dt_output)
         end
-        dEdt[:, :, :, nt]   = (TE[:, :, :, nt] .- TE[:, :, :, nt-1]) ./ dt_output
         dEdt[isnan.(dEdt)] .= 0.0
         TE = nothing; GC.gc()
 
@@ -77,16 +88,25 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         dEdt = nothing; GC.gc()
 
 
+        # ---------------------------------------------------------------
+        # Full time average — safe interior only
+        # ---------------------------------------------------------------
         open(joinpath(base2, "TE_t", "te_t_nt_$suffix.bin"), "w") do io
-            write(io, Float32.(dropdims(mean(dEdt_di, dims=3), dims=3)))
+            write(io, Float32.(dropdims(
+                mean(dEdt_di[:, :, t_safe_start:t_safe_end], dims=3), dims=3)))
         end
 
 
-        TE_3day = zeros(Float32, nx, ny, n_chunks)
-        for c in 1:n_chunks
+        # ---------------------------------------------------------------
+        # 3-day averages — only write chunks entirely within safe range
+        # Output array has length = length(safe_chunks), not n_chunks
+        # ---------------------------------------------------------------
+        TE_3day = zeros(Float32, nx, ny, length(safe_chunks))
+        for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            TE_3day[:, :, c] = Float32.(dropdims(mean(dEdt_di[:, :, t1:t2], dims=3), dims=3))
+            TE_3day[:, :, i] = Float32.(dropdims(
+                mean(dEdt_di[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "w") do io
             write(io, TE_3day)
@@ -94,8 +114,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         TE_3day = nothing; GC.gc()
 
 
+        # ---------------------------------------------------------------
+        # Weekly average — window is in May, well inside safe range
+        # ---------------------------------------------------------------
         open(joinpath(base2, "TE_t_wkly2", "te_t_wkly_nt_$suffix.bin"), "w") do io
-            write(io, Float32.(dropdims(mean(dEdt_di[:, :, wk_start:wk_end], dims=3), dims=3)))
+            write(io, Float32.(dropdims(
+                mean(dEdt_di[:, :, wk_start:wk_end], dims=3), dims=3)))
         end
 
 
