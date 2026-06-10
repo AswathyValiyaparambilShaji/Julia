@@ -132,7 +132,8 @@ Ux = DO_TRANSPOSE ? tfx'   : tfx
 Uy = DO_TRANSPOSE ? tfy'   : tfy
 
 
-fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5))
+fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 ax  = Axis(fig[1, 1],
     title      = "MITgcm  Flux ",
     xlabel     = "Longitude [°]",
@@ -141,7 +142,13 @@ ax  = Axis(fig[1, 1],
     xlabelsize = 14,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16)
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    )
 
 
 hm = CairoMakie.heatmap!(ax, lon, lat, F,
@@ -182,7 +189,7 @@ contour!(ax, lon, lat, FH;
 Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 12, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
-png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V3.png")
+png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V4.png")
 save(png_file, fig)
 display(fig)
 println("PNG saved: $png_file")
