@@ -34,7 +34,7 @@ nt3 = div(nt, 3*24)
 
 
 rho0 = 1027.5
-DEPTH_THRESHOLD = 3000.0
+DEPTH_THRESHOLD = 3500.0
 
 
 # --- Date axis ---
@@ -342,7 +342,7 @@ end
 
 # Row 1 — shallow
 ax_sh = Axis(fig[1, 1];
-    title  = "Shallow region  (H < 3000 m)",
+    title  = "Shallow region  (H < 1000 m)",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     xticklabelsvisible = false,
     axis_theme...)
@@ -350,7 +350,7 @@ ax_sh = Axis(fig[1, 1];
 
 # Row 2 — deep
 ax_dp = Axis(fig[2, 1];
-    title  = "Deep region  (H ≥ 3000 m)",
+    title  = "Deep region  (H ≥ 1000 m)",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     axis_theme...)
 
@@ -370,7 +370,7 @@ linkxaxes!(ax_sh, ax_dp)
 #rowgap!(fig.layout, 1, 30)
 
 
-outpath = joinpath(FIGDIR, "Budget_TimeSeries_3day_DepthSplit.png")
+outpath = joinpath(FIGDIR, "Budget_TimeSeries_3day_DepthSplit_1000.png")
 save(outpath, fig, px_per_unit=2)
 println("Figure saved → $outpath")
 display(fig)
