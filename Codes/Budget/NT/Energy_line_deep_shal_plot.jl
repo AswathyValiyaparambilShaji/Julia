@@ -323,7 +323,7 @@ mkpath(FIGDIR)
 println("\nCreating depth-split figure...")
 
 
-fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white,
+fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
              fonts=(; regular=FONT))
 
 
@@ -342,7 +342,7 @@ end
 
 # Row 1 — shallow
 ax_sh = Axis(fig[1, 1];
-    title  = "Shallow region  (H < 1000 m)",
+    title  = "Shallow region  (H < 3000 m)",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     xticklabelsvisible = false,
     axis_theme...)
@@ -350,7 +350,7 @@ ax_sh = Axis(fig[1, 1];
 
 # Row 2 — deep
 ax_dp = Axis(fig[2, 1];
-    title  = "Deep region  (H ≥ 1000 m)",
+    title  = "Deep region  (H ≥ 3000 m)",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     axis_theme...)
 
@@ -365,12 +365,13 @@ axislegend(ax_dp; position=:rt, leg_style...)
 
 # Link x-axes so both panels always show same date range
 linkxaxes!(ax_sh, ax_dp)
+rowgap!(fig.layout,1,5)
 
 
 #rowgap!(fig.layout, 1, 30)
 
 
-outpath = joinpath(FIGDIR, "Budget_TimeSeries_3day_DepthSplit_1000.png")
+outpath = joinpath(FIGDIR, "Budget_TimeSeries_3day_DepthSplit_3000.png")
 save(outpath, fig, px_per_unit=2)
 println("Figure saved → $outpath")
 display(fig)

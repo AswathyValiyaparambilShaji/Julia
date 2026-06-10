@@ -1,4 +1,4 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML,Dates, CairoMakie
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
 
@@ -30,6 +30,23 @@ nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
 nt3 = div(nt, 3*24)
 
 rho0 = 1027.5
+
+# --- Date axis ---
+t_origin = DateTime(2012, 3, 1, 0, 0, 0)
+# Each 3-day period: centre date at origin + (i-1)*3 days + 1.5 days offset
+dates_3day = [t_origin + Day(3*(i-1)) + Hour(36) for i in 1:nt3]
+
+
+# Convert dates → numeric (days since origin) for plotting, keep DateTime for labels
+t_numeric  = [Dates.value(d - t_origin) / (1000*3600*24) for d in dates_3day]  # milliseconds→days
+
+
+# Tick positions: every ~15 days (every 5th 3-day period), formatted as "Mon DD\nYYYY"
+tick_every  = 5
+tick_inds   = 1:tick_every:nt3
+tick_vals   = t_numeric[tick_inds]
+tick_labels = [Dates.format(dates_3day[i], "u dd\nyyyy") for i in tick_inds]
+
 
 # --- Thickness ---
 thk  = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
@@ -175,6 +192,7 @@ SP_H_n  = norm_field(SP_H_full)
 SP_V_n  = norm_field(SP_V_full)
 BP_n    = norm_field(BP_full)
 ET_n    = norm_field(ET_full)
+FONT = "FreeSerif Bold"
 
 # Derived budget terms
 A_n          = U_KE_n .+ U_PE_n
@@ -211,6 +229,7 @@ c_et   = RGBf(0.55, 0.40, 0.05)   # dark gold       — tendency
 tick_col = RGBf(0.20, 0.20, 0.20)
 grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
 
+
 axis_theme = (
     backgroundcolor   = :white,
     xgridcolor        = grid_col,
@@ -225,17 +244,28 @@ axis_theme = (
     ylabelcolor       = RGBf(0.10, 0.10, 0.10),
     titlecolor        = RGBf(0.05, 0.05, 0.05),
     titlesize         = 15,
+    titlealign        = :left,
     xlabelsize        = 13,
     ylabelsize        = 13,
-    xticklabelsize    = 11,
+    xticklabelsize    = 10,
     yticklabelsize    = 11,
     spinewidth        = 0.8,
     topspinevisible   = false,
     rightspinevisible = false,
     leftspinecolor    = tick_col,
     bottomspinecolor  = tick_col,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    xticks            = (tick_vals, tick_labels),   # date ticks applied to every axis
 )
-sc = 1e8   # scale factor for display
+
+
+sc = 1e8
+
+
 leg_style = (
     framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
     backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
@@ -243,14 +273,15 @@ leg_style = (
     labelsize       = 11,
     rowgap          = 3,
     patchsize       = (22, 2),
+    nbanks          = 2,
+    labelfont       = FONT,
 )
 
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
 
-
-println("\nCreating Figure 2 (with tendency + BP & vert. shear)...")
-fig2 = Figure(resolution=(1200, 400), fontsize=14, backgroundcolor=:white)
+fig2 = Figure(resolution=(700, 250), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 
 
 
@@ -271,12 +302,12 @@ lines!(ax2a, time_days, SP_V_avg  .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.
 lines!(ax2a, time_days, BP_avg    .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",      color=c_bp,   linewidth=1.8)
 lines!(ax2a, time_days, A_avg     .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
 lines!(ax2a, time_days, ET_avg    .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax2a, time_days, Residual_avg .* sc; label="⟨R⟩  Residual (D)",      color=c_res,  linewidth=1.8)
+lines!(ax2a, time_days, Residual_avg .* sc; label="⟨D⟩  Residual ",      color=c_res,  linewidth=1.8)
 axislegend(ax2a; position=:rt, leg_style...)
-
+linkxaxes!(ax2a)
 #rowgap!(fig2.layout, 1, 24)
 
-outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_nt_v3.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_nt_v4.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
