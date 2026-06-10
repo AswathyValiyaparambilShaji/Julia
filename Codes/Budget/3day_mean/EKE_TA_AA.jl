@@ -139,14 +139,22 @@ println("Total area: $(sum(dA)) m²")
 using CairoMakie
 
 
-fig = Figure(size=(600, 800))
+fig = Figure(resolution = (350, 450), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 ax = Axis(fig[1, 1],
     xlabel="Longitude [°]",
     ylabel="Latitude [°]",
     title="EKE",
-    titlesize=26,
-    ylabelsize = 22,
-    xlabelsize = 22,
+    ylabelsize = 14,
+    xlabelsize = 14,
+    xticklabelsize    = 12,
+    yticklabelsize    = 12,
+    titlesize  = 16,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
     )
 
 
