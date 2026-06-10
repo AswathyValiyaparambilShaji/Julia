@@ -108,7 +108,7 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
         end
 
 
-        U_KE_3day = zeros(Float32, nx, ny, nt3-2)
+        U_KE_3day = zeros(Float32, nx, ny, length(safe_chunks))
         for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
