@@ -56,7 +56,7 @@ rho0  = 1027.5
 N2_threshold = 1.0e-8
 
 
-for xn in cfg["xn_start"]:cfg["xn_end"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         println("Starting tile: $suffix")
