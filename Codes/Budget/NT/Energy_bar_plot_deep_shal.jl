@@ -259,6 +259,7 @@ dp_mean = time_mean_terms(dp, sc)
 # ============================================================
 # Labels and values — bottom to top order
 # ============================================================
+# =
 labels = [
     "⟨R⟩  Residual ",
     "⟨A⟩  Advection",
@@ -268,7 +269,19 @@ labels = [
     "⟨∂E/∂t⟩  Tendency",
     "⟨∇·F⟩  Flux divergence",
     "⟨C⟩  Conversion",
+] #
+#=
+labels = [
+    "⟨D⟩    ",
+    "⟨A⟩    ",
+    "⟨Pᵦ⟩    ",
+    "⟨Pₛᵛ⟩  ",
+    "⟨Pₛᴴ⟩  ",
+    "⟨∂E/∂t⟩",
+    "⟨∇·F⟩  ",
+    "⟨C⟩    ",
 ]
+=#
 
 
 function extract_vals(d)
@@ -375,6 +388,7 @@ for (ax, vals, cols) in [(ax_sh, sh_vals, sh_colors), (ax_dp, dp_vals, dp_colors
         bar_labels  = [@sprintf("%.3f", v) for v in vals],
         label_size  = 10,
         label_font  = FONT,
+        label_rotation = π/2,
         label_color = RGBf(0.15, 0.15, 0.15),
         gap         = 0.25,
     )

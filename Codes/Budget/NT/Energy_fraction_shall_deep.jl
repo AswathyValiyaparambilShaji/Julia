@@ -34,6 +34,7 @@ nt3 = div(nt, 3*24)
 
 
 rho0 = 1027.5
+DEPTH_THRESHOLD = 3000.0
 
 
 # --- Date axis ---
@@ -157,14 +158,20 @@ end
 
 
 # ============================================================
-# Full domain mask (all valid points)
+# Depth masks
 # ============================================================
-valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
-total_area = sum(RAC[valid_mask])
+valid_mask   = (RAC .> 0.0) .& (FH .> 0.0)
+shallow_mask = valid_mask .& (FH .<  DEPTH_THRESHOLD)
+deep_mask    = valid_mask .& (FH .>= DEPTH_THRESHOLD)
 
 
-println("\nTotal valid points : $(sum(valid_mask))")
-println("Total area         : $(total_area) m²")
+println("\nValid points         : $(sum(valid_mask))")
+println("Shallow (<$(Int(DEPTH_THRESHOLD)) m) : $(sum(shallow_mask))")
+println("Deep    (>=$(Int(DEPTH_THRESHOLD)) m) : $(sum(deep_mask))")
+
+
+total_area_shallow = sum(RAC[shallow_mask])
+total_area_deep    = sum(RAC[deep_mask])
 
 
 # ============================================================
@@ -189,71 +196,76 @@ function norm_field(F, mask, FH)
 end
 
 
+function compute_avgs(mask, area)
+    Conv_n = norm_field(Conv_full, mask, FH)
+    FDiv_n = norm_field(FDiv_full, mask, FH)
+    U_KE_n = norm_field(U_KE_full, mask, FH)
+    U_PE_n = norm_field(U_PE_full, mask, FH)
+    SP_H_n = norm_field(SP_H_full, mask, FH)
+    SP_V_n = norm_field(SP_V_full, mask, FH)
+    BP_n   = norm_field(BP_full,   mask, FH)
+    ET_n   = norm_field(ET_full,   mask, FH)
+
+
+    A_n         = U_KE_n .+ U_PE_n
+    TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
+    PS_n        = SP_H_n .+ SP_V_n
+    Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+
+
+    return (
+        Conv     = area_avg(Conv_n,     mask, RAC, area),
+        FDiv     = area_avg(FDiv_n,     mask, RAC, area),
+        SP_H     = area_avg(SP_H_n,     mask, RAC, area),
+        SP_V     = area_avg(SP_V_n,     mask, RAC, area),
+        BP       = area_avg(BP_n,       mask, RAC, area),
+        A        = area_avg(A_n,        mask, RAC, area),
+        ET       = area_avg(ET_n,       mask, RAC, area),
+        Residual = area_avg(Residual_n, mask, RAC, area),
+        PS       = area_avg(PS_n,       mask, RAC, area),
+    )
+end
+
+
+println("\nComputing shallow averages...")
+sh = compute_avgs(shallow_mask, total_area_shallow)
+
+
+println("Computing deep averages...")
+dp = compute_avgs(deep_mask, total_area_deep)
+
+
 # ============================================================
-# Compute full-domain area-averaged terms
-# ============================================================
-println("\nNormalising fields...")
-Conv_n = norm_field(Conv_full, valid_mask, FH)
-FDiv_n = norm_field(FDiv_full, valid_mask, FH)
-U_KE_n = norm_field(U_KE_full, valid_mask, FH)
-U_PE_n = norm_field(U_PE_full, valid_mask, FH)
-SP_H_n = norm_field(SP_H_full, valid_mask, FH)
-SP_V_n = norm_field(SP_V_full, valid_mask, FH)
-BP_n   = norm_field(BP_full,   valid_mask, FH)
-ET_n   = norm_field(ET_full,   valid_mask, FH)
-
-
-A_n        = U_KE_n .+ U_PE_n
-PS_n       = SP_H_n .+ SP_V_n
-MF_n       = BP_n   .+ PS_n                          # mean flow = Pb + Ps
-Residual_n = -(Conv_n .- (FDiv_n .+ A_n) .+ PS_n .+ BP_n .- ET_n)
-
-
-println("Area-averaging...")
-Conv_avg     = area_avg(Conv_n,     valid_mask, RAC, total_area)
-FDiv_avg     = area_avg(FDiv_n,     valid_mask, RAC, total_area)
-ET_avg       = area_avg(ET_n,       valid_mask, RAC, total_area)
-Residual_avg = area_avg(Residual_n, valid_mask, RAC, total_area)
-MF_avg       = area_avg(MF_n,       valid_mask, RAC, total_area)
-
-
-# ============================================================
-# Compute ratios  — denominator: C + WI (ET)
-# NaN-safe mean: filter out NaN before calling mean()
+# Compute ratios
+# Wind Input (WI) = ET term
+# Dissipation (D) = Residual
+# q1 = Dissipation   / (C + WI)
+# q2 = FDiv          / (C + WI)
+# q3 = (Pb + Ps)     / (C + WI)
 # ============================================================
 function safe_ratio(num, denom; tol=1e-30)
+    # Returns NaN where denominator is near zero to avoid blow-up
     return [abs(denom[t]) > tol ? num[t] / denom[t] : NaN for t in eachindex(denom)]
 end
 
 
-# NaN-safe mean (Julia has no nanmean — filter finite values)
-nanmean(x) = mean(filter(isfinite, x))
+function compute_ratios(d)
+    denom = d.Conv .+ d.ET                  # C + WI
+    PS    = d.SP_H .+ d.SP_V               # Ps = SP_H + SP_V
+    MF    = d.BP .+ PS                     # Mean flow: Pb + Ps
 
 
-denom = Conv_avg .+ ET_avg          # C + WI
+    q1 = safe_ratio(d.Residual, denom)     # Dissipation / (C + WI)
+    q2 = safe_ratio(d.FDiv,     denom)     # Flux divergence / (C + WI)
+    q3 = safe_ratio(MF,         denom)     # (Pb + Ps) / (C + WI)
 
 
-q1 = safe_ratio(Residual_avg, denom)   # Dissipation   / (C + WI)
-q2 = safe_ratio(FDiv_avg,     denom)   # Flux div      / (C + WI)
-q3 = safe_ratio(MF_avg,       denom)   # Mean flow     / (C + WI)
+    return (q1=q1, q2=q2, q3=q3)
+end
 
 
-# ============================================================
-# Print time-averaged percentages
-# ============================================================
-q1_pct = nanmean(q1) * 100
-q2_pct = nanmean(q2) * 100
-q3_pct = nanmean(q3) * 100
-
-
-println("\n========================================")
-println("  Time-averaged fractions (full domain)")
-println("========================================")
-@printf("  Dissipation  ⟨R⟩ / (⟨C⟩ + WI)           : %7.2f %%\n", q1_pct)
-@printf("  Flux div     ⟨∇·F⟩ / (⟨C⟩ + WI)         : %7.2f %%\n", q2_pct)
-@printf("  Mean flow    (⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩ + WI)  : %7.2f %%\n", q3_pct)
-@printf("  Sum of three fractions                   : %7.2f %%\n", q1_pct + q2_pct + q3_pct)
-println("========================================\n")
+sh_r = compute_ratios(sh)
+dp_r = compute_ratios(dp)
 
 
 # ============================================================
@@ -264,9 +276,10 @@ tick_col = RGBf(0.20, 0.20, 0.20)
 grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
 
 
-c_q1 = RGBf(0.80, 0.10, 0.10)   # red   — dissipation
-c_q2 = RGBf(0.10, 0.40, 0.75)   # blue  — flux divergence
-c_q3 = RGBf(0.10, 0.55, 0.25)   # green — mean flow
+# Line colors for the 3 ratios
+c_q1 = RGBf(0.80, 0.10, 0.10)   # red   — dissipation fraction
+c_q2 = RGBf(0.10, 0.40, 0.75)   # blue  — flux divergence fraction
+c_q3 = RGBf(0.10, 0.55, 0.25)   # green — mean flow fraction
 
 
 axis_theme = (
@@ -319,52 +332,54 @@ mkpath(FIGDIR)
 
 
 # ============================================================
-# Figure — single panel, full domain
+# Figure — two rows (shallow top, deep bottom)
 # ============================================================
-println("Creating ratio time-series figure (full domain)...")
+println("\nCreating ratio time-series figure...")
 
 
-fig = Figure(resolution=(700, 320), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
+fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
              fonts=(; regular=FONT, bold=FONT))
 
 
-ax = Axis(fig[1, 1];
-    title  = "Full domain  —  Energy fraction time series",
+function add_ratio_lines!(ax, r, t_numeric)
+    hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
+    hlines!(ax, [1.0]; color=RGBAf(0,0,0,0.2), linewidth=0.8, linestyle=:dot)
+    lines!(ax, t_numeric, r.q1; label="q = ⟨R⟩ / (⟨C⟩ + WI)  [Dissipation fraction]",   color=c_q1, linewidth=1.8)
+    lines!(ax, t_numeric, r.q2; label="⟨∇·F⟩ / (⟨C⟩ + WI)  [Flux divergence fraction]", color=c_q2, linewidth=1.8)
+    lines!(ax, t_numeric, r.q3; label="(⟨Pᵦ⟩ + ⟨Pₛ⟩) / (⟨C⟩ + WI)  [Mean flow fraction]", color=c_q3, linewidth=1.8)
+end
+
+
+# Row 1 — shallow
+ax_sh = Axis(fig[1, 1];
+    title  = "Shallow region  (H < $(Int(DEPTH_THRESHOLD)) m)",
+    ylabel = "Fraction  [ ]",
+    xticklabelsvisible = false,
+    axis_theme...)
+
+
+# Row 2 — deep
+ax_dp = Axis(fig[2, 1];
+    title  = "Deep region  (H ≥ $(Int(DEPTH_THRESHOLD)) m)",
     ylabel = "Fraction  [ ]",
     axis_theme...)
 
 
-# Reference lines
-hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.30), linewidth=0.8, linestyle=:dash)
-hlines!(ax, [1.0]; color=RGBAf(0,0,0,0.20), linewidth=0.8, linestyle=:dot)
+add_ratio_lines!(ax_sh, sh_r, t_numeric)
+add_ratio_lines!(ax_dp, dp_r, t_numeric)
 
 
-# Replace NaN with missing so CairoMakie skips gaps cleanly
-to_plot(v) = [isfinite(x) ? x : missing for x in v]
+axislegend(ax_sh; position=:rt, leg_style...)
+axislegend(ax_dp; position=:rt, leg_style...)
 
 
-lines!(ax, t_numeric, to_plot(q1);
-    label     = @sprintf("⟨R⟩ / (⟨C⟩+WI)  [Dissipation]  —  mean = %.1f %%", q1_pct),
-    color     = c_q1,
-    linewidth = 1.8)
+linkxaxes!(ax_sh, ax_dp)
 
 
-lines!(ax, t_numeric, to_plot(q2);
-    label     = @sprintf("⟨∇·F⟩ / (⟨C⟩+WI)  [Flux div]     —  mean = %.1f %%", q2_pct),
-    color     = c_q2,
-    linewidth = 1.8)
+rowgap!(fig.layout, 1, 8)
 
 
-lines!(ax, t_numeric, to_plot(q3);
-    label     = @sprintf("(⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩+WI)  [Mean flow]  —  mean = %.1f %%", q3_pct),
-    color     = c_q3,
-    linewidth = 1.8)
-
-
-axislegend(ax; position=:rt, leg_style...)
-
-
-outpath = joinpath(FIGDIR, "Budget_Ratios_FullDomain_TimeSeries.png")
+outpath = joinpath(FIGDIR, "Budget_Ratios_TimeSeries_DepthSplit.png")
 save(outpath, fig, px_per_unit=2)
 println("Figure saved → $outpath")
 display(fig)
