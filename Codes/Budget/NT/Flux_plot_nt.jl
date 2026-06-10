@@ -181,12 +181,13 @@ end
 
 contour!(ax, lon, lat, FH;
     levels     = [500, 1500, 3000.0],
-    color      = :black,
+    color      = RGBf(0.25,0.25,0.25),
     linewidth  = 2,
     linestyle  = :solid,
     labels     = true,
     labelsize  = 10,
-    labelcolor = :black)
+    labelfont = "FreeSerif",
+    labelcolor = RGBf(0.25,0.25,0.25))
 Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 14, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
