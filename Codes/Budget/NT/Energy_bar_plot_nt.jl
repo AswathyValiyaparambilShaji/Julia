@@ -388,7 +388,6 @@ fig = Figure(resolution=(520, 480), backgroundcolor=:white,
 
 
 ax_fl = Axis(fig[1, 1];
-  title  = "(a)  Full area",
   xlabel = "Energy rate  [×10⁻⁸ W/kg]",
   bar_theme...)
 
