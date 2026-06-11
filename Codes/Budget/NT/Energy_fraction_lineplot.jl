@@ -79,6 +79,7 @@ BP_full   = zeros(NX, NY, nt3-2)
 ET_full   = zeros(NX, NY, nt3-2)
 FH        = zeros(NX, NY)
 RAC       = zeros(NX, NY)
+WPI_full  = zeros(NX, NY, nt3-2)
 
 
 # ============================================================
