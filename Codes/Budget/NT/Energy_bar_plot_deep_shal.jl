@@ -31,6 +31,8 @@ nt  = div(Tts, dto)
 ts  = 72
 nt_avg = div(nt, ts)
 nt3 = div(nt, 3*24)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
 
 
 rho0 = 1027.5

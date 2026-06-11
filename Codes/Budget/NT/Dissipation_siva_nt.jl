@@ -33,7 +33,9 @@ ny = ty + 2 * buf
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
-
+nt3 = div(nt, 3*24)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
 rho0 = 1027.5
 
 
