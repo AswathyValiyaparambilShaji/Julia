@@ -307,7 +307,7 @@ ax2a = Axis(fig2[1, 1];
     axis_theme...)
 
 hlines!(ax2a, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
-lines!(ax2a, time_days, Conv_avg.+WPI_avg  .* sc; label="⟨C⟩ + ⟨WI⟩ ",          color=c_conv, linewidth=1.8)
+lines!(ax2a, time_days, (Conv_avg.+WPI_avg)  .* sc; label="⟨C⟩ + ⟨WI⟩ ",          color=c_conv, linewidth=1.8)
 lines!(ax2a, time_days, FDiv_avg  .* sc; label="⟨∇·F⟩  Flux divergence",    color=c_fdiv, linewidth=1.8)
 lines!(ax2a, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
 lines!(ax2a, time_days, SP_V_avg  .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.",  color=c_psv,  linewidth=1.8)
