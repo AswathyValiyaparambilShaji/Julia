@@ -86,8 +86,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth   = dropdims(sum(DRFfull, dims=3), dims=3)
         DRFfull[hFacC .== 0] .= 0.0
         # Time average over dim=4
-        fx_tmean = mean(fx[:, :, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
-        fy_tmean = mean(fy[:, :, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
+        fx_tmean = mean(fx[:, :,:, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
+        fy_tmean = mean(fy[:, :,:, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
 
 
         # Depth integrate
