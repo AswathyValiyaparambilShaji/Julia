@@ -28,7 +28,8 @@ nt  = div(Tts, dto)          # total hourly timesteps
 ts  = 72                     # timesteps per 3-day period (3*24)
 nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
 nt3 = div(nt, 3*24)
-
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
 rho0 = 1027.5
 
 # --- Date axis ---
@@ -224,7 +225,7 @@ WPI_avg       = area_avg(WPI_n,       valid_mask, RAC, total_area)
 Residual_avg  = area_avg(Residual_n, valid_mask, RAC, total_area)
 
 # Time axis
-time_days = collect(1:nt3) .* 3
+time_days = collect(1:nt3-2) .* 3
 
 # ============================================================
 # Shared theme helpers
@@ -304,7 +305,6 @@ ax2a = Axis(fig2[1, 1];
     xlabel = "Time  [days]",
     ylabel = "Energy rate  [×10⁻⁸ W/kg]",
     axis_theme...)
-
 
 hlines!(ax2a, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 lines!(ax2a, time_days, Conv_avg.+WPI_avg  .* sc; label="⟨C⟩ + ⟨WI⟩ ",          color=c_conv, linewidth=1.8)
