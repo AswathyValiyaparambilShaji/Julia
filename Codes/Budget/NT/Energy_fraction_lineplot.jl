@@ -87,15 +87,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         rac = dx .* dy
 
 
-        println("  Reading KE...")
         DRFfull4_f32 = Float32.(reshape(DRFfull, nx, ny, nz, 1))
-        ke_di = open(joinpath(base2, "KE", "ke_t_nt_$suffix.bin"), "r") do io
-            ke_raw = reshape(read!(io, Array{Float32}(undef, nx, ny, nz, nt)), nx, ny, nz, nt)
-            Float64.(dropdims(sum(ke_raw .* DRFfull4_f32, dims=3), dims=3))
-        end
-
-
-        println("  Reading APE...")
+        
         DRF3d4_f32 = Float32.(reshape(DRF3d, nx, ny, nz, 1))
 
 
@@ -156,219 +149,216 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
-# ============================================================
-# Full domain mask (all valid points)
-# ============================================================
-valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
-total_area = sum(RAC[valid_mask])
+#= ============================================================
+    # Full domain mask (all valid points)
+    # ============================================================
+    valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
+    total_area = sum(RAC[valid_mask])
 
 
-println("\nTotal valid points : $(sum(valid_mask))")
-println("Total area         : $(total_area) m²")
+    println("\nTotal valid points : $(sum(valid_mask))")
+    println("Total area         : $(total_area) m²")
 
 
-# ============================================================
-# Helpers
-# ============================================================
-function area_avg(F, mask, RAC, total_area)
-    out = zeros(size(F, 3))
-    for t in axes(F, 3)
-        Ft = F[:, :, t]
-        out[t] = sum(Ft[mask] .* RAC[mask]) / total_area
+    # ============================================================
+    # Helpers
+    # ============================================================
+    function area_avg(F, mask, RAC, total_area)
+        out = zeros(size(F, 3))
+        for t in axes(F, 3)
+            Ft = F[:, :, t]
+            out[t] = sum(Ft[mask] .* RAC[mask]) / total_area
+        end
+        return out
     end
-    return out
-end
 
 
-function norm_field(F, mask, FH)
-    Fn = zeros(size(F))
-    for t in axes(F, 3)
-        Fn[mask, t] .= F[mask, t] ./ (rho0 .* FH[mask])
+    function norm_field(F, mask, FH)
+        Fn = zeros(size(F))
+        for t in axes(F, 3)
+            Fn[mask, t] .= F[mask, t] ./ (rho0 .* FH[mask])
+        end
+        return Fn
     end
-    return Fn
-end
 
 
-# ============================================================
-# Compute full-domain area-averaged terms
-# ============================================================
-println("\nNormalising fields...")
-Conv_n = norm_field(Conv_full, valid_mask, FH)
-FDiv_n = norm_field(FDiv_full, valid_mask, FH)
-U_KE_n = norm_field(U_KE_full, valid_mask, FH)
-U_PE_n = norm_field(U_PE_full, valid_mask, FH)
-SP_H_n = norm_field(SP_H_full, valid_mask, FH)
-SP_V_n = norm_field(SP_V_full, valid_mask, FH)
-BP_n   = norm_field(BP_full,   valid_mask, FH)
-ET_n   = norm_field(ET_full,   valid_mask, FH)
+    # ============================================================
+    # Compute full-domain area-averaged terms
+    # ============================================================
+    println("\nNormalising fields...")
+    Conv_n = norm_field(Conv_full, valid_mask, FH)
+    FDiv_n = norm_field(FDiv_full, valid_mask, FH)
+    U_KE_n = norm_field(U_KE_full, valid_mask, FH)
+    U_PE_n = norm_field(U_PE_full, valid_mask, FH)
+    SP_H_n = norm_field(SP_H_full, valid_mask, FH)
+    SP_V_n = norm_field(SP_V_full, valid_mask, FH)
+    BP_n   = norm_field(BP_full,   valid_mask, FH)
+    ET_n   = norm_field(ET_full,   valid_mask, FH)
 
 
-A_n        = U_KE_n .+ U_PE_n
-PS_n       = SP_H_n .+ SP_V_n
-MF_n       = BP_n   .+ PS_n                          # mean flow = Pb + Ps
-Residual_n = -(Conv_n .- (FDiv_n .+ A_n) .+ PS_n .+ BP_n .- ET_n)
+    A_n        = U_KE_n .+ U_PE_n
+    PS_n       = SP_H_n .+ SP_V_n
+    MF_n       = BP_n   .+ PS_n                          # mean flow = Pb + Ps
+    Residual_n = -(Conv_n .- (FDiv_n .+ A_n) .+ PS_n .+ BP_n .- ET_n)
 
 
-println("Area-averaging...")
-Conv_avg     = area_avg(Conv_n,     valid_mask, RAC, total_area)
-FDiv_avg     = area_avg(FDiv_n,     valid_mask, RAC, total_area)
-ET_avg       = area_avg(ET_n,       valid_mask, RAC, total_area)
-Residual_avg = area_avg(Residual_n, valid_mask, RAC, total_area)
-MF_avg       = area_avg(MF_n,       valid_mask, RAC, total_area)
+    println("Area-averaging...")
+    Conv_avg     = area_avg(Conv_n,     valid_mask, RAC, total_area)
+    FDiv_avg     = area_avg(FDiv_n,     valid_mask, RAC, total_area)
+    ET_avg       = area_avg(ET_n,       valid_mask, RAC, total_area)
+    Residual_avg = area_avg(Residual_n, valid_mask, RAC, total_area)
+    MF_avg       = area_avg(MF_n,       valid_mask, RAC, total_area)
 
 
-# ============================================================
-# Compute ratios  — denominator: C + WI (ET)
-# NaN-safe mean: filter out NaN before calling mean()
-# ============================================================
-function safe_ratio(num, denom; tol=1e-30)
-    return [abs(denom[t]) > tol ? num[t] / denom[t] : NaN for t in eachindex(denom)]
-end
+    # ============================================================
+    # Compute ratios  — denominator: C + WI (ET)
+    # NaN-safe mean: filter out NaN before calling mean()
+    # ============================================================
+    function safe_ratio(num, denom; tol=1e-30)
+        return [abs(denom[t]) > tol ? num[t] / denom[t] : NaN for t in eachindex(denom)]
+    end
 
 
-# NaN-safe mean (Julia has no nanmean — filter finite values)
-nanmean(x) = mean(filter(isfinite, x))
+    # NaN-safe mean (Julia has no nanmean — filter finite values)
+    nanmean(x) = mean(filter(isfinite, x))
 
 
-denom = Conv_avg .+ ET_avg          # C + WI
+    denom = Conv_avg .+ ET_avg          # C + WI
 
 
-q1 = safe_ratio(Residual_avg, denom)   # Dissipation   / (C + WI)
-q2 = safe_ratio(FDiv_avg,     denom)   # Flux div      / (C + WI)
-q3 = safe_ratio(MF_avg,       denom)   # Mean flow     / (C + WI)
+    q1 = safe_ratio(Residual_avg, denom)   # Dissipation   / (C + WI)
+    q2 = safe_ratio(FDiv_avg,     denom)   # Flux div      / (C + WI)
+    q3 = safe_ratio(MF_avg,       denom)   # Mean flow     / (C + WI)
 
 
-# ============================================================
-# Print time-averaged percentages
-# ============================================================
-q1_pct = nanmean(q1) * 100
-q2_pct = nanmean(q2) * 100
-q3_pct = nanmean(q3) * 100
+    # ============================================================
+    # Print time-averaged percentages
+    # ============================================================
+    q1_pct = nanmean(q1) * 100
+    q2_pct = nanmean(q2) * 100
+    q3_pct = nanmean(q3) * 100
 
 
-println("\n========================================")
-println("  Time-averaged fractions (full domain)")
-println("========================================")
-@printf("  Dissipation  ⟨R⟩ / (⟨C⟩ + WI)           : %7.2f %%\n", q1_pct)
-@printf("  Flux div     ⟨∇·F⟩ / (⟨C⟩ + WI)         : %7.2f %%\n", q2_pct)
-@printf("  Mean flow    (⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩ + WI)  : %7.2f %%\n", q3_pct)
-@printf("  Sum of three fractions                   : %7.2f %%\n", q1_pct + q2_pct + q3_pct)
-println("========================================\n")
+    println("\n========================================")
+    println("  Time-averaged fractions (full domain)")
+    println("========================================")
+    @printf("  Dissipation  ⟨R⟩ / (⟨C⟩ + WI)           : %7.2f %%\n", q1_pct)
+    @printf("  Flux div     ⟨∇·F⟩ / (⟨C⟩ + WI)         : %7.2f %%\n", q2_pct)
+    @printf("  Mean flow    (⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩ + WI)  : %7.2f %%\n", q3_pct)
+    @printf("  Sum of three fractions                   : %7.2f %%\n", q1_pct + q2_pct + q3_pct)
+    println("========================================\n")
 
 
-# ============================================================
-# Plot theme  (bold font throughout)
-# ============================================================
-FONT     = "FreeSerif Bold"
-tick_col = RGBf(0.20, 0.20, 0.20)
-grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
+    # ============================================================
+    # Plot theme  (bold font throughout)
+    # ============================================================
+    FONT     = "FreeSerif Bold"
+    tick_col = RGBf(0.20, 0.20, 0.20)
+    grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
 
 
-c_q1 = RGBf(0.80, 0.10, 0.10)   # red   — dissipation
-c_q2 = RGBf(0.10, 0.40, 0.75)   # blue  — flux divergence
-c_q3 = RGBf(0.10, 0.55, 0.25)   # green — mean flow
+    c_q1 = RGBf(0.80, 0.10, 0.10)   # red   — dissipation
+    c_q2 = RGBf(0.10, 0.40, 0.75)   # blue  — flux divergence
+    c_q3 = RGBf(0.10, 0.55, 0.25)   # green — mean flow
 
 
-axis_theme = (
-    backgroundcolor   = :white,
-    xgridcolor        = grid_col,
-    ygridcolor        = grid_col,
-    xgridwidth        = 0.6,
-    ygridwidth        = 0.6,
-    xtickcolor        = tick_col,
-    ytickcolor        = tick_col,
-    xticklabelcolor   = tick_col,
-    yticklabelcolor   = tick_col,
-    xlabelcolor       = RGBf(0.10, 0.10, 0.10),
-    ylabelcolor       = RGBf(0.10, 0.10, 0.10),
-    titlecolor        = RGBf(0.05, 0.05, 0.05),
-    titlesize         = 15,
-    titlealign        = :left,
-    xlabelsize        = 13,
-    ylabelsize        = 13,
-    xticklabelsize    = 10,
-    yticklabelsize    = 11,
-    spinewidth        = 0.8,
-    topspinevisible   = false,
-    rightspinevisible = false,
-    leftspinecolor    = tick_col,
-    bottomspinecolor  = tick_col,
-    titlefont         = FONT,
-    xlabelfont        = FONT,
-    ylabelfont        = FONT,
-    xticklabelfont    = FONT,
-    yticklabelfont    = FONT,
-    xticks            = (tick_vals, tick_labels),
-)
+    axis_theme = (
+        backgroundcolor   = :white,
+        xgridcolor        = grid_col,
+        ygridcolor        = grid_col,
+        xgridwidth        = 0.6,
+        ygridwidth        = 0.6,
+        xtickcolor        = tick_col,
+        ytickcolor        = tick_col,
+        xticklabelcolor   = tick_col,
+        yticklabelcolor   = tick_col,
+        xlabelcolor       = RGBf(0.10, 0.10, 0.10),
+        ylabelcolor       = RGBf(0.10, 0.10, 0.10),
+        titlecolor        = RGBf(0.05, 0.05, 0.05),
+        titlesize         = 15,
+        titlealign        = :left,
+        xlabelsize        = 13,
+        ylabelsize        = 13,
+        xticklabelsize    = 10,
+        yticklabelsize    = 11,
+        spinewidth        = 0.8,
+        topspinevisible   = false,
+        rightspinevisible = false,
+        leftspinecolor    = tick_col,
+        bottomspinecolor  = tick_col,
+        titlefont         = FONT,
+        xlabelfont        = FONT,
+        ylabelfont        = FONT,
+        xticklabelfont    = FONT,
+        yticklabelfont    = FONT,
+        xticks            = (tick_vals, tick_labels),
+    )
 
 
-leg_style = (
-    framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
-    backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
-    labelcolor      = RGBf(0.10, 0.10, 0.10),
-    labelsize       = 11,
-    rowgap          = 3,
-    patchsize       = (22, 2),
-    nbanks          = 1,
-    labelfont       = FONT,
-)
+    leg_style = (
+        framecolor      = RGBAf(0.3, 0.3, 0.3, 0.4),
+        backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
+        labelcolor      = RGBf(0.10, 0.10, 0.10),
+        labelsize       = 11,
+        rowgap          = 3,
+        patchsize       = (22, 2),
+        nbanks          = 1,
+        labelfont       = FONT,
+    )
 
 
-FIGDIR = cfg["fig_base"]
-mkpath(FIGDIR)
+    FIGDIR = cfg["fig_base"]
+    mkpath(FIGDIR)
 
 
-# ============================================================
-# Figure — single panel, full domain
-# ============================================================
-println("Creating ratio time-series figure (full domain)...")
+    # ============================================================
+    # Figure — single panel, full domain
+    # ============================================================
+    println("Creating ratio time-series figure (full domain)...")
 
 
-fig = Figure(resolution=(700, 320), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
-             fonts=(; regular=FONT, bold=FONT))
+    fig = Figure(resolution=(700, 320), fontsize=14, backgroundcolor=:white, figure_padding =(5,5,5,5),
+                fonts=(; regular=FONT, bold=FONT))
 
 
-ax = Axis(fig[1, 1];
-    title  = "Full domain  —  Energy fraction time series",
-    ylabel = "Fraction  [ ]",
-    axis_theme...)
+    ax = Axis(fig[1, 1];
+        title  = "Full domain  —  Energy fraction time series",
+        ylabel = "Fraction  [ ]",
+        axis_theme...)
 
 
-# Reference lines
-hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.30), linewidth=0.8, linestyle=:dash)
-hlines!(ax, [1.0]; color=RGBAf(0,0,0,0.20), linewidth=0.8, linestyle=:dot)
+    # Reference lines
+    hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.30), linewidth=0.8, linestyle=:dash)
+    hlines!(ax, [1.0]; color=RGBAf(0,0,0,0.20), linewidth=0.8, linestyle=:dot)
 
 
-# Replace NaN with missing so CairoMakie skips gaps cleanly
-to_plot(v) = [isfinite(x) ? x : missing for x in v]
+    # Replace NaN with missing so CairoMakie skips gaps cleanly
+    to_plot(v) = [isfinite(x) ? x : missing for x in v]
 
 
-lines!(ax, t_numeric, to_plot(q1);
-    label     = @sprintf("⟨R⟩ / (⟨C⟩+WI)  [Dissipation]  —  mean = %.1f %%", q1_pct),
-    color     = c_q1,
-    linewidth = 1.8)
+    lines!(ax, t_numeric, to_plot(q1);
+        label     = @sprintf("⟨R⟩ / (⟨C⟩+WI)  [Dissipation]  —  mean = %.1f %%", q1_pct),
+        color     = c_q1,
+        linewidth = 1.8)
 
 
-lines!(ax, t_numeric, to_plot(q2);
-    label     = @sprintf("⟨∇·F⟩ / (⟨C⟩+WI)  [Flux div]     —  mean = %.1f %%", q2_pct),
-    color     = c_q2,
-    linewidth = 1.8)
+    lines!(ax, t_numeric, to_plot(q2);
+        label     = @sprintf("⟨∇·F⟩ / (⟨C⟩+WI)  [Flux div]     —  mean = %.1f %%", q2_pct),
+        color     = c_q2,
+        linewidth = 1.8)
 
 
-lines!(ax, t_numeric, to_plot(q3);
-    label     = @sprintf("(⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩+WI)  [Mean flow]  —  mean = %.1f %%", q3_pct),
-    color     = c_q3,
-    linewidth = 1.8)
+    lines!(ax, t_numeric, to_plot(q3);
+        label     = @sprintf("(⟨Pᵦ⟩+⟨Pₛ⟩) / (⟨C⟩+WI)  [Mean flow]  —  mean = %.1f %%", q3_pct),
+        color     = c_q3,
+        linewidth = 1.8)
 
 
-axislegend(ax; position=:rt, leg_style...)
+    axislegend(ax; position=:rt, leg_style...)
 
 
-outpath = joinpath(FIGDIR, "Budget_Ratios_FullDomain_TimeSeries.png")
-save(outpath, fig, px_per_unit=2)
-println("Figure saved → $outpath")
-display(fig)
-
-
-
-
+    outpath = joinpath(FIGDIR, "Budget_Ratios_FullDomain_TimeSeries.png")
+    save(outpath, fig, px_per_unit=2)
+    println("Figure saved → $outpath")
+    display(fig)
+=#

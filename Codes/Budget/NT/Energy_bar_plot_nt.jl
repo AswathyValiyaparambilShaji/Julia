@@ -189,78 +189,308 @@ end
 
 
 
+    #= ============================================================
+    # Depth masks
+    # ============================================================
+    valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
+
+
+
+
+    total_area_full = sum(RAC[valid_mask])
+
+
+
+
+    # ============================================================
+    # Helpers
+    # ============================================================
+    function area_avg(F, mask, RAC, total_area)
+    out = zeros(size(F, 3))
+    for t in axes(F, 3)
+        Ft = F[:, :, t]
+        out[t] = sum(Ft[mask] .* RAC[mask]) / total_area
+    end
+    return out
+    end
+
+
+    function norm_field(F, mask, FH)
+    Fn = zeros(size(F))
+    for t in axes(F, 3)
+        Fn[mask, t] .= F[mask, t] ./ (rho0 .* FH[mask])
+    end
+    return Fn
+    end
+
+
+
+
+    function compute_avgs(mask, area)
+    Conv_n = norm_field(Conv_full, mask, FH) .+ norm_field(WPI_full,   mask, FH)
+    FDiv_n = norm_field(FDiv_full, mask, FH)
+    U_KE_n = norm_field(U_KE_full, mask, FH)
+    U_PE_n = norm_field(U_PE_full, mask, FH)
+    SP_H_n = norm_field(SP_H_full, mask, FH)
+    SP_V_n = norm_field(SP_V_full, mask, FH)
+    BP_n   = norm_field(BP_full,   mask, FH)
+    ET_n   = norm_field(ET_full,   mask, FH)
+    A_n         = U_KE_n .+ U_PE_n
+    TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
+    PS_n        = SP_H_n .+ SP_V_n
+    Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+
+
+
+
+    return (
+        Conv     = area_avg(Conv_n,     mask, RAC, area),
+        FDiv     = area_avg(FDiv_n,     mask, RAC, area),
+        SP_H     = area_avg(SP_H_n,     mask, RAC, area),
+        SP_V     = area_avg(SP_V_n,     mask, RAC, area),
+        BP       = area_avg(BP_n,       mask, RAC, area),
+        A        = area_avg(A_n,        mask, RAC, area),
+        ET       = area_avg(ET_n,       mask, RAC, area),
+        Residual = area_avg(Residual_n, mask, RAC, area),
+    )
+    end
+
+
+    println("\nComputing full area averages...")
+    fl = compute_avgs(valid_mask, total_area_full)
+
+
+
+
+    # ============================================================
+    # Plot theme
+    # ============================================================
+    FONT     = "FreeSerif Bold"
+    tick_col = RGBf(0.20, 0.20, 0.20)
+    grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
+    sc       = 1e8
+
+
+
+
+    FIGDIR = cfg["fig_base"]
+    mkpath(FIGDIR)
+
+
+
+
+    # ============================================================
+    # Time-mean and std of each term
+    # ============================================================
+    function time_mean_std_terms(d, sc)
+    return (
+        Conv     = (mean(d.Conv)     * sc, std(d.Conv)     * sc),
+        FDiv     = (mean(d.FDiv)     * sc, std(d.FDiv)     * sc),
+        SP_H     = (mean(d.SP_H)     * sc, std(d.SP_H)     * sc),
+        SP_V     = (mean(d.SP_V)     * sc, std(d.SP_V)     * sc),
+        BP       = (mean(d.BP)       * sc, std(d.BP)       * sc),
+        A        = (mean(d.A)        * sc, std(d.A)        * sc),
+        ET       = (mean(d.ET)       * sc, std(d.ET)       * sc),
+        Residual = (mean(d.Residual) * sc, std(d.Residual) * sc),
+    )
+    end
+
+
+    fl_stats = time_mean_std_terms(fl, sc)
+
+
+
+
+    # ============================================================
+    # Labels and values — bottom to top order
+    # ============================================================
+    labels = [
+    "⟨R⟩   ",
+    "⟨A⟩  ",
+    "⟨Pᵦ⟩   ",
+    "⟨Pₛᵛ⟩  ",
+    "⟨Pₛᴴ⟩  ",
+    "⟨∂E/∂t⟩  ",
+    "⟨∇·F⟩  ",
+    "⟨C⟩  + ⟨WI⟩",
+    ]
+
+
+    function extract_vals_stds(d)
+    means = [d.Residual[1], d.A[1], d.BP[1], d.SP_V[1], d.SP_H[1], d.ET[1], d.FDiv[1], d.Conv[1]]
+    stds  = [d.Residual[2], d.A[2], d.BP[2], d.SP_V[2], d.SP_H[2], d.ET[2], d.FDiv[2], d.Conv[2]]
+    return means, stds
+    end
+
+
+    fl_vals, fl_stds = extract_vals_stds(fl_stats)
+
+
+    n     = length(labels)
+    y_pos = collect(1:n)
+    c_pos = RGBf(0.75, 0.15, 0.15)
+    c_neg = RGBf(0.20, 0.40, 0.75)
+
+
+
+
+    fl_colors = [v >= 0 ? c_pos : c_neg for v in fl_vals]
+
+
+
+
+    # ============================================================
+    # Shared axis theme
+    # ============================================================
+    bar_theme = (
+    backgroundcolor   = :white,
+    xgridcolor        = grid_col,
+    ygridcolor        = RGBAf(0, 0, 0, 0),
+    xgridwidth        = 0.6,
+    xtickcolor        = tick_col,
+    ytickcolor        = RGBAf(0, 0, 0, 0),
+    xticklabelcolor   = tick_col,
+    yticklabelcolor   = RGBf(0.10, 0.10, 0.10),
+    xlabelcolor       = RGBf(0.10, 0.10, 0.10),
+    titlecolor        = RGBf(0.05, 0.05, 0.05),
+    titlesize         = 14,
+    titlealign        = :left,
+    xlabelsize        = 12,
+    yticklabelsize    = 11,
+    xticklabelsize    = 10,
+    spinewidth        = 0.8,
+    topspinevisible   = false,
+    rightspinevisible = false,
+    leftspinecolor    = tick_col,
+    bottomspinecolor  = tick_col,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    yticks            = (y_pos, labels),
+    ytickalign        = 1,
+    )
+
+
+
+
+  # ============================================================
+    # Figure — single panel
+    # ============================================================
+    println("\nCreating bar plot of time-averaged budget terms...")
+
+
+
+
+    fig = Figure(resolution=(430, 480), backgroundcolor=:white,
+            fonts=(; regular=FONT))
+
+
+    ax_fl = Axis(fig[1, 1];
+    xlabel = "Energy rate  [×10⁻⁸ W/kg]",
+    bar_theme...)
+
+
+    vlines!(ax_fl, [0.0]; color=RGBAf(0, 0, 0, 0.4), linewidth=0.9, linestyle=:dash)
+
+
+    barplot!(ax_fl, y_pos, fl_vals;
+        direction   = :x,
+        color       = fl_colors,
+        bar_labels  = [@sprintf("%.3f", v) for v in fl_vals],
+        label_size  = 10,
+        label_font  = FONT,
+        label_rotation = π/2,
+        label_color = RGBf(0.15, 0.15, 0.15),
+        gap         = 0.25,
+    )
+
+
+    #= Add std deviation error bars
+    errorbars!(ax_fl, fl_vals, Float64.(y_pos), fl_stds;
+        direction    = :x,
+        color        = RGBf(0.15, 0.15, 0.15),
+        linewidth    = 1.2,
+        whiskerwidth = 6,
+    )
+    =#
+
+
+
+    outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullArea.png")
+    save(outpath, fig, px_per_unit=2)
+    println("Bar plot saved → $outpath")
+    display(fig)
+
+=#
+
 # ============================================================
 # Depth masks
 # ============================================================
-valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
+valid_mask   = (RAC .> 0.0) .& (FH .> 0.0)
+shallow_mask = valid_mask .& (FH .<  DEPTH_THRESHOLD)
+deep_mask    = valid_mask .& (FH .>= DEPTH_THRESHOLD)
 
+println("\nValid points         : $(sum(valid_mask))")
+println("Shallow (<$(Int(DEPTH_THRESHOLD)) m) : $(sum(shallow_mask))")
+println("Deep    (>==$(Int(DEPTH_THRESHOLD)) m) : $(sum(deep_mask))")
 
-
-
-total_area_full = sum(RAC[valid_mask])
-
-
-
+total_area_full    = sum(RAC[valid_mask])     # <-- CHANGED
+total_area_deep    = sum(RAC[deep_mask])
 
 # ============================================================
 # Helpers
 # ============================================================
 function area_avg(F, mask, RAC, total_area)
-  out = zeros(size(F, 3))
-  for t in axes(F, 3)
-      Ft = F[:, :, t]
-      out[t] = sum(Ft[mask] .* RAC[mask]) / total_area
-  end
-  return out
+   out = zeros(size(F, 3))
+   for t in axes(F, 3)
+       Ft = F[:, :, t]
+       out[t] = sum(Ft[mask] .* RAC[mask]) / total_area
+   end
+   return out
 end
-
 
 function norm_field(F, mask, FH)
-  Fn = zeros(size(F))
-  for t in axes(F, 3)
-      Fn[mask, t] .= F[mask, t] ./ (rho0 .* FH[mask])
-  end
-  return Fn
+   Fn = zeros(size(F))
+   for t in axes(F, 3)
+       Fn[mask, t] .= F[mask, t] ./ (rho0 .* FH[mask])
+   end
+   return Fn
 end
-
-
-
 
 function compute_avgs(mask, area)
-  Conv_n = norm_field(Conv_full, mask, FH) .+ norm_field(WPI_full,   mask, FH)
-  FDiv_n = norm_field(FDiv_full, mask, FH)
-  U_KE_n = norm_field(U_KE_full, mask, FH)
-  U_PE_n = norm_field(U_PE_full, mask, FH)
-  SP_H_n = norm_field(SP_H_full, mask, FH)
-  SP_V_n = norm_field(SP_V_full, mask, FH)
-  BP_n   = norm_field(BP_full,   mask, FH)
-  ET_n   = norm_field(ET_full,   mask, FH)
-  A_n         = U_KE_n .+ U_PE_n
-  TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
-  PS_n        = SP_H_n .+ SP_V_n
-  Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+   Conv_n = norm_field(Conv_full, mask, FH) .+ norm_field(WPI_full,   mask, FH)
+   FDiv_n = norm_field(FDiv_full, mask, FH)
+   U_KE_n = norm_field(U_KE_full, mask, FH)
+   U_PE_n = norm_field(U_PE_full, mask, FH)
+   SP_H_n = norm_field(SP_H_full, mask, FH)
+   SP_V_n = norm_field(SP_V_full, mask, FH)
+   BP_n   = norm_field(BP_full,   mask, FH)
+   ET_n   = norm_field(ET_full,   mask, FH)
 
+   A_n         = U_KE_n .+ U_PE_n
+   TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
+   PS_n        = SP_H_n .+ SP_V_n
+   Residual_n  = -(Conv_n.- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
 
-
-
-  return (
-      Conv     = area_avg(Conv_n,     mask, RAC, area),
-      FDiv     = area_avg(FDiv_n,     mask, RAC, area),
-      SP_H     = area_avg(SP_H_n,     mask, RAC, area),
-      SP_V     = area_avg(SP_V_n,     mask, RAC, area),
-      BP       = area_avg(BP_n,       mask, RAC, area),
-      A        = area_avg(A_n,        mask, RAC, area),
-      ET       = area_avg(ET_n,       mask, RAC, area),
-      Residual = area_avg(Residual_n, mask, RAC, area),
-  )
+   return (
+       Conv     = area_avg(Conv_n,     mask, RAC, area),
+       FDiv     = area_avg(FDiv_n,     mask, RAC, area),
+       SP_H     = area_avg(SP_H_n,     mask, RAC, area),
+       SP_V     = area_avg(SP_V_n,     mask, RAC, area),
+       BP       = area_avg(BP_n,       mask, RAC, area),
+       A        = area_avg(A_n,        mask, RAC, area),
+       ET       = area_avg(ET_n,       mask, RAC, area),
+       Residual = area_avg(Residual_n, mask, RAC, area),
+     
+   )
 end
+println("\nComputing full area averages...")          # <-- CHANGED
+fl = compute_avgs(valid_mask, total_area_full)        # <-- CHANGED
 
-
-println("\nComputing full area averages...")
-fl = compute_avgs(valid_mask, total_area_full)
-
-
-
+println("Computing deep averages...")
+dp = compute_avgs(deep_mask, total_area_deep)
 
 # ============================================================
 # Plot theme
@@ -270,158 +500,140 @@ tick_col = RGBf(0.20, 0.20, 0.20)
 grid_col = RGBAf(0.75, 0.75, 0.75, 0.6)
 sc       = 1e8
 
-
-
-
 FIGDIR = cfg["fig_base"]
 mkpath(FIGDIR)
 
-
-
-
 # ============================================================
-# Time-mean and std of each term
+# Time-average each term
 # ============================================================
-function time_mean_std_terms(d, sc)
-  return (
-      Conv     = (mean(d.Conv)     * sc, std(d.Conv)     * sc),
-      FDiv     = (mean(d.FDiv)     * sc, std(d.FDiv)     * sc),
-      SP_H     = (mean(d.SP_H)     * sc, std(d.SP_H)     * sc),
-      SP_V     = (mean(d.SP_V)     * sc, std(d.SP_V)     * sc),
-      BP       = (mean(d.BP)       * sc, std(d.BP)       * sc),
-      A        = (mean(d.A)        * sc, std(d.A)        * sc),
-      ET       = (mean(d.ET)       * sc, std(d.ET)       * sc),
-      Residual = (mean(d.Residual) * sc, std(d.Residual) * sc),
-  )
+function time_mean_terms(d, sc)
+   return (
+       Conv     = mean(d.Conv)     * sc,
+       FDiv     = mean(d.FDiv)     * sc,
+       SP_H     = mean(d.SP_H)     * sc,
+       SP_V     = mean(d.SP_V)     * sc,
+       BP       = mean(d.BP)       * sc,
+       A        = mean(d.A)        * sc,
+       ET       = mean(d.ET)       * sc,
+       Residual = mean(d.Residual) * sc,
+   )
 end
 
-
-fl_stats = time_mean_std_terms(fl, sc)
-
-
-
+fl_mean = time_mean_terms(fl, sc)     # <-- CHANGED
+dp_mean = time_mean_terms(dp, sc)
 
 # ============================================================
 # Labels and values — bottom to top order
 # ============================================================
 labels = [
-  "⟨R⟩   ",
-  "⟨A⟩  ",
-  "⟨Pᵦ⟩   ",
-  "⟨Pₛᵛ⟩  ",
-  "⟨Pₛᴴ⟩  ",
-  "⟨∂E/∂t⟩  ",
-  "⟨∇·F⟩  ",
-  "⟨C⟩  + ⟨WI⟩",
+   "⟨D⟩  ",
+   "⟨A⟩  ",
+   "⟨Pᵦ⟩  ",
+   "⟨Pₛᵛ⟩  ",
+   "⟨Pₛᴴ⟩  ",
+   "⟨∂E/∂t⟩  ",
+   "⟨∇·F⟩  ",
+   "⟨C⟩  + ⟨WI⟩",
 ]
-
-
-function extract_vals_stds(d)
-  means = [d.Residual[1], d.A[1], d.BP[1], d.SP_V[1], d.SP_H[1], d.ET[1], d.FDiv[1], d.Conv[1]]
-  stds  = [d.Residual[2], d.A[2], d.BP[2], d.SP_V[2], d.SP_H[2], d.ET[2], d.FDiv[2], d.Conv[2]]
-  return means, stds
+function extract_vals(d)
+   return [
+       d.Residual,
+       d.A,
+       d.BP,
+       d.SP_V,
+       d.SP_H,
+       d.ET,
+       d.FDiv,
+       d.Conv,
+   ]
 end
-
-
-fl_vals, fl_stds = extract_vals_stds(fl_stats)
-
+fl_vals = extract_vals(fl_mean)     # <-- CHANGED
+dp_vals = extract_vals(dp_mean)
 
 n     = length(labels)
 y_pos = collect(1:n)
 c_pos = RGBf(0.75, 0.15, 0.15)
 c_neg = RGBf(0.20, 0.40, 0.75)
 
-
-
-
-fl_colors = [v >= 0 ? c_pos : c_neg for v in fl_vals]
-
-
-
+fl_colors = [v >= 0 ? c_pos : c_neg for v in fl_vals]     # <-- CHANGED
+dp_colors = [v >= 0 ? c_pos : c_neg for v in dp_vals]
 
 # ============================================================
 # Shared axis theme
 # ============================================================
 bar_theme = (
-  backgroundcolor   = :white,
-  xgridcolor        = grid_col,
-  ygridcolor        = RGBAf(0, 0, 0, 0),
-  xgridwidth        = 0.6,
-  xtickcolor        = tick_col,
-  ytickcolor        = RGBAf(0, 0, 0, 0),
-  xticklabelcolor   = tick_col,
-  yticklabelcolor   = RGBf(0.10, 0.10, 0.10),
-  xlabelcolor       = RGBf(0.10, 0.10, 0.10),
-  titlecolor        = RGBf(0.05, 0.05, 0.05),
-  titlesize         = 14,
-  titlealign        = :left,
-  xlabelsize        = 12,
-  yticklabelsize    = 11,
-  xticklabelsize    = 10,
-  spinewidth        = 0.8,
-  topspinevisible   = false,
-  rightspinevisible = false,
-  leftspinecolor    = tick_col,
-  bottomspinecolor  = tick_col,
-  titlefont         = FONT,
-  xlabelfont        = FONT,
-  ylabelfont        = FONT,
-  xticklabelfont    = FONT,
-  yticklabelfont    = FONT,
-  yticks            = (y_pos, labels),
-  ytickalign        = 1,
+   backgroundcolor   = :white,
+   xgridcolor        = grid_col,
+   ygridcolor        = RGBAf(0, 0, 0, 0),
+   xgridwidth        = 0.6,
+   xtickcolor        = tick_col,
+   ytickcolor        = RGBAf(0, 0, 0, 0),
+   xticklabelcolor   = tick_col,
+   yticklabelcolor   = RGBf(0.10, 0.10, 0.10),
+   xlabelcolor       = RGBf(0.10, 0.10, 0.10),
+   titlecolor        = RGBf(0.05, 0.05, 0.05),
+   titlesize         = 14,
+   titlealign        = :left,
+   xlabelsize        = 12,
+   yticklabelsize    = 11,
+   xticklabelsize    = 10,
+   spinewidth        = 0.8,
+   topspinevisible   = false,
+   rightspinevisible = false,
+   leftspinecolor    = tick_col,
+   bottomspinecolor  = tick_col,
+   titlefont         = FONT,
+   xlabelfont        = FONT,
+   ylabelfont        = FONT,
+   xticklabelfont    = FONT,
+   yticklabelfont    = FONT,
+   yticks            = (y_pos, labels),
+   ytickalign        = 1,
 )
 
-
-
-
 # ============================================================
-# Figure — single panel
+# Figure — two panels side by side
 # ============================================================
 println("\nCreating bar plot of time-averaged budget terms...")
 
-
-
-
-fig = Figure(resolution=(430, 480), backgroundcolor=:white,
-           fonts=(; regular=FONT))
-
-
+fig = Figure(resolution=(900, 480), backgroundcolor=:white,
+            fonts=(; regular=FONT))
+# Full area panel (left)                                      # <-- CHANGED
 ax_fl = Axis(fig[1, 1];
-  xlabel = "Energy rate  [×10⁻⁸ W/kg]",
-  bar_theme...)
+   title  = "(a)  Full Domain",                                 # <-- CHANGED
+   xlabel = "Energy rate  [×10⁻⁸ W/kg]",
+   bar_theme...)
 
+# Deep panel (right)
+ax_dp = Axis(fig[1, 2];
+   title  = "(b)  Deep Region  (H ≥ $(Int(DEPTH_THRESHOLD)) m)",
+   xlabel = "Energy rate  [×10⁻⁸ W/kg]",
+   yticklabelsvisible = false,
+   bar_theme...)
 
-vlines!(ax_fl, [0.0]; color=RGBAf(0, 0, 0, 0.4), linewidth=0.9, linestyle=:dash)
+for (ax, vals, cols) in [(ax_fl, fl_vals, fl_colors), (ax_dp, dp_vals, dp_colors)]    # <-- CHANGED
+   vlines!(ax, [0.0]; color=RGBAf(0, 0, 0, 0.4), linewidth=0.9, linestyle=:dash)
 
-
-barplot!(ax_fl, y_pos, fl_vals;
-    direction   = :x,
-    color       = fl_colors,
-    bar_labels  = [@sprintf("%.3f", v) for v in fl_vals],
-    label_size  = 10,
-    label_font  = FONT,
-    label_rotation = π/2,
-    label_color = RGBf(0.15, 0.15, 0.15),
-    gap         = 0.25,
-)
-
-
-#= Add std deviation error bars
-errorbars!(ax_fl, fl_vals, Float64.(y_pos), fl_stds;
-    direction    = :x,
-    color        = RGBf(0.15, 0.15, 0.15),
-    linewidth    = 1.2,
-    whiskerwidth = 6,
-)
-=#
-
-
-
-outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullArea.png")
+   barplot!(ax, y_pos, vals;
+       direction   = :x,
+       color       = cols,
+       bar_labels  = [@sprintf("%.3f", v) for v in vals],
+       label_size  = 10,
+       label_font  = FONT,
+       label_rotation = π/2,
+       label_color = RGBf(0.15, 0.15, 0.15),
+       gap         = 0.25,
+   )
+end
+linkyaxes!(ax_fl, ax_dp)     # <-- CHANGED
+colgap!(fig.layout, 1, 8)
+outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullAndDeep_v2.png")     # <-- CHANGED
 save(outpath, fig, px_per_unit=2)
 println("Bar plot saved → $outpath")
 display(fig)
+
+
+
 
 
 
