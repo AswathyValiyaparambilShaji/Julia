@@ -1,18 +1,11 @@
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie, Dates
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
-
-
-
-
 # Load configuration
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base  = cfg["base_path"]
 base2 = cfg["base_path_nt"]
-
-
-
 
 # --- Domain & grid ---
 NX, NY = 288, 468
@@ -20,9 +13,6 @@ minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
-
-
-
 
 # --- Tile & time parameters ---
 buf  = 3
@@ -42,24 +32,15 @@ n_chunks = div(nt, nt_chunk)
 rho0 = 1027.5
 DEPTH_THRESHOLD = 3000.0
 
-
-
-
 # --- Thickness ---
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 println("Computing area-averaged budget terms for $nt3 3-day periods...")
 
-
-
-
 ring_steps = nt_chunk
 t_safe_start = ring_steps + 1
 t_safe_end   = nt - ring_steps
-
-
-
 
 safe_chunks = [c for c in 1:n_chunks
              if (c-1)*nt_chunk + 1 >= t_safe_start &&
@@ -189,7 +170,7 @@ end
 
 
 
-    #= ============================================================
+#= ============================================================
     # Depth masks
     # ============================================================
     valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
