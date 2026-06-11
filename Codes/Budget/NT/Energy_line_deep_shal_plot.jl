@@ -36,8 +36,21 @@ nt3 = div(nt, 3*24)
 rho0 = 1027.5
 DEPTH_THRESHOLD = 3000.0
 
+# --- Date axis ---
+t_origin = DateTime(2012, 3, 4, 0, 0, 0)
+# Each 3-day period: centre date at origin + (i-1)*3 days + 1.5 days offset
+dates_3day = [t_origin + Day(3*(i-1)) + Hour(36) for i in 1:nt3-2]
 
 
+# Convert dates → numeric (days since origin) for plotting, keep DateTime for labels
+t_numeric  = [Dates.value(d - t_origin) / (1000*3600*24) for d in dates_3day]  # milliseconds→days
+
+
+# Tick positions: every ~15 days (every 5th 3-day period), formatted as "Mon DD\nYYYY"
+tick_every  = 5
+tick_inds   = 1:tick_every:nt3-2
+tick_vals   = t_numeric[tick_inds]
+tick_labels = [Dates.format(dates_3day[i], "u dd\nyyyy") for i in tick_inds]
 ring_steps = nt_chunk
 t_safe_start = ring_steps + 1              # first valid step (1801)
 t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
@@ -47,41 +60,24 @@ t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
 safe_chunks = [c for c in 1:n_chunks
                if (c-1)*nt_chunk + 1 >= t_safe_start &&
                   c*nt_chunk          <= t_safe_end]
-@info "Safe 3-day chunks: $(length(safe_chunks)) of $n_chunks  (chunks $(safe_chunks[1])–$(safe_chunks[end]))"
-
-# --- Date axis ---
-t_origin = DateTime(2012, 3, 4, 0, 0, 0)
-# Each 3-day period: centre date at origin + (i-1)*3 days + 1.5 days offset
-dates_3day = [t_origin + Day(3*(i-1)) + Hour(36) for i in 1:nt3]
-
-
-# Convert dates → numeric (days since origin) for plotting, keep DateTime for labels
-t_numeric  = [Dates.value(d - t_origin) / (1000*3600*24) for d in dates_3day]  # milliseconds→days
-
-
-# Tick positions: every ~15 days (every 5th 3-day period), formatted as "Mon DD\nYYYY"
-tick_every  = 5
-tick_inds   = 1:tick_every:nt3
-tick_vals   = t_numeric[tick_inds]
-tick_labels = [Dates.format(dates_3day[i], "u dd\nyyyy") for i in tick_inds]
-
 
 # --- Thickness ---
 thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-println("Computing area-averaged budget terms for $nt3 3-day periods...")
 
 
 # --- Global arrays ---
-Conv_full = zeros(NX, NY, nt3)
-FDiv_full = zeros(NX, NY, nt3)
-U_KE_full = zeros(NX, NY, nt3)
-U_PE_full = zeros(NX, NY, nt3)
-SP_H_full = zeros(NX, NY, nt3)
-SP_V_full = zeros(NX, NY, nt3)
-BP_full   = zeros(NX, NY, nt3)
-ET_full   = zeros(NX, NY, nt3)
+Conv_full = zeros(NX, NY, nt3-2)
+FDiv_full = zeros(NX, NY, nt3-2)
+U_KE_full = zeros(NX, NY, nt3-2)
+U_PE_full = zeros(NX, NY, nt3-2)
+SP_H_full = zeros(NX, NY, nt3-2)
+SP_V_full = zeros(NX, NY, nt3-2)
+BP_full   = zeros(NX, NY, nt3-2)
+ET_full   = zeros(NX, NY, nt3-2)
+WPI_full   = zeros(NX, NY, nt3-2)
+
 FH        = zeros(NX, NY)
 RAC       = zeros(NX, NY)
 
@@ -119,52 +115,65 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_nt_$(suffix2).bin"), "r") do io
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
         end)
         C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_nt_$(suffix2).bin"), "r") do io
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
         end)
         u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
 
+        wpi_tile = Float64.(open(joinpath(base2, "WindInput", "wpi_nt_$suffix.bin"), "r") do io
+            nbytes = nx * ny * nt * sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt)
+        end)
 
+        # ---- Tile position in global grid ----
         xs = (xn - 1) * tx + 1
         xe = xs + tx + (2 * buf) - 1
         ys = (yn - 1) * ty + 1
         ye = ys + ty + (2 * buf) - 1
-
-
+        wpi_3day = zeros(nx,ny,nt3-2)
+        for (i, c) in enumerate(safe_chunks)
+             t1 = (c-1)*nt_chunk + 1
+            t2 = c*nt_chunk
+            wpi_3day[:, :, i] = Float32.(dropdims(mean(wpi_tile[:, :, t1:t2], dims=3), dims=3))
+        end
+        # ---- Update global arrays (remove buffer zones) ----
         Conv_full[xs+2:xe-2, ys+2:ye-2, :] .= C[2:end-1, 2:end-1, :]
         FDiv_full[xs+2:xe-2, ys+2:ye-2, :] .= fxD[2:end-1, 2:end-1, :]
+
         U_KE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_ke_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         U_PE_full[xs+2:xe-2, ys+2:ye-2, :] .= u_pe_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         SP_H_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_h_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         SP_V_full[xs+2:xe-2, ys+2:ye-2, :] .= sp_v_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         BP_full[xs+2:xe-2, ys+2:ye-2, :]   .= bp_3day[buf:nx-buf+1, buf:ny-buf+1, :]
         ET_full[xs+2:xe-2, ys+2:ye-2, :]   .= te_3day[buf:nx-buf+1, buf:ny-buf+1, :]
+        WPI_full[xs+2:xe-2, ys+2:ye-2,:] .= wpi_3day[buf:nx-buf+1,  buf:ny-buf+1,:]
+
         FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
         RAC[xs+2:xe-2, ys+2:ye-2] .= rac[buf:nx-buf+1, buf:ny-buf+1]
 
@@ -222,16 +231,17 @@ function compute_avgs(mask, area)
     SP_V_n = norm_field(SP_V_full, mask, FH)
     BP_n   = norm_field(BP_full,   mask, FH)
     ET_n   = norm_field(ET_full,   mask, FH)
+    WPI_n   = norm_field(WPI_full,   mask, FH)
 
 
     A_n         = U_KE_n .+ U_PE_n
     TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
     PS_n        = SP_H_n .+ SP_V_n
-    Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n)
+    Residual_n  = -(Conv_n .- TotalFlux_n .+ PS_n .+ BP_n .- ET_n .+WPI_n)
 
 
     return (
-        Conv     = area_avg(Conv_n,     mask, RAC, area),
+        Conv     = area_avg(Conv_n .+ WPI_n,     mask, RAC, area),
         FDiv     = area_avg(FDiv_n,     mask, RAC, area),
         SP_H     = area_avg(SP_H_n,     mask, RAC, area),
         SP_V     = area_avg(SP_V_n,     mask, RAC, area),
@@ -341,7 +351,7 @@ fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white, figure_
 
 function add_budget_lines!(ax, d, t_numeric, sc)
     hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
-    lines!(ax, t_numeric, d.Conv     .* sc; label="⟨C⟩  Conversion",          color=c_conv, linewidth=1.8)
+    lines!(ax, t_numeric, d.Conv     .* sc; label=" + ⟨WI⟩  ",          color=c_conv, linewidth=1.8)
     lines!(ax, t_numeric, d.FDiv     .* sc; label="⟨∇·F⟩  Flux divergence",    color=c_fdiv, linewidth=1.8)
     lines!(ax, t_numeric, d.SP_H     .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
     lines!(ax, t_numeric, d.SP_V     .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.",  color=c_psv,  linewidth=1.8)

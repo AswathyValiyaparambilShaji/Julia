@@ -344,9 +344,9 @@ fig = Figure(resolution=(700, 500), fontsize=14, backgroundcolor=:white, figure_
 function add_ratio_lines!(ax, r, t_numeric)
     hlines!(ax, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
     hlines!(ax, [1.0]; color=RGBAf(0,0,0,0.2), linewidth=0.8, linestyle=:dot)
-    lines!(ax, t_numeric, r.q1; label="q = ⟨R⟩ / (⟨C⟩ + WI)  [Dissipation fraction]",   color=c_q1, linewidth=1.8)
-    lines!(ax, t_numeric, r.q2; label="⟨∇·F⟩ / (⟨C⟩ + WI)  [Flux divergence fraction]", color=c_q2, linewidth=1.8)
-    lines!(ax, t_numeric, r.q3; label="(⟨Pᵦ⟩ + ⟨Pₛ⟩) / (⟨C⟩ + WI)  [Mean flow fraction]", color=c_q3, linewidth=1.8)
+    lines!(ax, t_numeric, r.q1; label="q = ⟨D⟩ / (⟨C⟩ + ⟨WI⟩)  [Dissipation fraction]",   color=c_q1, linewidth=1.8)
+    lines!(ax, t_numeric, r.q2; label="⟨∇·F⟩ / (⟨C⟩ + ⟨WI⟩)  [Flux divergence fraction]", color=c_q2, linewidth=1.8)
+    lines!(ax, t_numeric, r.q3; label="(⟨Pᵦ⟩ + ⟨Pₛ⟩) / (⟨C⟩ + ⟨WI⟩)  [Mean flow fraction]", color=c_q3, linewidth=1.8)
 end
 
 

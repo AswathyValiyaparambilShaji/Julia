@@ -144,7 +144,15 @@ BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
 
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 # Load energy budget data for all tiles
 for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -227,7 +235,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Time average the WPI
-        wpi_mean = mean(wpi_tile, dims=3)[:, :, 1]
+        wpi_mean = mean(wpi_tile[:, :, t_safe_start:t_safe_end], dims=3)[:, :, 1]
 
 
         # --- Tile positions in global grid ---
@@ -337,8 +345,8 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v4.png"), fig)
-println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v4.png"))")
+save(joinpath(FIGDIR, "Dissipation_Comparison_nt_v5.png"), fig)
+println("\nFigure saved: $(joinpath(FIGDIR, "Dissipation_Comparison_nt_v5.png"))")
 
 
 

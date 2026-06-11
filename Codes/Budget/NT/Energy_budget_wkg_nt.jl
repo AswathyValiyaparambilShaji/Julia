@@ -47,9 +47,19 @@ BP_full      = zeros(NX, NY)
 ET_full      = zeros(NX, NY)
 WPI_full     = zeros(NX, NY)
 
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
 FH  = zeros(NX, NY)
 RAC = zeros(NX, NY)
-rho0=1027
+rho0=1027.5
 println("Loading energy budget terms...")
 
 
@@ -142,7 +152,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
 
         # Time average the WPI
-        wpi_mean = mean(wpi_tile, dims=3)[:, :, 1]
+        wpi_mean = mean(wpi_tile[:, :, t_safe_start:t_safe_end], dims=3)[:, :, 1]
 
 
         # --- Tile positions in global grid ---
@@ -200,15 +210,15 @@ FONT = "FreeSerif Bold"
 
     # Row 1, Column 1: Conversion
     ax1 = Axis(fig[1, 1],
-        title = "(a) <C> + <WI>",
+        title = "(a) ⟨C⟩ + ⟨WI⟩",
         xlabel = "",
         xticklabelsvisible = false,
         ylabel = "Latitude [°]",
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -223,16 +233,16 @@ FONT = "FreeSerif Bold"
 
     # Row 1, Column 2: Flux Divergence
     ax2 = Axis(fig[1, 2],
-        title = "(b) <∇.F>",
+        title = "(b) ⟨∇.F⟩",
         xlabel = "",
         xticklabelsvisible = false,
         ylabel = "",
         yticklabelsvisible = false,
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -247,15 +257,15 @@ FONT = "FreeSerif Bold"
 
     # Row 1, Column 3: Advective fluxes
     ax3 = Axis(fig[2, 4],
-        title = "(h) <A>",
+        title = "(h) ⟨A⟩",
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false,
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -271,16 +281,16 @@ FONT = "FreeSerif Bold"
 
     # Row 1, Column 4: Dissipation
     ax4 = Axis(fig[1, 4],
-        title = "(d) <D>",
+        title = "(d) ⟨D⟩",
         xlabel = "",
         xticklabelsvisible = false,
         ylabel = "",
         yticklabelsvisible = false,
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -296,14 +306,14 @@ FONT = "FreeSerif Bold"
 
     # Row 2, Column 1: Shear Production
     ax5 = Axis(fig[2, 1],
-        title = "(e) <Ps> (Vertical)",
+        title = "(e) ⟨Ps⟩ (Vertical)",
         xlabel = "Longitude [°]",
         ylabel = "Latitude [°]",
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -320,15 +330,15 @@ FONT = "FreeSerif Bold"
 
     # Row 2, Column 2: Buoyancy Production
     ax6 = Axis(fig[2, 3],
-        title = "(g) <Pb>",
+        title = "(g) ⟨Pb⟩",
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false,
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -344,17 +354,17 @@ FONT = "FreeSerif Bold"
 
     # Row 2, Column 3: Energy Tendency
     ax7 = Axis(fig[1, 3],
-        title = "(c) <dE/dt>",
+        title = "(c) ⟨∂E/∂t⟩",
         xlabel = "",
         ylabel = "",
         yticklabelsvisible = false,
                 xticklabelsvisible = false,
 
-    ylabelsize = 14,
-    xlabelsize = 14,
+    ylabelsize = 16,
+    xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -394,7 +404,7 @@ FONT = "FreeSerif Bold"
 
     #
     ax9 = Axis(fig[2, 2],
-        title = "(f) <Ps> (Horizontal) ",
+        title = "(f) ⟨Ps⟩ (Horizontal) ",
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false,
@@ -402,7 +412,7 @@ FONT = "FreeSerif Bold"
     xlabelsize = 16,
     xticklabelsize    = 12,
     yticklabelsize    = 12,
-    titlesize  = 16,
+    titlesize  = 20,
     titlefont         = FONT,
     xlabelfont        = FONT,
     ylabelfont        = FONT,
@@ -429,8 +439,8 @@ rowgap!(fig.layout,1,5)
 
     # Save figure
     FIGDIR = cfg["fig_base"]
-    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V3.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V4.png"), fig)
 
-println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V3.png"))")
+println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_nt_wkg_V4.png"))")
 
 

@@ -55,13 +55,13 @@ safe_chunks = [c for c in 1:n_chunks
 @info "Safe 3-day chunks: $(length(safe_chunks)) of $n_chunks  (chunks $(safe_chunks[1])–$(safe_chunks[end]))"
 
 # --- Global arrays ---
-Conv_full = zeros(NX, NY, nt3)
-FDiv_full = zeros(NX, NY, nt3)
-U_KE_full = zeros(NX, NY, nt3)
-U_PE_full = zeros(NX, NY, nt3)
-SP_H_full = zeros(NX, NY, nt3)
-SP_V_full = zeros(NX, NY, nt3)
-BP_full   = zeros(NX, NY, nt3)
+Conv_full = zeros(NX, NY, nt3-2)
+FDiv_full = zeros(NX, NY, nt3-2)
+U_KE_full = zeros(NX, NY, nt3-2)
+U_PE_full = zeros(NX, NY, nt3-2)
+SP_H_full = zeros(NX, NY, nt3-2)
+SP_V_full = zeros(NX, NY, nt3-2)
+BP_full   = zeros(NX, NY, nt3-2)
 ET_full   = zeros(NX, NY, nt3-2)
 WPI_full   = zeros(NX, NY, nt3-2)
 
@@ -93,31 +93,31 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
         fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_nt_$(suffix2).bin"), "r") do io
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
         end)
         C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_nt_$(suffix2).bin"), "r") do io
             nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
         end)
         u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
-            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
         end)
         te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "r") do io
             nbytes = nx*ny*nt3*sizeof(Float32)
@@ -200,7 +200,7 @@ end
 
 
 function compute_avgs(mask, area)
-    Conv_n = norm_field(Conv_full[:,:,2:nt3-1], mask, FH) .+ norm_field(WPI_full,   mask, FH)
+    Conv_n = norm_field(Conv_full, mask, FH) .+ norm_field(WPI_full,   mask, FH)
     FDiv_n = norm_field(FDiv_full, mask, FH)
     U_KE_n = norm_field(U_KE_full, mask, FH)
     U_PE_n = norm_field(U_PE_full, mask, FH)
@@ -213,7 +213,7 @@ function compute_avgs(mask, area)
     A_n         = U_KE_n .+ U_PE_n
     TotalFlux_n = FDiv_n .+ U_KE_n .+ U_PE_n
     PS_n        = SP_H_n .+ SP_V_n
-    Residual_n  = -(Conv_n.- TotalFlux_n[:,:,2:nt3-1] .+ PS_n[:,:,2:nt3-1] .+ BP_n[:,:,2:nt3-1] .- ET_n)
+    Residual_n  = -(Conv_n.- TotalFlux_n .+ PS_n .+ BP_n .- ET_n )
 
 
     return (

@@ -47,6 +47,15 @@ println("Reading time series flux files and computing time + depth averages...")
 tfx = zeros(NX, NY)
 tfy = zeros(NX, NY)
 FH = fill(NaN, NX, NY)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
@@ -75,8 +84,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         depth   = dropdims(sum(DRFfull, dims=3), dims=3)
         DRFfull[hFacC .== 0] .= 0.0
         # Time average over dim=4
-        fx_tmean = mean(fx, dims=4)[:, :, :, 1]   # (nx, ny, nz)
-        fy_tmean = mean(fy, dims=4)[:, :, :, 1]   # (nx, ny, nz)
+        fx_tmean = mean(fx[:, :, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
+        fy_tmean = mean(fy[:, :, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
 
 
         # Depth integrate
@@ -191,7 +200,7 @@ contour!(ax, lon, lat, FH;
 Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 14, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
-png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V4.png")
+png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V5.png")
 save(png_file, fig)
 display(fig)
 println("PNG saved: $png_file")
