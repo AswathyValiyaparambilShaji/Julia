@@ -305,13 +305,13 @@ fl_stats = time_mean_std_terms(fl, sc)
 # Labels and values — bottom to top order
 # ============================================================
 labels = [
-  "⟨R⟩  Residual ",
-  "⟨A⟩  Advection",
-  "⟨Pᵦ⟩  Buoyancy prod.",
-  "⟨Pₛᵛ⟩  Vert. shear prod.",
-  "⟨Pₛᴴ⟩  Horiz. shear prod.",
-  "⟨∂E/∂t⟩  Tendency",
-  "⟨∇·F⟩  Flux divergence",
+  "⟨R⟩   ",
+  "⟨A⟩  ",
+  "⟨Pᵦ⟩   ",
+  "⟨Pₛᵛ⟩  ",
+  "⟨Pₛᴴ⟩  ",
+  "⟨∂E/∂t⟩  ",
+  "⟨∇·F⟩  ",
   "⟨C⟩  + ⟨WI⟩",
 ]
 
@@ -383,7 +383,7 @@ println("\nCreating bar plot of time-averaged budget terms...")
 
 
 
-fig = Figure(resolution=(450, 480), backgroundcolor=:white,
+fig = Figure(resolution=(430, 480), backgroundcolor=:white,
            fonts=(; regular=FONT))
 
 
@@ -407,14 +407,14 @@ barplot!(ax_fl, y_pos, fl_vals;
 )
 
 
-# Add std deviation error bars
+#= Add std deviation error bars
 errorbars!(ax_fl, fl_vals, Float64.(y_pos), fl_stds;
     direction    = :x,
     color        = RGBf(0.15, 0.15, 0.15),
     linewidth    = 1.2,
     whiskerwidth = 6,
 )
-
+=#
 
 
 
