@@ -47,6 +47,8 @@ println("Reading time series flux files and computing time + depth averages...")
 tfx = zeros(NX, NY)
 tfy = zeros(NX, NY)
 FH = fill(NaN, NX, NY)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
 ring_steps = nt_chunk
 t_safe_start = ring_steps + 1              # first valid step (1801)
 t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
