@@ -383,7 +383,7 @@ println("\nCreating bar plot of time-averaged budget terms...")
 
 
 
-fig = Figure(resolution=(520, 480), backgroundcolor=:white,
+fig = Figure(resolution=(450, 480), backgroundcolor=:white,
            fonts=(; regular=FONT))
 
 
