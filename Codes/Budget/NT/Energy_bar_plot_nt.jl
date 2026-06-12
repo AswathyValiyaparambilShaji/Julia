@@ -556,7 +556,7 @@ bar_theme = (
    titlesize         = 20,
    titlealign        = :left,
    xlabelsize        = 16,
-   yticklabelsize    = 16,
+   yticklabelsize    = 20,
    xticklabelsize    = 16,
    spinewidth        = 0.8,
    topspinevisible   = false,
@@ -577,7 +577,7 @@ bar_theme = (
 # ============================================================
 println("\nCreating bar plot of time-averaged budget terms...")
 
-fig = Figure(resolution=(900, 480), backgroundcolor=:white,
+fig = Figure(resolution=(1000, 480), backgroundcolor=:white,
             fonts=(; regular=FONT))
 # Full area panel (left)                                      # <-- CHANGED
 ax_fl = Axis(fig[1, 1];
@@ -607,7 +607,7 @@ for (ax, vals, cols) in [(ax_fl, fl_vals, fl_colors), (ax_dp, dp_vals, dp_colors
    )
 end
 linkyaxes!(ax_fl, ax_dp)     # <-- CHANGED
-colgap!(fig.layout, 1, 8)
+colgap!(fig.layout, 1, 35)
 outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullAndDeep_v3.png")     # <-- CHANGED
 save(outpath, fig, px_per_unit=2)
 println("Bar plot saved → $outpath")

@@ -30,7 +30,10 @@ Tts = 366192
 nt = div(Tts, dto)
 timesteps_per_3days = 72
 nt_avg = div(nt, timesteps_per_3days) 
-
+# --- Thickness ---
+thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF   = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 
 # reference density
 rho0 = 1027.5
@@ -41,6 +44,7 @@ KE_surface = zeros(Float64, NX, NY, nt_avg)
 #DX_full = zeros(Float64, NX, NY)
 #DY_full = zeros(Float64, NX, NY)
 
+FH = fill(NaN, NX, NY)
 
 for xn in cfg["xn_start"]:cfg["xn_end"]
    for yn in cfg["yn_start"]:cfg["yn_end"]
@@ -65,7 +69,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
            nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt_avg)
        end)
-
+        hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        depth   = dropdims(sum(DRFfull, dims=3), dims=3)
+        DRFfull[hFacC .== 0] .= 0.0
 
        # Surface KE at k=1
        ke_surface = 0.5 .* rho0 .* (U[:, :, 1, :].^2 .+ V[:, :, 1, :].^2)
@@ -86,6 +94,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
       
        # Assign to global arrays
        KE_surface[xs+1:xe-1, ys+1:ye-1, :] .= ke_surface[xsf:xef, ysf:yef, :]
+       FH[xs+2:xe-2, ys+2:ye-2]  .= depth[buf:nx-buf+1, buf:ny-buf+1]
        #DX_full[xs+1:xe-1, ys+1:ye-1] .= dx[xsf:xef, ysf:yef]
        #DY_full[xs+1:xe-1, ys+1:ye-1] .= dy[xsf:xef, ysf:yef]
    end
@@ -162,6 +171,15 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, KE_10avg,
     colormap=:jet,
     interpolate=false)
+contour!(ax, lon, lat, FH;
+    levels     = [500, 1500, 3000.0],
+    color      = RGBf(0.25,0.25,0.25),
+    linewidth  = 2,
+    linestyle  = :solid,
+    labels     = false,
+    labelsize  = 10,
+    labelfont = "FreeSerif",
+    labelcolor = RGBf(0.25,0.25,0.25))
 
 
 Colorbar(fig[1, 2], hm, label="[J/m³]", labelsize = 14, ticklabelsize=12 , width = 5)
@@ -173,7 +191,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-png_file =joinpath(FIGDIR, "EKE_v5.png")
+png_file =joinpath(FIGDIR, "EKE_v6.png")
 save(joinpath(FIGDIR, "EKE_v5.png"), fig)
 println("PNG saved: $png_file")
 

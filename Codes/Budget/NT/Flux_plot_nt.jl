@@ -190,7 +190,7 @@ if !isempty(arrvec)
     arrows!(ax, pos, scale .* arrvec, color=:black, arrowsize=8, linewidth=1.5)
 end
 
-contour!(ax, lon, lat, FH;
+#=contour!(ax, lon, lat, FH;
     levels     = [500, 1500, 3000.0],
     color      = RGBf(0.25,0.25,0.25),
     linewidth  = 2,
@@ -198,11 +198,11 @@ contour!(ax, lon, lat, FH;
     labels     = true,
     labelsize  = 10,
     labelfont = "FreeSerif",
-    labelcolor = RGBf(0.25,0.25,0.25))
+    labelcolor = RGBf(0.25,0.25,0.25))=#
 Colorbar(fig[1, 2], hm, label = "(kW/m)", labelsize = 14, ticklabelsize=12 , width = 5)
 
 colgap!(fig.layout,1,5)
-png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V5.png")
+png_file = joinpath(FIGDIR, "Flux_perturbation_timemean_V6.png")
 save(png_file, fig)
 display(fig)
 println("PNG saved: $png_file")
