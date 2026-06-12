@@ -514,7 +514,7 @@ labels = [
    "⟨Pₛᴴ⟩  ",
    "⟨∂E/∂t⟩  ",
    "⟨∇·F⟩  ",
-   "⟨C⟩  + ⟨WI⟩",
+   "⟨C⟩ + ⟨WI⟩",
 ]
 function extract_vals(d)
    return [
@@ -553,11 +553,11 @@ bar_theme = (
    yticklabelcolor   = RGBf(0.10, 0.10, 0.10),
    xlabelcolor       = RGBf(0.10, 0.10, 0.10),
    titlecolor        = RGBf(0.05, 0.05, 0.05),
-   titlesize         = 14,
+   titlesize         = 20,
    titlealign        = :left,
-   xlabelsize        = 12,
-   yticklabelsize    = 11,
-   xticklabelsize    = 10,
+   xlabelsize        = 16,
+   yticklabelsize    = 16,
+   xticklabelsize    = 16,
    spinewidth        = 0.8,
    topspinevisible   = false,
    rightspinevisible = false,
@@ -599,7 +599,7 @@ for (ax, vals, cols) in [(ax_fl, fl_vals, fl_colors), (ax_dp, dp_vals, dp_colors
        direction   = :x,
        color       = cols,
        bar_labels  = [@sprintf("%.3f", v) for v in vals],
-       label_size  = 10,
+       label_size  = 12,
        label_font  = FONT,
        label_rotation = π/2,
        label_color = RGBf(0.15, 0.15, 0.15),
@@ -608,7 +608,7 @@ for (ax, vals, cols) in [(ax_fl, fl_vals, fl_colors), (ax_dp, dp_vals, dp_colors
 end
 linkyaxes!(ax_fl, ax_dp)     # <-- CHANGED
 colgap!(fig.layout, 1, 8)
-outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullAndDeep_v2.png")     # <-- CHANGED
+outpath = joinpath(FIGDIR, "Budget_BarPlot_TimeAvg_FullAndDeep_v3.png")     # <-- CHANGED
 save(outpath, fig, px_per_unit=2)
 println("Bar plot saved → $outpath")
 display(fig)
