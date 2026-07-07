@@ -286,7 +286,7 @@ leg_style = (
     labelsize       = 11,
     rowgap          = 3,
     patchsize       = (22, 2),
-    nbanks          = 2,
+    nbanks          = 4,
     labelfont       = FONT,
 )
 
@@ -308,18 +308,18 @@ ax2a = Axis(fig2[1, 1];
 
 hlines!(ax2a, [0.0]; color=RGBAf(0,0,0,0.3), linewidth=0.8, linestyle=:dash)
 lines!(ax2a, time_days, (Conv_avg.+WPI_avg)  .* sc; label="⟨C⟩ + ⟨WI⟩ ",          color=c_conv, linewidth=1.8)
-lines!(ax2a, time_days, FDiv_avg  .* sc; label="⟨∇·F⟩  Flux divergence",    color=c_fdiv, linewidth=1.8)
-lines!(ax2a, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩  Horiz. shear prod.", color=c_ps,   linewidth=1.8)
-lines!(ax2a, time_days, SP_V_avg  .* sc; label="⟨Pₛᵛ⟩  Vert. shear prod.",  color=c_psv,  linewidth=1.8)
-lines!(ax2a, time_days, BP_avg    .* sc; label="⟨Pᵦ⟩  Buoyancy prod.",      color=c_bp,   linewidth=1.8)
-lines!(ax2a, time_days, A_avg     .* sc; label="⟨A⟩  Advection",            color=c_a,    linewidth=1.8)
-lines!(ax2a, time_days, ET_avg    .* sc; label="⟨∂E/∂t⟩  Tendency",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
-lines!(ax2a, time_days, Residual_avg .* sc; label="⟨D⟩  Residual ",      color=c_res,  linewidth=1.8)
+lines!(ax2a, time_days, FDiv_avg  .* sc; label="⟨∇·F⟩ ",    color=c_fdiv, linewidth=1.8)
+lines!(ax2a, time_days, SP_H_avg  .* sc; label="⟨Pₛᴴ⟩ ", color=c_ps,   linewidth=1.8)
+lines!(ax2a, time_days, SP_V_avg  .* sc; label="⟨Pₛᵛ⟩ ",  color=c_psv,  linewidth=1.8)
+lines!(ax2a, time_days, BP_avg    .* sc; label="⟨Pᵦ⟩  ",      color=c_bp,   linewidth=1.8)
+lines!(ax2a, time_days, A_avg     .* sc; label="⟨A⟩  ",            color=c_a,    linewidth=1.8)
+lines!(ax2a, time_days, ET_avg    .* sc; label="⟨∂E/∂t⟩  ",         color=c_et,   linewidth=2.0, linestyle=:dashdot)
+lines!(ax2a, time_days, Residual_avg .* sc; label="⟨D⟩  ",      color=c_res,  linewidth=1.8)
 axislegend(ax2a; position=:rt, leg_style...)
 linkxaxes!(ax2a)
 #rowgap!(fig2.layout, 1, 24)
 
-outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_nt_v5.png")
+outpath2 = joinpath(FIGDIR, "Budget_TimeSeries_3day_nt_v6.png")
 save(outpath2, fig2, px_per_unit=2)
 println("Figure 2 saved → $outpath2")
 display(fig2)
