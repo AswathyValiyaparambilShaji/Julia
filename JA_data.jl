@@ -1,229 +1,114 @@
 using MAT
-
-file1 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat")
-file2 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_OLD.mat")
-file3 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat")
-file4 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Alford_latlon_fromFluxTimeSeries.mat")
-file5 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Alford_latlon_fromFluxTimeSeries_IWAP.mat")
-file6 = matopen("/home/aswathy/mnt/data/aswathy/Mooring_Data/Alford_latlon_fromFluxTimeSeries_OLD.mat")
-
-
-varnames = keys(file1)
-println(varnames)
-
-
-data = Dict(name => read(file1, name) for name in varnames)
-close(file1)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-
-### File 2 ###
-
-        println(" ###################    File 2 ###################")
-
-
-varnames = keys(file2)
-println(varnames)
-
-
-data = Dict(name => read(file2, name) for name in varnames)
-close(file2)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-### File 3 ###
-        println(" ###################    File 3 ###################")
-
-varnames = keys(file3)
-println(varnames)
-
-
-data = Dict(name => read(file3, name) for name in varnames)
-close(file3)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-### File 4 ###
-        println(" ###################    File 4 ###################")
-
-varnames = keys(file4)
-println(varnames)
-
-
-data = Dict(name => read(file4, name) for name in varnames)
-close(file4)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-### File 5 ###
-        println(" ###################    File 5 ###################")
-
-varnames = keys(file5)
-println(varnames)
-
-
-data = Dict(name => read(file5, name) for name in varnames)
-close(file5)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-### File 6 ###
-        println(" ###################    File 6 ###################")
-
-varnames = keys(file6)
-println(varnames)
-
-
-data = Dict(name => read(file6, name) for name in varnames)
-close(file6)
-
-
-for (k, v) in data
-    println(k, " => ", typeof(v), "  size: ", size(v))
-end
-
-
-
-
-
-using MAT
 using CairoMakie
 using GeoMakie
 using GeoMakie.GeoJSON
 using Statistics
 
 
-# ── Choose which file to load ──────────────────────────────────────────────
-# Options (swap path as needed):
-#   Flux_mooring_timeseries_ALL.mat       -> 79 moorings, 2 modes, time series
-#   Flux_mooring_timeseries_ALL_OLD.mat   -> 88 moorings, 2 modes, time series
-#   Flux_mooring_timeseries_ALL_IWAP.mat  -> 6 moorings, 5 modes, NO time dim
-#                                            (already averaged - see note below)
+# ════════════════════════════════════════════════════════════════════════
+# 1) Load lat/lon (+ flux) from the three mooring files
+# ════════════════════════════════════════════════════════════════════════
+file1path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
+file2path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_OLD.mat"
+file3path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
 
 
-filepath = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
+f1 = matopen(file1path)
+lato1 = vec(read(f1, "lato")); lono1 = vec(read(f1, "lono"))
+Fuo1  = read(f1, "Fuo");       Fvo1  = read(f1, "Fvo")
+close(f1)
 
 
-file = matopen(filepath)
-lato = vec(read(file, "lato"))
-lono = vec(read(file, "lono"))
-Fuo  = read(file, "Fuo")
-Fvo  = read(file, "Fvo")
-close(file)
+f2 = matopen(file2path)
+lato2 = vec(read(f2, "lato")); lono2 = vec(read(f2, "lono"))
+Fuo2  = read(f2, "Fuo");       Fvo2  = read(f2, "Fvo")
+close(f2)
 
 
-# ── Handle both time-series files (3D) and the IWAP file (2D, no time) ────
-if ndims(Fuo) == 3
-    nmoor, nmode, ntime = size(Fuo)
-    println("Moorings: $nmoor, Modes: $nmode, Time steps: $ntime")
-    # Time-mean flux per mooring per mode
-    um_kwm = dropdims(mean(Fuo, dims=3), dims=3)   # (nmoor, nmode)
-    vm_kwm = dropdims(mean(Fvo, dims=3), dims=3)   # (nmoor, nmode)
-else
-    nmoor, nmode = size(Fuo)
-    println("Moorings: $nmoor, Modes: $nmode (no time dimension - already averaged)")
-    um_kwm = Fuo
-    vm_kwm = Fvo
+f3 = matopen(file3path)
+lato3 = vec(read(f3, "lato")); lono3 = vec(read(f3, "lono"))
+Fuo3  = read(f3, "Fuo");       Fvo3  = read(f3, "Fvo")
+close(f3)
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 2) Print lat/lon pairs for each file
+# ════════════════════════════════════════════════════════════════════════
+println("=== File 1 (ALL): $(length(lato1)) moorings ===")
+for i in eachindex(lato1)
+    println("  Mooring $i: (lat=$(lato1[i]), lon=$(lono1[i]))")
 end
 
 
-# Sum across modes to get total flux vector, then magnitude
-umtot = dropdims(sum(um_kwm, dims=2), dims=2)
-vmtot = dropdims(sum(vm_kwm, dims=2), dims=2)
-flux_mag = sqrt.(umtot.^2 .+ vmtot.^2)
+println("\n=== File 2 (ALL_OLD): $(length(lato2)) moorings ===")
+for i in eachindex(lato2)
+    println("  Mooring $i: (lat=$(lato2[i]), lon=$(lono2[i]))")
+end
 
 
-# ── Helper function: add land polygons to any GeoAxis ─────────────────────
+println("\n=== File 3 (ALL_IWAP): $(length(lato3)) moorings ===")
+for i in eachindex(lato3)
+    println("  Mooring $i: (lat=$(lato3[i]), lon=$(lono3[i]))")
+end
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 2b) Quick overlap check: are the "same" moorings shared across files?
+#     Two moorings are called a "match" if lat & lon agree within `tol` deg.
+# ════════════════════════════════════════════════════════════════════════
+function find_matches(lat_a, lon_a, lat_b, lon_b; tol = 0.05)
+    matches = Tuple{Int,Int}[]
+    for i in eachindex(lat_a), j in eachindex(lat_b)
+        if isapprox(lat_a[i], lat_b[j]; atol=tol) && isapprox(lon_a[i], lon_b[j]; atol=tol)
+            push!(matches, (i, j))
+        end
+    end
+    return matches
+end
+
+
+m12 = find_matches(lato1, lono1, lato2, lono2)
+m13 = find_matches(lato1, lono1, lato3, lono3)
+m23 = find_matches(lato2, lono2, lato3, lono3)
+
+
+println("\n=== Location overlap (tolerance = 0.05°) ===")
+println("File1 <-> File2 : $(length(m12)) matching moorings out of $(length(lato1))/$(length(lato2))")
+println("File1 <-> File3 : $(length(m13)) matching moorings out of $(length(lato1))/$(length(lato3))")
+println("File2 <-> File3 : $(length(m23)) matching moorings out of $(length(lato2))/$(length(lato3))")
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 3) Separate mooring-location maps, one figure per file
+# ════════════════════════════════════════════════════════════════════════
 function add_land!(ax)
     land = GeoMakie.land()
-    poly!(ax, land, color=:lightgray, strokecolor=:gray40, strokewidth=0.5)
+    poly!(ax, land, color = :lightgray, strokecolor = :gray40, strokewidth = 0.5)
 end
 
 
-# ── Figure 1: Mooring locations ────────────────────────────────────────────
-fig1 = Figure(size=(900, 500))
-ax1 = GeoAxis(fig1[1,1],
-    dest   = "+proj=eqc",
-    xlabel = "Longitude (°E)",
-    ylabel = "Latitude (°N)",
-    title  = "Figure 1: Mooring Locations ($nmoor moorings)",
-    limits = (-180, 180, -80, 70),
-    xgridvisible = false,
-    ygridvisible = false)
+# Manually draw a closed rectangle around the axis limits. This guarantees a
+# full border on all four sides (top/bottom/left/right) regardless of how
+# the underlying Axis/GeoAxis spine attributes render.
+function add_box!(ax, xlims, ylims; color = :black, linewidth = 1.5)
+    x0, x1 = xlims
+    y0, y1 = ylims
+    lines!(ax, [x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0],
+        color = color, linewidth = linewidth)
+end
 
 
-add_land!(ax1)
-
-
-scatter!(ax1, lono, lato,
-    color       = :steelblue,
-    markersize  = 8,
-    strokecolor = :black,
-    strokewidth = 0.8)
-
-
-save("figure1_mooring_locations.png", fig1)
-display(fig1)
-
-
-# ── Figure 2: Flux magnitude colored scatter ───────────────────────────────
-fig2 = Figure(size=(900, 500))
-ax2 = GeoAxis(fig2[1,1],
-    dest   = "+proj=eqc",
-    xlabel = "Longitude (°E)",
-    ylabel = "Latitude (°N)",
-    title  = "Figure 2: Time-Mean Energy Flux Magnitude (Sum of Modes)",
-    limits = (-180, 180, -80, 70),
-    xgridvisible = false,
-    ygridvisible = false)
-
-
-add_land!(ax2)
-
-
-sc2 = scatter!(ax2, lono, lato,
-    color       = flux_mag,
-    colormap    = :viridis,
-    markersize  = 10,
-    strokecolor = :black,
-    strokewidth = 0.5)
-
-
-Colorbar(fig2[1,2], sc2, label = "Flux Magnitude (kW/m)")
-
-
-save("figure2_flux_magnitude.png", fig2)
-display(fig2)
-
-
-# ── Figure 3: Per-mode flux vectors, one panel per mode ────────────────────
-fig3   = Figure(size=(800*nmode, 500))
-scale  = 2.0
-
-
-for mode in 1:nmode
-    ax = GeoAxis(fig3[1, mode],
+function plot_locations(lono, lato, title_str, outname; color = :steelblue)
+    nmoor = length(lato)
+    xlims = (-180, 180)
+    ylims = (-80, 70)
+    fig = Figure(size = (900, 500))
+    ax = GeoAxis(fig[1,1],
         dest   = "+proj=eqc",
         xlabel = "Longitude (°E)",
         ylabel = "Latitude (°N)",
-        title  = "Mode $mode Energy Flux Vectors",
-        limits = (-180, 180, -80, 70),
+        title  = "$title_str ($nmoor moorings)",
+        limits = (xlims[1], xlims[2], ylims[1], ylims[2]),
         xgridvisible = false,
         ygridvisible = false)
 
@@ -232,26 +117,141 @@ for mode in 1:nmode
 
 
     scatter!(ax, lono, lato,
-        color      = :gray60,
-        markersize = 5)
+        color       = color,
+        markersize  = 8,
+        strokecolor = :black,
+        strokewidth = 0.8)
 
 
-    for j in 1:nmoor
-        arrows!(ax,
-            [lono[j]], [lato[j]],
-            [um_kwm[j, mode] * scale],
-            [vm_kwm[j, mode] * scale],
-            color     = :firebrick,
-            arrowsize = 8,
-            linewidth = 1.2)
-    end
+    add_box!(ax, xlims, ylims)
+
+
+    save(outname, fig)
+    display(fig)
+    println("Saved: $outname")
+    return fig
 end
 
 
-save("figure3_modal_flux_vectors.png", fig3)
-display(fig3)
+println("\n--- Building individual location figures ---")
+fig_loc1 = plot_locations(lono1, lato1, "File 1 (ALL): Mooring Locations",
+                           "figure_file1_locations.png", color = :steelblue)
+fig_loc2 = plot_locations(lono2, lato2, "File 2 (ALL_OLD): Mooring Locations",
+                           "figure_file2_locations.png", color = :seagreen)
+fig_loc3 = plot_locations(lono3, lato3, "File 3 (ALL_IWAP): Mooring Locations",
+                           "figure_file3_locations.png", color = :firebrick)
 
 
-println("All figures saved successfully.")
+# ════════════════════════════════════════════════════════════════════════
+# 3b) Combined figure: all three files' moorings overlaid on one map
+# ════════════════════════════════════════════════════════════════════════
+println("\n--- Building combined location figure ---")
+xlims_c = (-180, 180)
+ylims_c = (-80, 70)
+
+
+fig_all = Figure(size = (1000, 550))
+ax_all = GeoAxis(fig_all[1,1],
+    dest   = "+proj=eqc",
+    xlabel = "Longitude (°E)",
+    ylabel = "Latitude (°N)",
+    title  = "All Mooring Locations (File 1, File 2, File 3)",
+    limits = (xlims_c[1], xlims_c[2], ylims_c[1], ylims_c[2]),
+    xgridvisible = false,
+    ygridvisible = false)
+
+
+add_land!(ax_all)
+
+
+sc1 = scatter!(ax_all, lono1, lato1, color = :steelblue, markersize = 10,
+    strokecolor = :black, strokewidth = 0.8, marker = :circle)
+sc2 = scatter!(ax_all, lono2, lato2, color = :seagreen, markersize = 10,
+    strokecolor = :black, strokewidth = 0.8, marker = :utriangle)
+sc3 = scatter!(ax_all, lono3, lato3, color = :firebrick, markersize = 12,
+    strokecolor = :black, strokewidth = 0.8, marker = :star5)
+
+
+add_box!(ax_all, xlims_c, ylims_c)
+
+
+Legend(fig_all[1,2],
+    [sc1, sc2, sc3],
+    ["File 1 (ALL, n=$(length(lato1)))",
+     "File 2 (ALL_OLD, n=$(length(lato2)))",
+     "File 3 (ALL_IWAP, n=$(length(lato3)))"])
+
+
+save("figure_all_locations_combined.png", fig_all)
+display(fig_all)
+println("Saved: figure_all_locations_combined.png")
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 4) Time series of flux (Mode 1 & Mode 2) for one mooring, as 2 subplots
+#    (u in top panel, v in bottom panel). No date/time vector is stored in
+#    the .mat file, so the x-axis is simply the sample index.
+#    Change `mooring_idx` below to inspect a different mooring (1..79).
+# ════════════════════════════════════════════════════════════════════════
+mooring_idx = 1
+ntime = size(Fuo1, 3)
+t = 1:ntime
+
+
+u_mode1 = Fuo1[mooring_idx, 1, :]
+u_mode2 = Fuo1[mooring_idx, 2, :]
+v_mode1 = Fvo1[mooring_idx, 1, :]
+v_mode2 = Fvo1[mooring_idx, 2, :]
+
+
+fig_ts = Figure(size = (1100, 700))
+
+
+ax_u = Axis(fig_ts[1,1],
+    xlabel = "Time index",
+    ylabel = "Fu (kW/m)",
+    title  = "Zonal Energy Flux (Fu) — Mooring $mooring_idx",
+    xgridvisible      = false,
+    ygridvisible      = false,
+    topspinevisible   = true,
+    rightspinevisible = true,
+    bottomspinevisible = true,
+    leftspinevisible  = true,
+    spinewidth        = 1.5)
+
+
+lines!(ax_u, t, u_mode1, color = :steelblue, linewidth = 1.2, label = "Mode 1")
+lines!(ax_u, t, u_mode2, color = :firebrick, linewidth = 1.2, label = "Mode 2")
+axislegend(ax_u, position = :rt)
+
+
+ax_v = Axis(fig_ts[2,1],
+    xlabel = "Time index",
+    ylabel = "Fv (kW/m)",
+    title  = "Meridional Energy Flux (Fv) — Mooring $mooring_idx",
+    xgridvisible      = false,
+    ygridvisible      = false,
+    topspinevisible   = true,
+    rightspinevisible = true,
+    bottomspinevisible = true,
+    leftspinevisible  = true,
+    spinewidth        = 1.5)
+
+
+lines!(ax_v, t, v_mode1, color = :steelblue, linewidth = 1.2, label = "Mode 1")
+lines!(ax_v, t, v_mode2, color = :firebrick, linewidth = 1.2, label = "Mode 2")
+axislegend(ax_v, position = :rt)
+
+
+linkxaxes!(ax_u, ax_v)
+
+
+save("figure_flux_timeseries_mooring$(mooring_idx).png", fig_ts)
+display(fig_ts)
+
+
+println("\nAll figures saved successfully.")
+
+
 
 
