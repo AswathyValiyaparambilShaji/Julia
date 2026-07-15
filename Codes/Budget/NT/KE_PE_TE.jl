@@ -3,6 +3,7 @@ using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMak
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin
+include(joinpath(@__DIR__, "..", "..", "..", "functions", "coriolis_frequency.jl"))
 
 
 # ============================================================
