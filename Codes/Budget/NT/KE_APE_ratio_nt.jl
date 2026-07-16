@@ -143,7 +143,7 @@ lat_vec = collect(lat)
 # ============================================================
 # 0.25° latitude binning  (area-weighted)
 # ============================================================
-bin_width   = 1.0
+bin_width   = 0.9
 bin_edges   = collect(minlat : bin_width : maxlat)
 bin_centers = bin_edges[1:end-1] .+ bin_width / 2
 nbins       = length(bin_centers)

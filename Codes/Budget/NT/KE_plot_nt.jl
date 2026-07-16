@@ -93,7 +93,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 fig = Figure(resolution=(600, 800))
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
-ax1 = Axis(fig[1, 1], title= rich("KE (KJ/m²"), xlabel="Longitude[°]", ylabel="Latitude[°]")
+ax1 = Axis(fig[1, 1], title= rich("KE (KJ/m²)"), xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
                 (minimum(lat), maximum(lat)))
 hm = CairoMakie.heatmap!(ax1, lon, lat, KE./1000;
@@ -106,6 +106,6 @@ hm = CairoMakie.heatmap!(ax1, lon, lat, KE./1000;
 Colorbar(fig[1, 2], hm, label = " (kJ/m²)")
 display(fig)
 FIGDIR        = cfg["fig_base"]
-fgname = "KE_nt_v1.png"
+fgname = "KE_nt_v2.png"
 save(joinpath(FIGDIR , fgname),fig)
 
