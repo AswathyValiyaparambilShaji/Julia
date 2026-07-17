@@ -38,12 +38,8 @@ dt = 25
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)          # total hourly-ish baroclinic samples
-ts  = 72                     # hourly samples per 3-day window
-nt_avg = div(nt, ts)         # number of complete 3-day SL windows
-
-
-n_used = nt_avg * ts
-
+ts  = 72                     # hourly samples per 3-day N2 window
+nt_avg = div(nt, ts)         # number of 3-day N2 windows
 
 
 # --- Thickness & constants ---
@@ -147,7 +143,7 @@ vp_pt = vp_3d[i_local, j_local, :, :]   # (nz, nt)
 
 
 # ==========================================================
-# READ N2 (3-day windows) AND SET UP TIME-INDEPENDENT DEPTH GRID
+# READ N2 (3-day windows) AND COMPUTE THE TIME-MEAN PROFILE
 # ==========================================================
 N2_phase = Float64.(open(joinpath(base,"3day_mean","N2","N2_3day_$suffix.bin"), "r") do io
     raw = read(io, nx * ny * nz * nt_avg * sizeof(Float32))
@@ -163,153 +159,167 @@ println("\nOcean cell indices: ", ocean_idx)
 println("k_top = $k_top, k_bot = $k_bot")
 
 
+# --- N2 time series at this point: fill NaN in each 3-day window first,
+#     THEN average across windows to get one time-mean profile ---
+N2_col_ts = N2_phase[i_local, j_local, :, :]   # (nz, nt_avg)
+N2_col_ts_filled = similar(N2_col_ts)
+
+
+n_bad_windows = 0
+for t in 1:nt_avg
+    col = N2_col_ts[:, t]
+    x = replace(col, NaN => missing)
+    x = Impute.locf(x)
+    x = Impute.nocb(x)
+    col_filled = coalesce.(x, NaN)
+    if any(isnan, col_filled)
+        n_bad_windows += 1
+        col_filled .= NaN   # leave as NaN; excluded from the mean below via skipmissing-style handling
+    end
+    N2_col_ts_filled[:, t] = col_filled
+end
+if n_bad_windows > 0
+    println("Note: $n_bad_windows of $nt_avg windows still had NaN after fill and are excluded from the time-mean.")
+end
+
+
+# time-mean across windows, ignoring any still-NaN windows per depth level
+N2_mean_col = [mean(filter(!isnan, N2_col_ts_filled[k, :])) for k in 1:nz]
+n_nan_mean = sum(isnan.(N2_mean_col))
+if n_nan_mean > 0
+    error("Time-mean N2 profile still has $n_nan_mean NaN depth level(s) — " *
+          "every window was NaN at that depth, nothing to average.")
+end
+println("\nTime-mean N2 profile (full column): ", N2_mean_col)
+
+
+# --- Faces (zf) for the actual wet part of the column ---
 dz_col = (hfac_col .* DRF)[k_top:k_bot]
-zf_col = -cumsum(dz_col)          # length M, faces for the SL solve
+zf_col = -cumsum(dz_col)          # length M
 M = length(zf_col)
 H = sum(dz_col)
 
 
 dz_vel = dz_col[2:end]            # length M-1, matches Ueig2's derivative-shortened grid
-
-
-# approximate center depths for the velocity (Ueig2) grid
 z_vel_centers = 0.5 .* (zf_col[1:end-1] .+ zf_col[2:end])   # length M-1
 
 
+# --- N2 at faces, from the TIME-MEAN profile (same padding convention as before) ---
+N2_valid = N2_mean_col[k_top:k_bot-1]
+N2_faces = vcat(N2_valid, N2_valid[end])
+@assert length(N2_faces) == length(zf_col) "N2_faces/zf_col length mismatch"
+
+
 f_pt = 2 * 7.2921e-5 * sin(deg2rad(target_lat))
+println("f  = $f_pt rad/s")
+println("om = $om rad/s")
+println(Ueig2_sl[:,1])
+
+# ==========================================================
+# SOLVE THE SL PROBLEM ONCE, USING THE TIME-MEAN N2
+# ==========================================================
+n_modes_keep = 25
+
+
+k_sl, L_sl, C_sl, Cg_sl, Ce_sl, Weig_sl, Ueig_sl, Ueig2_sl =
+    sturm_liouville_noneqDZ_norm(zf_col, N2_faces, f_pt, om, 0)
+
+
+println("\nResults from the single (time-mean N2) SL solve, first $n_modes_keep modes:")
+println("Mode | Ce (m/s) | Cg (m/s) | L (km)")
+for n in 1:n_modes_keep
+    println("  $n  |  $(round(Ce_sl[n], digits=3))  |  $(round(Cg_sl[n], digits=3))  |  $(round(L_sl[n]/1000, digits=1))")
+end
 
 
 # --- pick a depth to compare (meters, negative = below surface) ---
 target_depth_m = -100.0
 idx_vel = argmin(abs.(z_vel_centers .- target_depth_m))
-println("Comparing at depth ≈ $(round(z_vel_centers[idx_vel], digits=1)) m " *
+println("\nComparing at depth ≈ $(round(z_vel_centers[idx_vel], digits=1)) m " *
         "(nearest to requested $target_depth_m m), grid index $idx_vel of $(M-1)")
 
 
-abs_idx = k_top + idx_vel   # absolute nz-index of this depth, for the actual BC signal
+abs_idx = k_top + idx_vel
+Phi_here = Ueig2_sl[idx_vel, 1:n_modes_keep]   # mode-shape value at the chosen depth, per mode
 
 
 # ==========================================================
-# LOOP OVER 3-DAY WINDOWS: SOLVE SL, PROJECT ALL MODES
+# PROJECT EVERY HOURLY TIMESTEP ONTO THE FIXED MODE SHAPES,
+# THEN SUM MODES 1-5 FOR THE RECONSTRUCTION
 # ==========================================================
-n_modes_keep = 2   # mode 1 and mode 2
+uhat = fill(NaN, nt, n_modes_keep)   # projected amplitude, per mode, all hourly steps
+vhat = fill(NaN, nt, n_modes_keep)
 
 
-# (time, mode) matrices — no more separate uhat1/uhat2/u_recon1/u_recon2 variables
-uhat    = fill(NaN, n_used, n_modes_keep)   # projected u amplitude, per mode
-vhat    = fill(NaN, n_used, n_modes_keep)   # projected v amplitude, per mode
-u_recon = fill(NaN, n_used, n_modes_keep)   # per-mode reconstruction of u' at the chosen depth
-v_recon = fill(NaN, n_used, n_modes_keep)   # per-mode reconstruction of v' at the chosen depth
+u_recon_sum = fill(NaN, nt)   # sum of modes 1-5 reconstruction at the chosen depth
+v_recon_sum = fill(NaN, nt)
 
 
-u_actual = fill(NaN, n_used)   # actual BC signal at the chosen depth (mode-independent)
-v_actual = fill(NaN, n_used)
+u_actual = up_pt[abs_idx, :]   # actual BC signal at the chosen depth, all hourly steps
+v_actual = vp_pt[abs_idx, :]
 
 
-println("\n--- Looping over $nt_avg 3-day windows, projecting $ts hourly samples each ---")
-for t in 1:nt_avg
+println("\n--- Projecting $nt hourly timesteps onto the fixed (time-mean) mode shapes ---")
+for tau in 1:nt
+    u_col = up_pt[k_top+1:k_bot, tau]
+    v_col = vp_pt[k_top+1:k_bot, tau]
 
 
-    N2_col = N2_phase[i_local, j_local, :, t]
-
-
-    x = replace(N2_col, NaN => missing)
-    x = Impute.locf(x)
-    x = Impute.nocb(x)
-    N2_col_filled = coalesce.(x, NaN)
-
-
-    if any(isnan, N2_col_filled)
-        @warn "t=$t: column still has NaN after locf/nocb fill — skipping this window"
-        continue
+    u_sum = 0.0
+    v_sum = 0.0                        
+    for n in 1:n_modes_keep
+        Phi_n = Ueig2_sl[:, n]
+        uh = (1/H) * sum(Phi_n .* u_col .* dz_vel)
+        vh = (1/H) * sum(Phi_n .* v_col .* dz_vel)
+        uhat[tau, n] = uh
+        vhat[tau, n] = vh
+        u_sum += Phi_here[n] * uh
+        v_sum += Phi_here[n] * vh
     end
+    u_recon_sum[tau] = u_sum
+    v_recon_sum[tau] = v_sum
 
 
-    N2_valid = N2_col_filled[k_top:k_bot-1]
-    N2_faces = vcat(N2_valid, N2_valid[end])
-
-
-    k_sl, L_sl, C_sl, Cg_sl, Ce_sl, Weig_sl, Ueig_sl, Ueig2_sl =
-        sturm_liouville_noneqDZ_norm(zf_col, N2_faces, f_pt, om, 0)
-
-
-    n_avail = min(n_modes_keep, size(Ueig2_sl, 2))
-
-
-    # eigenfunction value at the chosen depth, one per mode (vector, length n_avail)
-    Phi_here = Ueig2_sl[idx_vel, 1:n_avail]
-
-
-    tau_range = (t-1)*ts + 1 : t*ts
-
-
-    for tau in tau_range
-        u_col = up_pt[k_top+1:k_bot, tau]
-        v_col = vp_pt[k_top+1:k_bot, tau]
-
-
-        u_actual[tau] = up_pt[abs_idx, tau]
-        v_actual[tau] = vp_pt[abs_idx, tau]
-
-
-        for n in 1:n_avail
-            Phi_n = Ueig2_sl[:, n]
-            uhat[tau, n] = (1/H) * sum(Phi_n .* u_col .* dz_vel)
-            vhat[tau, n] = (1/H) * sum(Phi_n .* v_col .* dz_vel)
-
-
-            u_recon[tau, n] = Phi_here[n] * uhat[tau, n]
-            v_recon[tau, n] = Phi_here[n] * vhat[tau, n]
-        end
-    end
-
-
-    if t == 1 || t % 10 == 0
-        println("t=$t done (hourly indices $(first(tau_range)):$(last(tau_range)))")
+    if tau == 1 || tau % 500 == 0
+        println("tau=$tau done")
     end
 end
 
 
 # ==========================================================
-# PLOT: short time window, mode 1 and mode 2 as separate lines
+# PLOT: actual BC vs sum of modes 1-5 reconstruction
 # ==========================================================
-t_days = (1:n_used) ./ 24   # hourly samples -> days
+t_days = (1:nt) ./ 24   # hourly samples -> days
 
 
-# show just the first ~10 days so individual mode oscillations are visible
 n_days_show = 30
-n_show = min(n_used, n_days_show*24)
-show_idx = 10:n_show
+n_show = min(nt, n_days_show*24)
+show_idx = 1:n_show
 
 
 fig = Figure(size = (1000, 700))
 
 
 ax1 = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "u' (m/s)",
-           title = "Baroclinic u' vs mode1/mode2 reconstruction, depth ≈ $(round(z_vel_centers[idx_vel], digits=0)) m")
+           title = "Baroclinic u' vs sum of modes 1-25 (time-mean N2), depth ≈ $(round(z_vel_centers[idx_vel], digits=0)) m")
 lines!(ax1, t_days[show_idx], u_actual[show_idx],     color = :black, label = "BC (full)")
-lines!(ax1, t_days[show_idx], u_recon[show_idx, 1],   color = :red,   label = "Mode 1")
-lines!(ax1, t_days[show_idx], u_recon[show_idx, 2],   color = :blue,  label = "Mode 2")
+lines!(ax1, t_days[show_idx], u_recon_sum[show_idx],  color = :red,   label = "Sum modes 1-5")
 axislegend(ax1, position = :rt)
 
 
 ax2 = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "v' (m/s)",
-           title = "Baroclinic v' vs mode1/mode2 reconstruction, depth ≈ $(round(z_vel_centers[idx_vel], digits=0)) m")
+           title = "Baroclinic v' vs sum of modes 1-25 (time-mean N2), depth ≈ $(round(z_vel_centers[idx_vel], digits=0)) m")
 lines!(ax2, t_days[show_idx], v_actual[show_idx],     color = :black, label = "BC (full)")
-lines!(ax2, t_days[show_idx], v_recon[show_idx, 1],   color = :red,   label = "Mode 1")
-lines!(ax2, t_days[show_idx], v_recon[show_idx, 2],   color = :blue,  label = "Mode 2")
+lines!(ax2, t_days[show_idx], v_recon_sum[show_idx],  color = :blue,  label = "Sum modes 1-5")
 axislegend(ax2, position = :rt)
 
 
 outdir = joinpath(base, "3day_mean", "N2")
 mkpath(outdir)
-figfile = joinpath(outdir, "SL_projection_modes_$(suffix)_i$(i_local)_j$(j_local).png")
+figfile = joinpath(outdir, "SL_projection_meanN2_sum5modes_$(suffix)_i$(i_local)_j$(j_local).png")
 #save(figfile, fig)
 #println("\nSaved figure to $figfile")
 
 
 fig
-
-
-
 
