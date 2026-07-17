@@ -2,7 +2,7 @@
 #PBS -N julia_job
 #PBS -q normal
 #PBS -l select=1:ncpus=128:mem=200GB:model=mil_ait
-#PBS -l walltime=12:00:00
+#PBS -l walltime=8:00:00
 #PBS -o /nobackup/avaliyap/logs/output_m.out
 #PBS -e /nobackup/avaliyap/logs/output_m.err
 
