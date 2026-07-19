@@ -22,7 +22,7 @@ base2 = cfg["base_path2"]
 #    to get the total flux per mooring (same "sum the 5 modes" step
 #    the model script does with uflux_modes/vflux_modes).
 # ════════════════════════════════════════════════════════════════════════
-file3path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
+file3path = "/nobackup/avaliyap/Box56/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
 
 
 f3 = matopen(file3path)
