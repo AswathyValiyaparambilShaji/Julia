@@ -14,18 +14,42 @@ file3path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries
 
 
 f1 = matopen(file1path)
+for name in keys(f1)
+    data = read(f1, name)
+    println("Variable: ", name)
+    println("  Type: ", typeof(data))
+    println("  Size: ", size(data))
+    println()
+end
 lato1 = vec(read(f1, "lato")); lono1 = vec(read(f1, "lono"))
 Fuo1  = read(f1, "Fuo");       Fvo1  = read(f1, "Fvo")
 close(f1)
 
 
 f2 = matopen(file2path)
+for name in keys(f2)
+    data = read(f2, name)
+    println("Variable: ", name)
+    println("  Type: ", typeof(data))
+    println("  Size: ", size(data))
+    println()
+end
 lato2 = vec(read(f2, "lato")); lono2 = vec(read(f2, "lono"))
 Fuo2  = read(f2, "Fuo");       Fvo2  = read(f2, "Fvo")
 close(f2)
 
-
+println("IWAP")
 f3 = matopen(file3path)
+
+for name in keys(f3)
+    data = read(f3, name)
+    println("Variable: ", name)
+    println("  Type: ", typeof(data))
+    println("  Size: ", size(data))
+    println()
+end
+
+
 lato3 = vec(read(f3, "lato")); lono3 = vec(read(f3, "lono"))
 Fuo3  = read(f3, "Fuo");       Fvo3  = read(f3, "Fvo")
 close(f3)

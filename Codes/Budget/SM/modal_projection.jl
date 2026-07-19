@@ -82,12 +82,12 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # --- read baroclinic fields and rebuild u', v' (same as your flux script) ---
        hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-       rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
+       #=rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz * nt * sizeof(Float64)
            raw_bytes = read(io, nbytes)
            raw_data = reinterpret(Float64, raw_bytes)
            reshape(raw_data, nx, ny, nz, nt)
-       end)
+       end)=#
        fu = Float64.(open(joinpath(base2, "UVW_F", "fu_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz * nt * sizeof(Float32)
            raw_bytes = read(io, nbytes)
@@ -111,9 +111,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        DRFfull = hFacC .* DRF3d
        depth = sum(DRFfull, dims=3)
        DRFfull[hFacC .== 0] .= 0.0
+       #=
        fr = bandpassfilter(rho, T1, T2, delt, N, nt)
+=#
        mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
-
 
        ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
        up_3d  = fu .- ucA_3d
