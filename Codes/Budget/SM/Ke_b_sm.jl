@@ -51,7 +51,8 @@ T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 
 
 # --- Loop over tiles ---
-for xn in cfg["xn_start"]:cfg["xn_end"]
+
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
@@ -105,10 +106,10 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         fw     = open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
             Float64.(reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt))
         end
-        wcA    = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw .- wcA
+        #wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+        wp_3d  = fw #.- wcA
         wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
-        fw = wcA = nothing; GC.gc()
+        fw  = nothing; GC.gc()
 
 
         # --- Perturbation KE = 0.5 * rho0 * (u'^2 + v'^2 + w'^2) ---

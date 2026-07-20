@@ -40,6 +40,18 @@ nt_avg = div(nt, ts)
 nt3 = div(nt, 3*24)
 hrs_per_chunk = 3 * 24
 
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
 
 # --- Weekly window ---
 hour_apr22_start = 31*24 + (22-1)*24
@@ -237,11 +249,11 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # --- 3-day chunk means ---
        G_buoy_3day = zeros(Float64, nx, ny, nt3)
-       for t in 1:nt3
-           t_start = (t-1) * hrs_per_chunk + 1
-           t_end   = min(t * hrs_per_chunk, nt)
-           G_buoy_3day[:, :, t] = dropdims(mean(g_buoy[:, :, t_start:t_end], dims=3), dims=3)
-       end
+       for (i, c) in enumerate(safe_chunks)
+            t1 = (c-1)*nt_chunk + 1
+            t2 = c*nt_chunk
+            G_buoy_3day[:, :, i] = Float32.(dropdims(mean(g_buoy[:, :, t1:t2], dims=3), dims=3))
+        end
        println("  G_buoy (3day) range: $(extrema(G_buoy_3day[isfinite.(G_buoy_3day)]))")
        open(joinpath(base2, "G_buoy_3day", "g_buoy_3day_$suffix.bin"), "w") do io
            write(io, Float32.(G_buoy_3day))

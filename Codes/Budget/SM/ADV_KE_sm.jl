@@ -6,24 +6,12 @@ using .FluxUtils: read_bin, bandpassfilter
 
 
 config_file = get(ENV, "JULIA_CONFIG",
-             joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
+            joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 
 
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
-
-
-
-
-# --- TIME MODE CONFIGURATION ---
-# Options:
-#   "3day"   -> KE flux for each 3-day period
-#   "weekly" -> KE flux mean over Apr 22 00:00 - Apr 28 23:00
-#   "full"   -> KE flux mean over full time record
-time_mode = "3day"   # <-- change to "3day", "weekly", or "full"
-
-
 
 
 # --- Domain & grid ---
@@ -32,8 +20,6 @@ minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
-
-
 
 
 # --- Tile & time parameters ---
@@ -49,8 +35,19 @@ nt = div(Tts, dto)
 ts = 72                  # timesteps per 3-day period
 nt_avg = div(nt, ts)     # number of 3-day periods
 nt3 = div(nt, 3*24)      # number of 3-day periods
+hrs_per_chunk = 3 * 24
+
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
 
 
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 
 
 # -------------------------------------------------------------------------
@@ -77,391 +74,159 @@ DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 rho0 = 1027.5
 
 
-
-
 # ============================================================================
-# MAIN WORKFLOW
+# MAIN WORKFLOW — single pass over all timesteps, averaged three ways at the end
 # ============================================================================
+println("Starting KE flux calculation (full timestep pass, then 3day/weekly/full averaging)...")
 
 
-if time_mode == "3day"
-    # ========================================================================
-    # 3-DAY KE ADVECTIVE FLUX WORKFLOW
-    # ========================================================================
-    println("Starting KE flux calculation for $nt3 3-day periods...")
+mkpath(joinpath(base2, "U_KE_3day"))
+mkpath(joinpath(base2, "U_KE_weekly"))
+mkpath(joinpath(base2, "U_KE"))
 
 
-    mkpath(joinpath(base2, "U_KE_3day"))
+
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       println("\n--- Processing tile: $suffix ---")
 
 
-            println("\n--- Processing tile: $suffix (3-day) ---")
+       # --- Read grid metrics ---
+       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+       dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+       dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
-            # --- Read grid metrics ---
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
+       # --- Read velocity fields (3-day averaged) ---
+       U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
+           nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx, ny, nz, nt_avg)
+       end)
 
 
-            # --- Read velocity fields (3-day averaged) ---
-            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
+       V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
+           nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx, ny, nz, nt_avg)
+       end)
 
 
-            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
+       # --- Read kinetic energy (full temporal resolution) ---
+       ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+           nbytes = nx * ny * nz * nt * sizeof(Float32)
+           raw_bytes = read(io, nbytes)
+           raw_data = reinterpret(Float32, raw_bytes)
+           reshape(raw_data, nx, ny, nz, nt)
+       end)
 
 
-            # --- Read kinetic energy (full temporal resolution) ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)
+       # --- Calculate cell thicknesses ---
+       DRFfull = hFacC .* DRF3d
+       DRFfull[hFacC .== 0] .= 0.0
 
 
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
+       # --- Calculate KE gradients (vectorized) ---
+       println("Calculating KE gradients...")
+       ke_x = zeros(Float64, nx, ny, nz, nt)
+       ke_y = zeros(Float64, nx, ny, nz, nt)
 
 
-            # --- Calculate KE gradients (vectorized) ---
-            println("Calculating KE gradients...")
-            ke_x = zeros(Float64, nx, ny, nz, nt)
-            ke_y = zeros(Float64, nx, ny, nz, nt)
+       dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
+       ke_x[2:end-1, :, :, :] = (ke_t[3:end, :, :, :] .- ke_t[1:end-2, :, :, :]) ./
+                                 reshape(dx_avg, nx-2, ny, 1, 1)
 
 
-            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
-            ke_x[2:end-1, :, :, :] = (ke_t[3:end, :, :, :] .- ke_t[1:end-2, :, :, :]) ./
-                                      reshape(dx_avg, nx-2, ny, 1, 1)
+       dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
+       ke_y[:, 2:end-1, :, :] = (ke_t[:, 3:end, :, :] .- ke_t[:, 1:end-2, :, :]) ./
+                                 reshape(dy_avg, nx, ny-2, 1, 1)
 
 
-            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
-            ke_y[:, 2:end-1, :, :] = (ke_t[:, 3:end, :, :] .- ke_t[:, 1:end-2, :, :]) ./
-                                      reshape(dy_avg, nx, ny-2, 1, 1)
+       ke_t = nothing; GC.gc()
 
 
-            println("Gradients calculated")
+       println("Gradients calculated")
 
 
-            # --- Calculate advective KE flux for each 3-day period ---
-            println("Calculating advective KE flux for 3-day periods...")
-            U_KE_3day = zeros(Float64, nx, ny, nt3)
-            hrs_per_chunk = 3 * 24
+       # --- Initialize output array ---
+       U_KE = zeros(Float64, nx, ny, nt)
 
 
-            for t in 1:nt3
-                t_start = (t-1) * hrs_per_chunk + 1
-                t_end   = min(t * hrs_per_chunk, nt)
+       # --- Calculate advective KE flux for each timestep ---
+       println("Calculating advective KE flux...")
+       for t in 1:nt
+           t_avg  = min(div(t - 1, ts) + 1, nt_avg)
 
 
-                U_KE_temp = zeros(Float64, nx, ny, t_end - t_start + 1)
+           u_avg  = @view U[:, :, :, t_avg]
+           v_avg  = @view V[:, :, :, t_avg]
+           ke_x_t = @view ke_x[:, :, :, t]
+           ke_y_t = @view ke_y[:, :, :, t]
 
 
-                for idx in 1:(t_end - t_start + 1)
-                    t_actual = t_start + idx - 1
-                    t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
+           temp1 = u_avg .* ke_x_t
+           temp2 = v_avg .* ke_y_t
 
 
-                    u_avg  = @view U[:, :, :, t_avg]
-                    v_avg  = @view V[:, :, :, t_avg]
-                    ke_x_t = @view ke_x[:, :, :, t_actual]
-                    ke_y_t = @view ke_y[:, :, :, t_actual]
+           U_KE[:, :, t] = dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
+       end
 
 
-                    temp1 = u_avg .* ke_x_t
-                    temp2 = v_avg .* ke_y_t
+       println("Flux calculation complete")
 
 
-                    U_KE_temp[:, :, idx] = dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
-                end
+       U = nothing; V = nothing; ke_x = nothing; ke_y = nothing; GC.gc()
 
 
-                U_KE_3day[:, :, t] = mean(U_KE_temp, dims=3)
-            end
+       # ====================================================================
+       # Average the single U_KE array three different ways
+       # ====================================================================
 
 
-            println("Flux calculation complete")
+       # --- Full time-mean ---
+       u_ke_full = dropdims(mean(U_KE, dims=3), dims=3)   # (nx, ny)
+       output_dir_full = joinpath(base2, "U_KE")
+       open(joinpath(output_dir_full, "u_ke_mean_$suffix.bin"), "w") do io
+           write(io, Float32.(u_ke_full))
+       end
 
 
-            output_dir = joinpath(base2, "U_KE_3day")
-            open(joinpath(output_dir, "u_ke_3day_$suffix.bin"), "w") do io
-                write(io, Float32.(U_KE_3day))
-            end
-
-
-            println("Completed tile: $suffix")
-            println("Output saved to $output_dir")
+       # --- 3-day chunk means ---
+       U_KE_3day = zeros(Float64, nx, ny, nt3)
+       for (i, c) in enumerate(safe_chunks)
+            t1 = (c-1)*nt_chunk + 1
+            t2 = c*nt_chunk
+            U_KE_3day[:, :, i] = Float32.(dropdims(mean(U_KE[:, :, t1:t2], dims=3), dims=3))
         end
-    end
+       output_dir_3day = joinpath(base2, "U_KE_3day")
+       open(joinpath(output_dir_3day, "u_ke_3day_$suffix.bin"), "w") do io
+           write(io, Float32.(U_KE_3day))
+       end
 
 
-    println("\n=== All tiles processed successfully (3-day) ===")
+       # --- Weekly window mean (Apr 22-28) ---
+       u_ke_weekly = dropdims(mean(U_KE[:, :, idx_start:idx_end], dims=3), dims=3)
+       output_dir_weekly = joinpath(base2, "U_KE_weekly")
+       open(joinpath(output_dir_weekly, "u_ke_weekly_$suffix.bin"), "w") do io
+           write(io, Float32.(u_ke_weekly))
+       end
 
 
+       U_KE = nothing; GC.gc()
 
 
-elseif time_mode == "weekly"
-    # ========================================================================
-    # WEEKLY KE ADVECTIVE FLUX WORKFLOW  (Apr 22 00:00 - Apr 28 23:00)
-    # ========================================================================
-    println("Starting KE flux calculation for weekly window Apr 22-28 ($nt_week hourly snapshots)...")
-
-
-    mkpath(joinpath(base2, "U_KE_weekly"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-
-
-            println("\n--- Processing tile: $suffix (weekly) ---")
-
-
-            # --- Read grid metrics ---
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            # --- Read velocity fields (3-day averaged) ---
-            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
-
-
-            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
-
-
-            # --- Read full ke_t then subset to weekly window ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)[:, :, :, idx_start:idx_end]
-
-
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            # --- Calculate KE gradients over weekly window ---
-            println("Calculating KE gradients...")
-            ke_x = zeros(Float64, nx, ny, nz, nt_week)
-            ke_y = zeros(Float64, nx, ny, nz, nt_week)
-
-
-            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
-            ke_x[2:end-1, :, :, :] = (ke_t[3:end, :, :, :] .- ke_t[1:end-2, :, :, :]) ./
-                                      reshape(dx_avg, nx-2, ny, 1, 1)
-
-
-            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
-            ke_y[:, 2:end-1, :, :] = (ke_t[:, 3:end, :, :] .- ke_t[:, 1:end-2, :, :]) ./
-                                      reshape(dy_avg, nx, ny-2, 1, 1)
-
-
-            println("Gradients calculated")
-
-
-            # --- Calculate advective KE flux for each hourly step in window ---
-            println("Calculating advective KE flux over weekly window...")
-            U_KE = zeros(Float64, nx, ny, nt_week)
-
-
-            for idx in 1:nt_week
-                t_actual = idx_start + idx - 1
-                t_avg    = min(div(t_actual - 1, ts) + 1, nt_avg)
-
-
-                u_avg  = @view U[:, :, :, t_avg]
-                v_avg  = @view V[:, :, :, t_avg]
-                ke_x_t = @view ke_x[:, :, :, idx]
-                ke_y_t = @view ke_y[:, :, :, idx]
-
-
-                temp1 = u_avg .* ke_x_t
-                temp2 = v_avg .* ke_y_t
-
-
-                U_KE[:, :, idx] = dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
-            end
-
-
-            println("Flux calculation complete")
-
-
-            # --- Time average over weekly window ---
-            u_ke_mean = dropdims(mean(U_KE, dims=3), dims=3)   # (nx, ny)
-
-
-            output_dir = joinpath(base2, "U_KE_weekly")
-            open(joinpath(output_dir, "u_ke_weekly_$suffix.bin"), "w") do io
-                write(io, Float32.(u_ke_mean))
-            end
-
-
-            println("Completed tile: $suffix")
-            println("Output saved to $output_dir")
-        end
-    end
-
-
-    println("\n=== All tiles processed successfully (weekly) ===")
-
-
-
-
-elseif time_mode == "full"
-    # ========================================================================
-    # FULL TIME AVERAGE KE ADVECTIVE FLUX WORKFLOW
-    # ========================================================================
-    println("Starting KE flux calculation for full time average...")
-
-
-    mkpath(joinpath(base2, "U_KE"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-
-
-            println("\n--- Processing tile: $suffix ---")
-
-
-            # --- Read grid metrics ---
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            # --- Read velocity fields (3-day averaged) ---
-            U = Float64.(open(joinpath(base, "3day_mean", "U", "ucc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
-
-
-            V = Float64.(open(joinpath(base, "3day_mean", "V", "vcc_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt_avg * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt_avg)
-            end)
-
-
-            # --- Read kinetic energy (full temporal resolution) ---
-            ke_t = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx, ny, nz, nt)
-            end)
-
-
-            # --- Calculate cell thicknesses ---
-            DRFfull = hFacC .* DRF3d
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            # --- Calculate KE gradients (vectorized) ---
-            println("Calculating KE gradients...")
-            ke_x = zeros(Float64, nx, ny, nz, nt)
-            ke_y = zeros(Float64, nx, ny, nz, nt)
-
-
-            dx_avg = dx[2:end-1, :] .+ dx[1:end-2, :]
-            ke_x[2:end-1, :, :, :] = (ke_t[3:end, :, :, :] .- ke_t[1:end-2, :, :, :]) ./
-                                      reshape(dx_avg, nx-2, ny, 1, 1)
-
-
-            dy_avg = dy[:, 2:end-1] .+ dy[:, 1:end-2]
-            ke_y[:, 2:end-1, :, :] = (ke_t[:, 3:end, :, :] .- ke_t[:, 1:end-2, :, :]) ./
-                                      reshape(dy_avg, nx, ny-2, 1, 1)
-
-
-            println("Gradients calculated")
-
-
-            # --- Initialize output array ---
-            U_KE = zeros(Float64, nx, ny, nt)
-
-
-            # --- Calculate advective KE flux for each timestep ---
-            println("Calculating advective KE flux...")
-            for t in 1:nt
-                t_avg  = min(div(t - 1, ts) + 1, nt_avg)
-
-
-                u_avg  = @view U[:, :, :, t_avg]
-                v_avg  = @view V[:, :, :, t_avg]
-                ke_x_t = @view ke_x[:, :, :, t]
-                ke_y_t = @view ke_y[:, :, :, t]
-
-
-                temp1 = u_avg .* ke_x_t
-                temp2 = v_avg .* ke_y_t
-
-
-                U_KE[:, :, t] = dropdims(sum((temp1 .+ temp2) .* DRFfull, dims=3), dims=3)
-            end
-
-
-            println("Flux calculation complete")
-
-
-            # --- Time average ---
-            u_ke_mean = dropdims(mean(U_KE, dims=3), dims=3)   # (nx, ny)
-
-
-            output_dir = joinpath(base2, "U_KE")
-            open(joinpath(output_dir, "u_ke_mean_$suffix.bin"), "w") do io
-                write(io, Float32.(u_ke_mean))
-            end
-
-
-            println("Completed tile: $suffix")
-            println("Output saved to $output_dir")
-        end
-    end
-
-
-    println("\n=== All tiles processed successfully ===")
-
-
-else
-    error("Unknown time_mode '$time_mode'. Choose \"3day\", \"weekly\", or \"full\".")
-
-
+       println("Completed tile: $suffix")
+       println("Output saved to $output_dir_full, $output_dir_3day, $output_dir_weekly")
+   end
 end
+
+
+println("\n=== All tiles processed successfully (3day + weekly + full) ===")
 
 
 

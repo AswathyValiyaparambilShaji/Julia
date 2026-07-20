@@ -1,311 +1,121 @@
-using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
-#using CairoMakie, SparseArrays
+using MAT, Statistics, Printf, LinearAlgebra, TOML, Dates
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, bandpassfilter
+using .FluxUtils: read_bin
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
+for d in ["FDiv", "FDiv_3day", "FDiv_weekly"]
+   mkpath(joinpath(base2, d))
+end
 
 
-# --- TIME MODE CONFIGURATION ---
-# Options:
-#   "3day"   -> divergence for each 3-day snapshot (output has nt3 time steps)
-#   "weekly" -> divergence of the weekly mean Apr 22-28 (single output)
-#   "full"   -> divergence of the full record mean (single output)
-time_mode = "weekly"   # <-- change to "3day", "weekly", or "full"
-
-
-
-
-# --- Domain & grid ---
 NX, NY = 288, 468
 minlat, maxlat = 24.0, 31.91
 minlon, maxlon = 193.0, 199.0
-lat = range(minlat, maxlat, length=NY)
-lon = range(minlon, maxlon, length=NX)
-
-
-
-
-# --- Tile & time ---
 buf = 3
 tx, ty = 47, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 88
-
-
-kz  = 1
-dt  = 25
 dto = 144
 Tts = 366192
-nt  = div(Tts, dto)
-nt3 = div(nt, 3*24)   # number of 3-day periods
+nt = div(Tts, dto)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
 
 
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+              if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                 c*nt_chunk          <= t_safe_end]
 
 
-# --- Thickness & constants ---
-thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
-DRF   = thk[1:nz]
+t_origin   = DateTime(2012, 3, 1, 0, 0, 0)
+t_wk_start = DateTime(2012,  5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2012, 5, 18, 18, 0, 0)
+wk_start  = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end    = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+
+
+thk = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.8
 
 
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
+   for yn in cfg["yn_start"]:cfg["yn_end"]
+       suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
+       println("Starting tile: $suffix")
 
 
-# --- Filter (9-15 day band, 1 step sampling) ---
-T1, T2, delt, N = 9.0, 15.0, 1.0, 4
-fcutlow, fcuthigh = 1/T2, 1/T1
-fnq = 1/delt
-bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs=fnq)
+       hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+       dx    = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
+       dy    = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
 
 
+       DRFfull = hFacC .* DRF3d
+       DRFfull[hFacC .== 0] .= 0.0
 
 
-# ============================================================================
-# MAIN WORKFLOW
-# ============================================================================
+       fx = Float64.(open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "r") do io
+           reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+       end)
+       fy = Float64.(open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "r") do io
+           reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
+       end)
 
 
-if time_mode == "3day"
-    # ========================================================================
-    # 3-DAY FLUX DIVERGENCE
-    # Reads: xflx_3day_$suffix.bin / yflx_3day_$suffix.bin  (nx, ny, nz, nt3)
-    # Saves: FDiv_3day/FDiv_3day_$suffix2.bin                (nx-2, ny-2, nt3)
-    # ========================================================================
-    println("Computing flux divergence for $nt3 3-day periods")
-    mkpath(joinpath(base2, "FDiv_3day"))
+       fxX = dropdims(sum(fx .* DRFfull, dims=3), dims=3)   # (nx, ny, nt)
+       fyY = dropdims(sum(fy .* DRFfull, dims=3), dims=3)
+       fx = nothing; fy = nothing; GC.gc()
 
 
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+       flxD = zeros(nx-2, ny-2, nt)
+       for t in 1:nt
+           for i in 2:(nx-2)
+               for j in 2:(ny-2)
+                   flxD[i, j, t] = (fxX[i+1, j, t] - fxX[i-1, j, t]) / (dx[i, j] + dx[i-1, j]) +
+                                   (fyY[i, j+1, t] - fyY[i, j-1, t]) / (dy[i, j] + dy[i, j-1])
+               end
+           end
+       end
+       fxX = nothing; fyY = nothing; GC.gc()
 
 
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+       open(joinpath(base2, "FDiv", "FDiv_$suffix2.bin"), "w") do io
+           write(io, Float32.(mean(flxD[:, :, t_safe_start:t_safe_end], dims=3)))
+       end
 
 
-            fx = Float64.(open(joinpath(base2, "xflux", "xflx_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt3 * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz, nt3)
-            end)
+       FDiv_3day = zeros(Float32, nx-2, ny-2, length(safe_chunks))
+       for (i, c) in enumerate(safe_chunks)
+           t1 = (c-1)*nt_chunk + 1
+           t2 = c*nt_chunk
+           FDiv_3day[:, :, i] = Float32.(mean(flxD[:, :, t1:t2], dims=3)[:, :, 1])
+       end
+       open(joinpath(base2, "FDiv_3day", "FDiv_3day_$suffix2.bin"), "w") do io
+           write(io, FDiv_3day)
+       end
+       FDiv_3day = nothing
 
 
-            fy = Float64.(open(joinpath(base2, "yflux", "yflx_3day_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * nt3 * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz, nt3)
-            end)
+       open(joinpath(base2, "FDiv_weekly", "FDiv_weekly_$suffix2.bin"), "w") do io
+           write(io, Float32.(mean(flxD[:, :, wk_start:wk_end], dims=3)))
+       end
 
 
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            DRFfull = hFacC .* DRF3d
-            z1    = cumsum(DRFfull, dims=3)
-            depth = sum(DRFfull, dims=3)
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            fxX = sum(fx .* DRFfull, dims=3)   # (nx, ny, 1, nt3)
-            fyY = sum(fy .* DRFfull, dims=3)
-
-
-            flxD = zeros(nx-2, ny-2, nt3)
-
-
-            for t in 1:nt3
-                for i in 2:(nx-2)
-                    for j in 2:(ny-2)
-                        dF_x_dx = (fxX[i+1, j, 1, t] - fxX[i-1, j, 1, t]) / (dx[i, j] + dx[i-1, j])
-                        dF_y_dy = (fyY[i, j+1, 1, t] - fyY[i, j-1, 1, t]) / (dy[i, j] + dy[i, j-1])
-                        flxD[i, j, t] = dF_x_dx + dF_y_dy
-                    end
-                end
-            end
-
-
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-            open(joinpath(base2, "FDiv_3day", "FDiv_3day_$suffix2.bin"), "w") do io
-                write(io, Float32.(flxD))
-            end
-
-
-            println("  Completed tile: $suffix (3-day divergence)")
-        end
-    end
-
-
-    println("Completed flux divergence for $nt3 3-day periods")
-
-
-
-
-elseif time_mode == "weekly"
-    # ========================================================================
-    # WEEKLY FLUX DIVERGENCE  (Apr 22 00:00 - Apr 28 23:00)
-    # Reads: xflx_weekly_$suffix.bin / yflx_weekly_$suffix.bin  (nx, ny, nz)
-    #        saved by flux_weekly.jl (already time-averaged over 168 hours)
-    # Saves: FDiv_weekly/FDiv_weekly_$suffix2.bin                (nx-2, ny-2)
-    # ========================================================================
-    println("Computing flux divergence for weekly mean Apr 22-28")
-    mkpath(joinpath(base2, "FDiv_weekly"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-
-
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-
-
-            fx = Float64.(open(joinpath(base2, "xflux", "xflx_weekly_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz)
-            end)
-
-
-            fy = Float64.(open(joinpath(base2, "yflux", "yflx_weekly_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz)
-            end)
-
-
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            DRFfull = hFacC .* DRF3d
-            z1    = cumsum(DRFfull, dims=3)
-            depth = sum(DRFfull, dims=3)
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            fxX = sum(fx .* DRFfull, dims=3)   # (nx, ny, 1)
-            fyY = sum(fy .* DRFfull, dims=3)
-
-
-            flxD = zeros(nx-2, ny-2)
-
-
-            for i in 2:(nx-2)
-                for j in 2:(ny-2)
-                    dF_x_dx = (fxX[i+1, j] - fxX[i-1, j]) / (dx[i, j] + dx[i-1, j])
-                    dF_y_dy = (fyY[i, j+1] - fyY[i, j-1]) / (dy[i, j] + dy[i, j-1])
-                    flxD[i, j] = dF_x_dx + dF_y_dy
-                end
-            end
-
-
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-            open(joinpath(base2, "FDiv_weekly", "FDiv_weekly_$suffix2.bin"), "w") do io
-                write(io, Float32.(flxD))
-            end
-
-
-            println("  Completed tile: $suffix (weekly divergence)")
-        end
-    end
-
-
-    println("Completed flux divergence for weekly mean Apr 22-28")
-
-
-
-
-elseif time_mode == "full"
-    # ========================================================================
-    # FULL TIME AVERAGE FLUX DIVERGENCE
-    # Reads: xflx_$suffix.bin / yflx_$suffix.bin  (nx, ny, nz)
-    # Saves: FDiv/FDiv_$suffix2.bin                (nx-2, ny-2)
-    # ========================================================================
-    println("Computing flux divergence for full time average")
-    mkpath(joinpath(base2, "FDiv"))
-
-
-    for xn in cfg["xn_start"]:cfg["xn_end"]
-        for yn in cfg["yn_start"]:cfg["yn_end"]
-            suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
-
-
-            hFacC = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
-
-
-            fx = Float64.(open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz)
-            end)
-
-
-            fy = Float64.(open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "r") do io
-                nbytes = nx * ny * nz * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshaped_data = reshape(raw_data, nx, ny, nz)
-            end)
-
-
-            dx = read_bin(joinpath(base, "DXC/DXC_$suffix.bin"), (nx, ny))
-            dy = read_bin(joinpath(base, "DYC/DYC_$suffix.bin"), (nx, ny))
-
-
-            DRFfull = hFacC .* DRF3d
-            z1    = cumsum(DRFfull, dims=3)
-            depth = sum(DRFfull, dims=3)
-            DRFfull[hFacC .== 0] .= 0.0
-
-
-            fxX = sum(fx .* DRFfull, dims=3)   # (nx, ny, 1)
-            fyY = sum(fy .* DRFfull, dims=3)
-
-
-            flxD = zeros(nx-2, ny-2)
-
-
-            for i in 2:(nx-2)
-                for j in 2:(ny-2)
-                    dF_x_dx = (fxX[i+1, j] - fxX[i-1, j]) / (dx[i, j] + dx[i-1, j])
-                    dF_y_dy = (fyY[i, j+1] - fyY[i, j-1]) / (dy[i, j] + dy[i, j-1])
-                    flxD[i, j] = dF_x_dx + dF_y_dy
-                end
-            end
-
-
-            suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-            open(joinpath(base2, "FDiv", "FDiv_$suffix2.bin"), "w") do io
-                write(io, Float32.(flxD))
-            end
-
-
-            println("  Completed tile: $suffix (full time average)")
-        end
-    end
-
-
-    println("Completed flux divergence for full time average")
-
-
-else
-    error("Unknown time_mode '$time_mode'. Choose \"3day\", \"weekly\", or \"full\".")
-
-
+       flxD = nothing; GC.gc()
+       println("Completed tile: $suffix")
+   end
 end
 
 

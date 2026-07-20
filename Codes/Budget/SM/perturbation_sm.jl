@@ -47,7 +47,8 @@ bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
 
 # Now parallelize over ALL 42 tiles
 
-for xn in cfg["xn_start"]:cfg["xn_end"]
+
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
     for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
@@ -126,8 +127,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         vp_3d  = fv .- vcA_3d
         vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0 
 
-        wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw .- wcA_3d
+        #wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
+        wp_3d  = fw #.- wcA_3d
         wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0
 
         # --- Fluxes (time-mean then vertical integrate) ---
