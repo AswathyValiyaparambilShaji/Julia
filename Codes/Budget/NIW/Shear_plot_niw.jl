@@ -34,7 +34,7 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
         # --- Read G horizontal shear (IT → NIW) ---
-        g_vel_h = Float64.(open(joinpath(base2, "G_vel_H_full", "g_velh_mean_$suffix.bin"), "r") do io
+        g_vel_h = Float64.(open(joinpath(base2, "G_vel_H_full", "g_vel_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
