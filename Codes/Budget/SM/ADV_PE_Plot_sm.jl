@@ -98,7 +98,7 @@ display(fig)
 
 # Save figure
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "U_PE_advection_v5.png"), fig)
+save(joinpath(FIGDIR, "U_PE_advection_v6.png"), fig)
 
 
 

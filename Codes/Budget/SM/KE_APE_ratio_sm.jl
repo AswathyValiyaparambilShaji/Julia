@@ -69,7 +69,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # ---- Read KE ----
        println("  Readig KE...")
-       ke_raw = Float64.(open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "r") do io
+       ke_raw = Float64.(open(joinpath(base2, "KE2", "ke_t_sm_$suffix.bin"), "r") do io
            nbytes = nx * ny * nz * nt * sizeof(Float32)
            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nz, nt)
        end)
@@ -330,3 +330,198 @@ println("\nDone!")
 
 
 
+
+# ============================================================
+# Time-mean KE and PE
+# ============================================================
+KE_tmean = dropdims(mean(KE_full, dims=3), dims=3)   # NX x NY
+PE_tmean = dropdims(mean(PE_full, dims=3), dims=3)   # NX x NY
+
+valid_mask = (RAC .> 0.0) .& (FH .> 0.0)
+lat_vec = collect(lat)
+
+# ============================================================
+# 0.25° latitude binning  (area-weighted)
+# ============================================================
+bin_width   = 0.9
+bin_edges   = collect(minlat : bin_width : maxlat)
+bin_centers = bin_edges[1:end-1] .+ bin_width / 2
+nbins       = length(bin_centers)
+
+KE_binned = zeros(nbins)
+PE_binned = zeros(nbins)
+
+for b in 1:nbins
+   lat_lo = bin_edges[b]
+   lat_hi = bin_edges[b + 1]
+
+   KE_sum = 0.0;  PE_sum = 0.0;  W_sum = 0.0
+   for j in 1:NY
+       lat_vec[j] < lat_lo  && continue
+       lat_vec[j] >= lat_hi && continue   # half-open interval [lo, hi)
+
+      for i in 1:NX
+           valid_mask[i, j] || continue
+           w       = RAC[i, j]
+           KE_sum += KE_tmean[i, j] * w
+           PE_sum += PE_tmean[i, j] * w
+           W_sum  += w
+       end
+   end
+
+
+   if W_sum > 0.0
+       KE_binned[b] = KE_sum / W_sum
+       PE_binned[b] = PE_sum / W_sum
+   end
+end
+
+
+# KE/APE ratio from binned profiles
+ratio_binned = KE_binned ./ PE_binned
+
+# ============================================================
+# NEW: Pointwise KE/APE ratio map and area-weighted std per bin
+# ============================================================
+ratio_map = fill(NaN, NX, NY)
+for j in 1:NY, i in 1:NX
+    if valid_mask[i, j] && PE_tmean[i, j] > 0.0
+        ratio_map[i, j] = KE_tmean[i, j] / PE_tmean[i, j]
+    end
+end
+
+ratio_std_binned = zeros(nbins)
+
+for b in 1:nbins
+    lat_lo = bin_edges[b]
+    lat_hi = bin_edges[b + 1]
+    μ      = ratio_binned[b]   # area-weighted mean already computed above
+
+    var_sum = 0.0;  W_sum = 0.0
+
+    for j in 1:NY
+        lat_vec[j] < lat_lo  && continue
+        lat_vec[j] >= lat_hi && continue
+
+
+        for i in 1:NX
+            valid_mask[i, j]       || continue
+            isnan(ratio_map[i, j]) && continue
+            w        = RAC[i, j]
+            var_sum += w * (ratio_map[i, j] - μ)^2
+            W_sum   += w
+        end
+    end
+
+
+    if W_sum > 0.0
+        ratio_std_binned[b] = sqrt(var_sum / W_sum)
+    end
+end
+# ============================================================
+
+# ============================================================
+# Theoretical (ω²+f²)/(ω²-f²) for semidiurnal band (9–15 hr)
+# evaluated at bin centres
+# ============================================================
+ω_M2 = 2π / (12.4206 * 3600)   # M2 semidiurnal [rad/s]
+ω_lo = 2π / (15.0 * 3600)         # 0.8fhr band edge [rad/s]
+ω_hi = 2π / (9.0 * 3600)         # 2.5fhr  band edge [rad/s]
+
+theory_M2 = fill(NaN, nbins)
+theory_lo = fill(NaN, nbins)
+theory_hi = fill(NaN, nbins)
+
+for b in 1:nbins
+   f_b = abs(coriolis_frequency(bin_centers[b]))
+   if ω_M2 > f_b
+       theory_M2[b] = (ω_M2^2 + f_b^2) / (ω_M2^2 - f_b^2)
+   end
+   if ω_lo > f_b
+       theory_lo[b] = (ω_lo^2 + f_b^2) / (ω_lo^2 - f_b^2)
+   end
+   if ω_hi > f_b
+       theory_hi[b] = (ω_hi^2 + f_b^2) / (ω_hi^2 - f_b^2)
+   end
+end
+
+# ============================================================
+# Output directory
+# ============================================================
+mkpath(joinpath(base2, "EnergyRatio"))
+
+# ============================================================
+# PLOT 1: Binned KE and APE zonal profiles
+# ============================================================
+fig1 = Figure(resolution=(900, 560), backgroundcolor=:white)
+ax1  = Axis(fig1[1, 1],
+   title     = "Zonal-Mean, Time-Mean, Depth-Integrated KE & APE  (1° bins)",
+   xlabel    = "Latitude (°N)",
+   ylabel    = "Energy  (J m⁻²)",
+   titlesize = 16, xlabelsize = 13, ylabelsize = 13)
+
+lines!(ax1, bin_centers, KE_binned, linewidth=2.5, color=:royalblue,  label="KE")
+lines!(ax1, bin_centers, PE_binned, linewidth=2.5, color=:darkorange, label="APE")
+axislegend(ax1, position=:rt)
+
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "KE_APE_zonal_binned_sm_v2.png"), fig1)
+println("Saved: KE_APE_zonal_binned_sm_v2.png")
+display(fig1)
+
+# ============================================================
+# PLOT 2: Binned KE/APE ratio — latitude on Y-axis
+#         observed + theoretical M2 curve + 9–15 hr shaded band
+# ============================================================
+fig2 = Figure(resolution=(600, 800), backgroundcolor=:white)
+ax2  = Axis(fig2[1, 1],
+   title     = "Zonal-Mean, Time-Mean, Depth-Integrated  KE / APE  (0.9° bins)",
+   xlabel    = "KE / APE  (dimensionless)",
+   ylabel    = "Latitude (°N)",
+   titlesize = 14, xlabelsize = 12, ylabelsize = 12,
+   limits    = ((0, 6), (minlat, maxlat)))
+
+# ---- Shaded band between 9-hr and 15-hr theoretical curves ----
+# direction=:y is required because latitude is on the Y-axis and
+# ratio is on the X-axis: band! fills between x_left and x_right
+# at each y value (latitude).
+valid_band = isfinite.(theory_lo) .& isfinite.(theory_hi)
+if any(valid_band)
+   band!(ax2,
+       bin_centers[valid_band],   # y values  (latitude)
+       theory_lo[valid_band],     # x left  boundary (15-hr curve, larger ratio)
+       theory_hi[valid_band],     # x right boundary (9-hr  curve, smaller ratio)
+       direction = :y,            # <-- THIS was missing: fills along Y, spans X
+       color = (:darkorange, 0.25))
+end
+
+# Theoretical M2 semidiurnal curve
+lines!(ax2, theory_M2, bin_centers,
+   color=:darkorange, linewidth=2.0, linestyle=:dash,
+   label="(ω²+f²)/(ω²-f²)  M2")
+
+# NEW: ±1σ shading around observed KE/APE ratio
+band!(ax2,
+    bin_centers,
+    ratio_binned .- ratio_std_binned,   # x left  boundary
+    ratio_binned .+ ratio_std_binned,   # x right boundary
+    direction = :y,
+    color = (:royalblue, 0.20),
+    label = "KE / APE  ±1σ")
+
+# Observed KE/APE ratio
+lines!(ax2, ratio_binned, bin_centers,
+   color=:royalblue, linewidth=2.5,
+   label="KE / APE  (observed, 1° bins)")
+
+# KE = APE reference line
+vlines!(ax2, [1.0],
+   color=:firebrick, linewidth=1.2, linestyle=:dot,
+   label="KE = APE")
+
+axislegend(ax2, position=:rt, labelsize=11)
+# Save figure
+FIGDIR        = cfg["fig_base"]
+save(joinpath(FIGDIR, "KE_APE_ratio_zonal_binned_sm_v2.png"), fig2)
+println("Saved: KE_APE_ratio_zonal_binned_sm_v2.png")
+display(fig2)

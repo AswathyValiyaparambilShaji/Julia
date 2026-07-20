@@ -86,7 +86,7 @@ ax = Axis(fig[1, 1],
 hm = CairoMakie.heatmap!(ax, lon, lat, G_buoy_full;
     interpolate=false,
     colormap=Reverse(:RdBu),
-    colorrange=(-0.02, 0.02))
+    colorrange=(-0.005, 0.005))
 
 
 Colorbar(fig[1, 2], hm, label="G Buoyancy [W/m²]")
@@ -96,7 +96,7 @@ display(fig)
 
 
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "G_buoy_full_v1.png"), fig)
+save(joinpath(FIGDIR, "G_buoy_full_v2.png"), fig)
 println("G_buoy figure saved.")
 
 #=

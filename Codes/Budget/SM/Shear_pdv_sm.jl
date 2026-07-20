@@ -222,7 +222,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        # --- Full time-mean ---
        SP_V_full = dropdims(mean(sp_v, dims=3), dims=3)
        println(SP_V_full[20,1:10])
-       output_dir_full = joinpath(base2, "SP_V_bt")
+       output_dir_full = joinpath(base2, "SP_V")
        open(joinpath(output_dir_full, "sp_v_mean_$suffix.bin"), "w") do io
            write(io, Float32.(SP_V_full))
        end

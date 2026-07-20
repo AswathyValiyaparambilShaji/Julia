@@ -11,7 +11,7 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
-mkpath(joinpath(base2, "KE"))
+mkpath(joinpath(base2, "KE2"))
 mkpath(joinpath(base2, "b"))
 
 
@@ -106,8 +106,8 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
         fw     = open(joinpath(base2, "UVW_F", "fw_$suffix.bin"), "r") do io
             Float64.(reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt))
         end
-        #wcA    = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw #.- wcA
+        wcA    = sum(fw .* DRFfull, dims=3) ./ depth
+        wp_3d  = fw .- wcA
         wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         fw  = nothing; GC.gc()
 
@@ -130,7 +130,7 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
 
 #
         # --- Save outputs ---
-        open(joinpath(base2, "KE", "ke_t_sm_$suffix.bin"), "w") do io
+        open(joinpath(base2, "KE2", "ke_t_sm_$suffix.bin"), "w") do io
             write(io, Float32.(ke))
         end
         ke = nothing

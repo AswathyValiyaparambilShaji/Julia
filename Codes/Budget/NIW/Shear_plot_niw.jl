@@ -34,7 +34,7 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
         # --- Read G horizontal shear (IT → NIW) ---
-        g_vel_h = Float64.(open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "r") do io
+        g_vel_h = Float64.(open(joinpath(base2, "G_vel_H_full", "g_vel_mean_$suffix.bin"), "r") do io
             nbytes = nx * ny * sizeof(Float32)
             reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
         end)
@@ -104,5 +104,5 @@ display(fig)
 
 # --- Save ---
 FIGDIR = cfg["fig_base"]
-save(joinpath(FIGDIR, "G_vel_H_V1_comparison.png"), fig)
+save(joinpath(FIGDIR, "G_vel_H_V2_comparison.png"), fig)
 println("Figure saved.")
