@@ -36,6 +36,7 @@ dto = 144
 Tts = 366192
 nt = div(Tts, dto)
 ts = 72
+nt_avg= div(nt, ts)
 t_avg = div(nt, ts)
 nt3 = div(nt, 3*24)
 hrs_per_chunk = 3 * 24
