@@ -101,9 +101,9 @@ end
 println("Starting G_vel calculation (full timestep pass, then 3day/weekly/full averaging)...")
 
 
-mkpath(joinpath(base2, "G_vel_3day"))
-mkpath(joinpath(base2, "G_vel_weekly"))
-mkpath(joinpath(base2, "G_vel_full"))
+mkpath(joinpath(base2, "G_vel_V_3day"))
+mkpath(joinpath(base2, "G_vel_V_weekly"))
+mkpath(joinpath(base2, "G_vel_V_full"))
 
 
 

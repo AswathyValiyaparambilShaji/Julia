@@ -87,8 +87,7 @@ mkpath(joinpath(base2, "SP_V_weekly"))
 mkpath(joinpath(base2, "SP_V_bt"))
 
 
-
-Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
+for xn in cfg["xn_start"]:cfg["xn_end"]
    for yn in cfg["yn_start"]:cfg["yn_end"]
        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
