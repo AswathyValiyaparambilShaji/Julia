@@ -146,9 +146,9 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
 
         hfdm_3d = sqrt.(xfdm_3d.^2 .+ yfdm_3d.^2)       # (nx,ny,1,1)
         
-        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, Float32.(xfm_3d)) end
-        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, Float32.(yfm_3d)); end
-        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, Float32.(zfm_3d)); end    
+        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, Float32.(xflx_3d)) end
+        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, Float32.(yflx_3d)); end
+        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, Float32.(zflx_3d)); end    
     println("Completed tile: $suffix")
     
     end
