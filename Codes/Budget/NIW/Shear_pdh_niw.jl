@@ -101,9 +101,9 @@ end
 println("Starting G_vel calculation (full timestep pass, then 3day/weekly/full averaging)...")
 
 
-mkpath(joinpath(base2, "G_vel_V_3day"))
-mkpath(joinpath(base2, "G_vel_V_weekly"))
-mkpath(joinpath(base2, "G_vel_V_full"))
+mkpath(joinpath(base2, "G_vel_H_3day"))
+mkpath(joinpath(base2, "G_vel_H_weekly"))
+mkpath(joinpath(base2, "G_vel_H_full"))
 
 
 
@@ -188,7 +188,7 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
 
        # --- Full time-mean ---
        G_vel_full = dropdims(mean(g_vel, dims=3), dims=3)
-       open(joinpath(base2, "G_vel_full", "g_vel_mean_$suffix.bin"), "w") do io
+       open(joinpath(base2, "G_vel_H_full", "g_vel_mean_$suffix.bin"), "w") do io
            write(io, Float32.(G_vel_full))
        end
 
@@ -200,14 +200,14 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
             t2 = c*nt_chunk
             G_vel_3day[:, :, i] = Float32.(dropdims(mean(g_vel[:, :, t1:t2], dims=3), dims=3))
         end
-       open(joinpath(base2, "G_vel_3day", "g_vel_3day_$suffix.bin"), "w") do io
+       open(joinpath(base2, "G_vel_H_3day", "g_vel_3day_$suffix.bin"), "w") do io
            write(io, Float32.(G_vel_3day))
        end
 
 
        # --- Weekly window mean (Apr 22-28) ---
        G_vel_weekly = dropdims(mean(g_vel[:, :, idx_start:idx_end], dims=3), dims=3)
-       open(joinpath(base2, "G_vel_weekly", "g_vel_weekly_$suffix.bin"), "w") do io
+       open(joinpath(base2, "G_vel_H_weekly", "g_vel_weekly_$suffix.bin"), "w") do io
            write(io, Float32.(G_vel_weekly))
        end
 
