@@ -7,13 +7,13 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/perturbation_sm.jl  $PBS)
-echo "Job 1 submitted: $JOB1"
+#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/perturbation_sm.jl  $PBS)
+#echo "Job 1 submitted: $JOB1"
 
-JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/FlxDIv_sm.jl  -W depend=afterok:$JOB1 $PBS)
-echo "Job 2 submitted: $JOB2"
+#JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/FlxDIv_sm.jl  -W depend=afterok:$JOB1 $PBS)
+#echo "Job 2 submitted: $JOB2"
 
-JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/Conversion_sm.jl  -W depend=afterok:$JOB2 $PBS)
+JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/Conversion_sm.jl  $PBS)
 echo "Job 3 submitted: $JOB3"
 
 JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/Ke_b_sm.jl  -W depend=afterok:$JOB3 $PBS)

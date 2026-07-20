@@ -207,7 +207,7 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
        for (i, ch) in enumerate(safe_chunks)
             t1 = (ch-1)*nt_chunk + 1
             t2 = ch*nt_chunk
-            Conv_3day[:, :, i] = Float32.(dropdims(mean(c[:, :, t1:t2], dims=3), dims=3))
+            ca_3day[:, :, i] = Float32.(dropdims(mean(c[:, :, t1:t2], dims=3), dims=3))
         end
        open(joinpath(base2, "Conv_3day", "Conv_3day_$suffix2.bin"), "w") do io
            write(io, Float32.(ca_3day))
