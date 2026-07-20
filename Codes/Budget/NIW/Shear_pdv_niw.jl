@@ -87,7 +87,7 @@ function compute_IT_gradients(fu_n, fv_n,  nx, ny,nz)
     end
 
 
-   return U_z, V_y
+   return U_z, V_z
 end
 
 
