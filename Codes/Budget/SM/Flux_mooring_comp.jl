@@ -102,8 +102,8 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        ysf = buf+1;          yef = buf+ty
 
 
-       tfx[xs:xe, ys:ye] .= fxvi[xsf:xef, ysf:yef]
-       tfy[xs:xe, ys:ye] .= fyvi[xsf:xef, ysf:yef]
+       tfx[xs:xe, ys:ye] .= fxX[xsf:xef, ysf:yef]
+       tfy[xs:xe, ys:ye] .= fyY[xsf:xef, ysf:yef]
 
 
    end
