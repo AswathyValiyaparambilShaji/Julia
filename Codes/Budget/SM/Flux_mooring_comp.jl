@@ -1,8 +1,4 @@
-using MAT
-using NCDatasets
-using CairoMakie
-using Statistics
-using TOML
+using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML, CairoMakie, NCDatasets
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
@@ -15,176 +11,244 @@ base  = cfg["base_path"]
 base2 = cfg["base_path2"]
 
 
+# --- Domain ---
+NX, NY   = 288, 468
+minlat, maxlat = 24.0, 31.91
+minlon, maxlon = 193.0, 199.0
+lat = range(minlat, maxlat, length=NY)
+lon = range(minlon, maxlon, length=NX)
+
+
+# --- Tile ---
+buf    = 3
+tx, ty = 47, 66
+nx, ny = tx + 2*buf, ty + 2*buf
+nz     = 88
+
+
+# --- Plot settings ---
+FIGDIR        = cfg["fig_base"]
+HEAT_CBAR_MAX = 15
+QUIVER_STEP   = 20
+ARROW_SCALEUP = 5.0
+mkpath(FIGDIR)
+
+
 # ════════════════════════════════════════════════════════════════════════
-# 1) IWAP mooring flux file
-#    Fuo/Fvo are (n_moorings=6, n_modes=5) -- already time-averaged,
-#    per-mode baroclinic energy flux in kW/m. Sum across the 5 modes
-#    to get the total flux per mooring (same "sum the 5 modes" step
-#    the model script does with uflux_modes/vflux_modes).
+# 1) Assemble full-domain background flux field from tiles (unchanged)
 # ════════════════════════════════════════════════════════════════════════
-file3path = "/nobackup/avaliyap/Box56/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
+tfx = zeros(NX, NY)
+tfy = zeros(NX, NY)
 
 
-f3 = matopen(file3path)
-lato3  = vec(read(f3, "lato"))
-lono3  = vec(read(f3, "lono"))
-depth3 = vec(read(f3, "depth"))
-Fuo3   = read(f3, "Fuo")   # (6, 5)
-Fvo3   = read(f3, "Fvo")   # (6, 5)
-close(f3)
+for xn in cfg["xn_start"]:cfg["xn_end"]
+   for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
-n_moorings = length(lato3)
-println("Fuo size: ", size(Fuo3), "   Fvo size: ", size(Fvo3), "   n moorings: ", n_moorings)
+       suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-if size(Fuo3, 1) != n_moorings
-    error("Fuo's first dimension ($(size(Fuo3,1))) doesn't match n_moorings ($n_moorings) -- " *
-          "check whether Fuo is actually (mode, mooring) instead of (mooring, mode)")
+       fxvi = Float64.(open(joinpath(base2, "xflux_corr", "xflx_$suffix.bin"), "r") do io
+           raw = read(io, nx*ny*sizeof(Float32))
+           reshape(reinterpret(Float32, raw), nx, ny)
+       end)
+
+
+       fyvi = Float64.(open(joinpath(base2, "yflux_corr", "yflx_$suffix.bin"), "r") do io
+           raw = read(io, nx*ny*sizeof(Float32))
+           reshape(reinterpret(Float32, raw), nx, ny)
+       end)
+
+
+       xs = (xn-1)*tx + 1;  xe = xs + tx - 1
+       ys = (yn-1)*ty + 1;  ye = ys + ty - 1
+       xsf = buf+1;          xef = buf+tx
+       ysf = buf+1;          yef = buf+ty
+
+
+       tfx[xs:xe, ys:ye] .= fxvi[xsf:xef, ysf:yef]
+       tfy[xs:xe, ys:ye] .= fyvi[xsf:xef, ysf:yef]
+
+
+   end
 end
 
 
-Fu_iwap_all = zeros(n_moorings)
-Fv_iwap_all = zeros(n_moorings)
-for m in 1:n_moorings
-    Fu_iwap_all[m] = sum(skipmissing(replace(vec(Fuo3[m, :]), NaN => missing)))
-    Fv_iwap_all[m] = sum(skipmissing(replace(vec(Fvo3[m, :]), NaN => missing)))
+fm    = sqrt.(tfx.^2 .+ tfy.^2)
+fm_kW = fm ./ 1000                  # W/m -> kW/m
+
+
+# background quiver arrow positions/vectors (subsampled, full-domain field)
+pos    = Point2f[]
+arrvec = Vec2f[]
+for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
+   u = tfx[i, j]; v = tfy[i, j]; m = fm_kW[i, j]
+   if isfinite(u) && isfinite(v) && isfinite(m)
+       push!(pos,    Point2f(Float32(lon[i]), Float32(lat[j])))
+       push!(arrvec, Vec2f(Float32(u), Float32(v)))
+   end
 end
 
 
-# ════════════════════════════════════════════════════════════════════════
-# 2) Model-computed modal flux (from the mooring_modal_flux.jl output)
-# ════════════════════════════════════════════════════════════════════════
-model_file = joinpath(base, "SM", "MooringModalFlux", "MooringModalFlux_Box56_IWAP.nc")
-
-
-lat_model, lon_model, tile_model, uflux_model_kwm, vflux_model_kwm =
-    NCDataset(model_file, "r") do ds
-        (Array(ds["lat"][:]), Array(ds["lon"][:]), Array(ds["tile"][:]),
-         Array(ds["uflux_depth_int"][:]), Array(ds["vflux_depth_int"][:]))   # already kW/m
-    end
+cell_x = (maxlon - minlon) / NX
+cell_y = (maxlat - minlat) / NY
+maxmag = isempty(arrvec) ? 1f0 : maximum(norm, arrvec)
+target = 5f0 * Float32(min(cell_x, cell_y))
+scale  = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)   # kW/m -> degrees, shared by everything below
 
 
 # ════════════════════════════════════════════════════════════════════════
-# 3) The 4 Box-56 moorings, with their IWAP index (1-based, into lato3)
+# 2) Mooring locations
 # ════════════════════════════════════════════════════════════════════════
 mooring_ids = [82, 83, 84, 85]
 target_lats = [25.4891, 27.7690, 28.8995, 30.1312]
 target_lons = [194.8451, 196.0301, 196.5105, 197.1154]
 iwap_idx    = [1, 2, 3, 4]
+n_points    = length(iwap_idx)
 
-#=
-target_lats = [24.4891] #27.7690, 28.8995, 30.1312]
-target_lons = [193.451]=#
-n_points = length(iwap_idx)
-
-
-# --- sanity check: IWAP lat/lon vs expected mooring locations ---
-for p in 1:n_points
-    idx = iwap_idx[p]
-    dlat = abs(lato3[idx] - target_lats[p])
-    dlon = abs(lono3[idx] - target_lons[p])
-    if dlat > 0.01 || dlon > 0.01
-        @warn "Mooring $(mooring_ids[p]): IWAP file lat/lon (($(lato3[idx])), $(lono3[idx])) " *
-              "does not closely match expected (($(target_lats[p])), $(target_lons[p])) -- check iwap_idx mapping"
-    end
-end
-
-# --- sanity check: model file's stations line up with the same 4 moorings, same order ---
-for p in 1:n_points
-    dlat = abs(lat_model[p] - target_lats[p])
-    dlon = abs(lon_model[p] - target_lons[p])
-    if dlat > 0.01 || dlon > 0.01
-        @warn "Model file station $p lat/lon (($(lat_model[p])), $(lon_model[p])) " *
-              "does not match expected mooring $(mooring_ids[p]) -- check station ordering"
-    end
-end
-#
-
-
-Fu_iwap  = [Fu_iwap_all[iwap_idx[p]] for p in 1:n_points]
-Fv_iwap  = [Fv_iwap_all[iwap_idx[p]] for p in 1:n_points]
-Fu_model = Float64.(uflux_model_kwm)
-Fv_model = Float64.(vflux_model_kwm)
-
-#
-for p in 1:n_points
-    println("Mooring $(mooring_ids[p]): IWAP u=$(Fu_iwap[p]) kW/m | Model u=$(Fu_model[p]) kW/m   ||   " *
-            "IWAP v=$(Fv_iwap[p]) kW/m | Model v=$(Fv_model[p]) kW/m")
-end
-#
 
 # ════════════════════════════════════════════════════════════════════════
-# 4) Two-panel comparison: u-flux (left), v-flux (right), IWAP vs Model
+# 3) IWAP observed flux, per mode (no summing)
 # ════════════════════════════════════════════════════════════════════════
-station_labels = ["Mooring $(id)" for id in mooring_ids]
-x = 1:n_points
+file3path = "/nobackup/avaliyap/Box56/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
+f3 = matopen(file3path)
+lato3 = vec(read(f3, "lato"))
+lono3 = vec(read(f3, "lono"))
+Fuo3  = read(f3, "Fuo")   # (n_moorings, n_modes)
+Fvo3  = read(f3, "Fvo")   # (n_moorings, n_modes)
+close(f3)
 
 
-fig = Figure(size = (1100, 500))
+Fu_iwap_mode1 = [Fuo3[iwap_idx[p], 1] for p in 1:n_points]
+Fv_iwap_mode1 = [Fvo3[iwap_idx[p], 1] for p in 1:n_points]
+Fu_iwap_mode2 = [Fuo3[iwap_idx[p], 2] for p in 1:n_points]
+Fv_iwap_mode2 = [Fvo3[iwap_idx[p], 2] for p in 1:n_points]
 
 
-# --- u-flux panel ---
-ax_u = Axis(fig[1, 1],
-    xlabel = "Station",
-    ylabel = "u-flux (kW/m)",
-    title  = "Eastward baroclinic energy flux",
-    xticks = (x, station_labels),
-    xgridvisible = false,
-    ygridvisible = false,
-)
-ax_u.topspinevisible = true
-ax_u.rightspinevisible = true
+for p in 1:n_points
+   idx = iwap_idx[p]
+   dlat = abs(lato3[idx] - target_lats[p])
+   dlon = abs(lono3[idx] - target_lons[p])
+   if dlat > 0.01 || dlon > 0.01
+       @warn "Mooring $(mooring_ids[p]): IWAP file lat/lon ($(lato3[idx]), $(lono3[idx])) " *
+             "does not closely match expected ($(target_lats[p]), $(target_lons[p]))"
+   end
+end
 
 
-bar_x_u = vcat(x, x)
-bar_h_u = vcat(Fu_iwap, Fu_model)
-bar_dodge_u = vcat(fill(1, n_points), fill(2, n_points))
-barplot!(ax_u, bar_x_u, bar_h_u, dodge = bar_dodge_u,
-         color = map(d -> d == 1 ? :steelblue : :darkorange, bar_dodge_u))
+# ════════════════════════════════════════════════════════════════════════
+# 4) Model flux, per mode (depth-integrated, kW/m)
+# ════════════════════════════════════════════════════════════════════════
+model_file = joinpath(base, "SM", "MooringModalFlux", "MooringModalFlux_Box56_IWAP.nc")
 
 
-# --- v-flux panel ---
-ax_v = Axis(fig[1, 2],
-    xlabel = "Station",
-    ylabel = "v-flux (kW/m)",
-    title  = "Northward baroclinic energy flux",
-    xticks = (x, station_labels),
-    xgridvisible = false,
-    ygridvisible = false,
-)
-ax_v.topspinevisible = true
-ax_v.rightspinevisible = true
+lat_model, lon_model, uflux_model_modes, vflux_model_modes =
+   NCDataset(model_file, "r") do ds
+       (Array(ds["lat"][:]), Array(ds["lon"][:]),
+        Array(ds["uflux_depth_int"][:, :]),   # (station, mode)
+        Array(ds["vflux_depth_int"][:, :]))
+   end
 
 
-bar_x_v = vcat(x, x)
-bar_h_v = vcat(Fv_iwap, Fv_model)
-bar_dodge_v = vcat(fill(1, n_points), fill(2, n_points))
-barplot!(ax_v, bar_x_v, bar_h_v, dodge = bar_dodge_v,
-         color = map(d -> d == 1 ? :steelblue : :darkorange, bar_dodge_v))
+Fu_model_mode1 = Float64.(uflux_model_modes[:, 1])
+Fv_model_mode1 = Float64.(vflux_model_modes[:, 1])
+Fu_model_mode2 = Float64.(uflux_model_modes[:, 2])
+Fv_model_mode2 = Float64.(vflux_model_modes[:, 2])
 
 
-# shared legend
-elem_iwap  = PolyElement(color = :steelblue)
-elem_model = PolyElement(color = :darkorange)
-Legend(fig[2, 1:2], [elem_iwap, elem_model], ["IWAP (observed)", "Model (5-mode reconstruction)"],
+for p in 1:n_points
+   dlat = abs(lat_model[p] - target_lats[p])
+   dlon = abs(lon_model[p] - target_lons[p])
+   if dlat > 0.01 || dlon > 0.01
+       @warn "Model file station $p lat/lon ($(lat_model[p]), $(lon_model[p])) " *
+             "does not match expected mooring $(mooring_ids[p])"
+   end
+end
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 5) Two-panel figure: Mode 1 (left) and Mode 2 (right), same background
+# ════════════════════════════════════════════════════════════════════════
+fig = Figure(resolution = (1300, 650))
+
+
+scale_ref_kWm = 5.0   # reference arrow length shown in the scale legend, in kW/m
+scale_x0 = minlon + 0.4
+scale_y0 = maxlat - 0.4
+
+
+function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
+   ax = Axis(fig_pos,
+       title      = "Mode $mode_num flux (mooring vs model) over corrected total flux",
+       xlabel     = "Longitude [°]",
+       ylabel     = "Latitude [°]",
+       xlabelsize = 18,
+       ylabelsize = 18,
+       titlesize  = 16)
+   ax.limits[] = ((minlon, maxlon), (minlat, maxlat))
+
+
+   hm = CairoMakie.heatmap!(ax, lon, lat, fm_kW,
+       interpolate = false,
+       colorrange  = (0, HEAT_CBAR_MAX),
+       colormap    = :Spectral_9)
+
+
+   # background full-domain flux arrows (context)
+   if !isempty(arrvec)
+       arrows!(ax, pos, scale .* arrvec, color=:gray30, arrowsize=6, linewidth=1.0)
+   end
+
+
+   # mooring arrows -- same "scale" factor as background, so lengths are directly comparable
+   iwap_vecs  = Vec2f.(Float32.(Fu_iwap .* scale), Float32.(Fv_iwap .* scale))
+   model_vecs = Vec2f.(Float32.(Fu_model .* scale), Float32.(Fv_model .* scale))
+   mooring_pos = Point2f.(Float32.(target_lons), Float32.(target_lats))
+
+
+   arrows!(ax, mooring_pos, iwap_vecs;  color = :steelblue,  arrowsize = 14, linewidth = 2.5)
+   arrows!(ax, mooring_pos, model_vecs; color = :darkorange, arrowsize = 14, linewidth = 2.5)
+
+
+   scatter!(ax, target_lons, target_lats; color = :black, markersize = 6)
+   for p in 1:n_points
+       text!(ax, target_lons[p], target_lats[p]; text = "M$(mooring_ids[p])",
+             offset = (6, 6), fontsize = 10, color = :black)
+   end
+
+
+   # --- scale legend arrow (reference magnitude, same scale factor) ---
+   arrows!(ax, [Point2f(scale_x0, scale_y0)], [Vec2f(Float32(scale_ref_kWm * scale), 0f0)];
+           color = :black, arrowsize = 12, linewidth = 2.5)
+   text!(ax, scale_x0, scale_y0 - 0.25; text = "$(scale_ref_kWm) kW/m",
+         fontsize = 11, color = :black)
+
+
+   return hm
+end
+
+
+hm1 = plot_panel!(fig[1, 1], 1, Fu_iwap_mode1, Fv_iwap_mode1, Fu_model_mode1, Fv_model_mode1)
+hm2 = plot_panel!(fig[1, 2], 2, Fu_iwap_mode2, Fv_iwap_mode2, Fu_model_mode2, Fv_model_mode2)
+
+
+Colorbar(fig[1, 3], hm1, label = "(kW/m)")
+
+
+# shared legend for arrow colors (IWAP vs model)
+elem_iwap  = LineElement(color = :steelblue,  linewidth = 3)
+elem_model = LineElement(color = :darkorange, linewidth = 3)
+Legend(fig[2, 1:3], [elem_iwap, elem_model],
+       ["IWAP (observed)", "Model (reconstructed)"],
        orientation = :horizontal, tellwidth = false)
 
 
-FIGDIR = cfg["fig_base"]
-mkpath(FIGDIR)
-save(joinpath(FIGDIR, "iwap_vs_model_flux_comparison.png"), fig)
 display(fig)
-println("\nSaved comparison figure to iwap_vs_model_flux_comparison.png")
 
 
-
-
-using NCDatasets
-ds = NCDataset(model_file, "r")
-println(ds)
-println("lat: ", ds["lat"][:])
-close(ds)
+png_file = joinpath(FIGDIR, "Flux_corr_modes1_2_moorings.png")
+save(png_file, fig)
+println("Saved: $png_file")
 
 
 
