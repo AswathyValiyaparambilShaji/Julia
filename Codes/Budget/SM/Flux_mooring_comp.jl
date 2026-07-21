@@ -31,6 +31,20 @@ thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
 DRF   = thk[1:nz]
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.8
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
+
+
+
 # --- Plot settings ---
 FIGDIR        = cfg["fig_base"]
 HEAT_CBAR_MAX = 15
