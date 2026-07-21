@@ -23,8 +23,10 @@ lon = range(minlon, maxlon, length=NX)
 buf    = 3
 tx, ty = 47, 66
 nx, ny = tx + 2*buf, ty + 2*buf
-nz     = 88
-
+nz = 88
+dto = 144
+Tts = 366192
+nt  = div(Tts, dto)
 
 # --- Plot settings ---
 FIGDIR        = cfg["fig_base"]
