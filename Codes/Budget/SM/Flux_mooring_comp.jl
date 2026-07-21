@@ -110,27 +110,18 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
 end
 
 
+
 fm    = sqrt.(tfx.^2 .+ tfy.^2)
 fm_kW = fm ./ 1000                  # W/m -> kW/m
 
 
-# background quiver arrow positions/vectors (subsampled, full-domain field)
-pos    = Point2f[]
-arrvec = Vec2f[]
-for i in 1:QUIVER_STEP:NX, j in 1:QUIVER_STEP:NY
-   u = tfx[i, j]; v = tfy[i, j]; m = fm_kW[i, j]
-   if isfinite(u) && isfinite(v) && isfinite(m)
-       push!(pos,    Point2f(Float32(lon[i]), Float32(lat[j])))
-       push!(arrvec, Vec2f(Float32(u), Float32(v)))
-   end
-end
-
-
+# --- arrow scale factor, still derived from the full-domain field magnitude,
+#     so mooring arrow lengths mean something physical relative to the domain ---
 cell_x = (maxlon - minlon) / NX
 cell_y = (maxlat - minlat) / NY
-maxmag = isempty(arrvec) ? 1f0 : maximum(norm, arrvec)
+maxmag = maximum(fm_kW[isfinite.(fm_kW)])
 target = 5f0 * Float32(min(cell_x, cell_y))
-scale  = maxmag == 0 ? 1f0 : (target / maxmag) * Float32(ARROW_SCALEUP)   # kW/m -> degrees, shared by everything below
+scale  = maxmag == 0 ? 1f0 : (target / Float32(maxmag)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -204,6 +195,7 @@ end
 
 # ════════════════════════════════════════════════════════════════════════
 # 5) Two-panel figure: Mode 1 (left) and Mode 2 (right), same background
+#    -- pcolor background only, NO background quiver arrows
 # ════════════════════════════════════════════════════════════════════════
 fig = Figure(resolution = (1300, 650))
 
@@ -230,13 +222,7 @@ function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
        colormap    = :Spectral_9)
 
 
-   # background full-domain flux arrows (context)
-   if !isempty(arrvec)
-       arrows!(ax, pos, scale .* arrvec, color=:gray30, arrowsize=6, linewidth=1.0)
-   end
-
-
-   # mooring arrows -- same "scale" factor as background, so lengths are directly comparable
+   # mooring arrows -- same "scale" factor as background field, so lengths are physically comparable
    iwap_vecs  = Vec2f.(Float32.(Fu_iwap .* scale), Float32.(Fv_iwap .* scale))
    model_vecs = Vec2f.(Float32.(Fu_model .* scale), Float32.(Fv_model .* scale))
    mooring_pos = Point2f.(Float32.(target_lons), Float32.(target_lats))
@@ -285,7 +271,5 @@ display(fig)
 png_file = joinpath(FIGDIR, "Flux_corr_modes1_2_moorings.png")
 save(png_file, fig)
 println("Saved: $png_file")
-
-
 
 
