@@ -27,7 +27,10 @@ nz = 88
 dto = 144
 Tts = 366192
 nt  = div(Tts, dto)
-
+thk   = matread(joinpath(base, "hFacC", "thk90.mat"))["thk90"]
+DRF   = thk[1:nz]
+DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
+g = 9.8
 # --- Plot settings ---
 FIGDIR        = cfg["fig_base"]
 HEAT_CBAR_MAX = 15
