@@ -197,7 +197,7 @@ end
 # 5) Two-panel figure: Mode 1 (left) and Mode 2 (right), same background
 #    -- pcolor background only, NO background quiver arrows
 # ════════════════════════════════════════════════════════════════════════
-fig = Figure(resolution = (600, 800))
+fig = Figure(resolution = (600, 400))
 
 
 scale_ref_kWm = 1.0   # reference arrow length shown in the scale legend, in kW/m
