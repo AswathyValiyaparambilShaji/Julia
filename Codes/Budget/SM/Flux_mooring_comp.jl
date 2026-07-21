@@ -197,10 +197,10 @@ end
 # 5) Two-panel figure: Mode 1 (left) and Mode 2 (right), same background
 #    -- pcolor background only, NO background quiver arrows
 # ════════════════════════════════════════════════════════════════════════
-fig = Figure(resolution = (1300, 650))
+fig = Figure(resolution = (600, 800))
 
 
-scale_ref_kWm = 5.0   # reference arrow length shown in the scale legend, in kW/m
+scale_ref_kWm = 1.0   # reference arrow length shown in the scale legend, in kW/m
 scale_x0 = minlon + 0.4
 scale_y0 = maxlat - 0.4
 
@@ -228,15 +228,15 @@ function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
    mooring_pos = Point2f.(Float32.(target_lons), Float32.(target_lats))
 
 
-   arrows!(ax, mooring_pos, iwap_vecs;  color = :steelblue,  arrowsize = 14, linewidth = 2.5)
-   arrows!(ax, mooring_pos, model_vecs; color = :darkorange, arrowsize = 14, linewidth = 2.5)
+   arrows!(ax, mooring_pos, iwap_vecs;  color = :black,  arrowsize = 14, linewidth = 2.5)
+   arrows!(ax, mooring_pos, model_vecs; color = :magenta, arrowsize = 14, linewidth = 2.5)
 
 
-   scatter!(ax, target_lons, target_lats; color = :black, markersize = 6)
+   #=scatter!(ax, target_lons, target_lats; color = :black, markersize = 6)
    for p in 1:n_points
        text!(ax, target_lons[p], target_lats[p]; text = "M$(mooring_ids[p])",
              offset = (6, 6), fontsize = 10, color = :black)
-   end
+   end=#
 
 
    # --- scale legend arrow (reference magnitude, same scale factor) ---
@@ -258,8 +258,8 @@ Colorbar(fig[1, 3], hm1, label = "(kW/m)")
 
 
 # shared legend for arrow colors (IWAP vs model)
-elem_iwap  = LineElement(color = :steelblue,  linewidth = 3)
-elem_model = LineElement(color = :darkorange, linewidth = 3)
+elem_iwap  = LineElement(color = :black,  linewidth = 3)
+elem_model = LineElement(color = :magenta, linewidth = 3)
 Legend(fig[2, 1:3], [elem_iwap, elem_model],
        ["IWAP (observed)", "Model (reconstructed)"],
        orientation = :horizontal, tellwidth = false)
