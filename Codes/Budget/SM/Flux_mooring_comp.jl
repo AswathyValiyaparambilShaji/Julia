@@ -48,16 +48,33 @@ for xn in cfg["xn_start"]:cfg["xn_end"]
        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-       fxvi = Float64.(open(joinpath(base2, "xflux_corr", "xflx_$suffix.bin"), "r") do io
-           raw = read(io, nx*ny*sizeof(Float32))
-           reshape(reinterpret(Float32, raw), nx, ny)
-       end)
+
+        # Read 4D time series (nx, ny, nz, nt) — written as Float32
+        fx = Float64.(open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "r") do io
+            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
+            reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
+        end)
 
 
-       fyvi = Float64.(open(joinpath(base2, "yflux_corr", "yflx_$suffix.bin"), "r") do io
-           raw = read(io, nx*ny*sizeof(Float32))
-           reshape(reinterpret(Float32, raw), nx, ny)
-       end)
+        fy = Float64.(open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "r") do io
+            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
+            reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
+        end)
+    # --- depth from hFacC ---
+        hFacC   = read_bin(joinpath(base, "hFacC/hFacC_$suffix.bin"), (nx, ny, nz))
+        DRFfull = hFacC .* DRF3d
+        DRFfull[hFacC .== 0] .= 0.0
+        depth   = dropdims(sum(DRFfull, dims=3), dims=3)
+        DRFfull[hFacC .== 0] .= 0.0
+        # Time average over dim=4
+        fx_tmean = mean(fx[:, :,:, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
+        fy_tmean = mean(fy[:, :,:, t_safe_start:t_safe_end], dims=4)[:, :, :, 1]   # (nx, ny, nz)
+
+
+        # Depth integrate
+        DRFfull = hFacC .* DRF3d
+        fxX = sum(fx_tmean .* DRFfull, dims=3)    # (nx, ny, 1)
+        fyY = sum(fy_tmean .* DRFfull, dims=3)    # (nx, ny, 1)
 
 
        xs = (xn-1)*tx + 1;  xe = xs + tx - 1
