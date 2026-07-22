@@ -49,7 +49,7 @@ safe_chunks = [c for c in 1:n_chunks
 FIGDIR        = cfg["fig_base"]
 HEAT_CBAR_MAX = 15
 QUIVER_STEP   = 20
-ARROW_SCALEUP = 5.0
+ARROW_SCALEUP = 15.0
 mkpath(FIGDIR)
 
 
@@ -197,7 +197,7 @@ end
 # 5) Two-panel figure: Mode 1 (left) and Mode 2 (right), same background
 #    -- pcolor background only, NO background quiver arrows
 # ════════════════════════════════════════════════════════════════════════
-fig = Figure(resolution = (600, 400))
+fig = Figure(resolution = (1200, 800))
 
 
 scale_ref_kWm = 1.0   # reference arrow length shown in the scale legend, in kW/m
@@ -207,6 +207,7 @@ scale_y0 = maxlat - 0.4
 
 function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
    ax = Axis(fig_pos,
+        aspect = DataAspect(),
        title      = "Mode $mode_num flux (mooring vs model) over corrected total flux",
        xlabel     = "Longitude [°]",
        ylabel     = "Latitude [°]",
@@ -228,8 +229,8 @@ function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
    mooring_pos = Point2f.(Float32.(target_lons), Float32.(target_lats))
 
 
-   arrows!(ax, mooring_pos, iwap_vecs;  color = :black,  arrowsize = 14, linewidth = 2.5)
-   arrows!(ax, mooring_pos, model_vecs; color = :magenta, arrowsize = 14, linewidth = 2.5)
+   arrows!(ax, mooring_pos, iwap_vecs;  color = :black,  arrowsize = 7, linewidth = 3)
+   arrows!(ax, mooring_pos, model_vecs; color = :magenta, arrowsize = 7, linewidth = 3)
 
 
    #=scatter!(ax, target_lons, target_lats; color = :black, markersize = 6)
@@ -241,7 +242,7 @@ function plot_panel!(fig_pos, mode_num, Fu_iwap, Fv_iwap, Fu_model, Fv_model)
 
    # --- scale legend arrow (reference magnitude, same scale factor) ---
    arrows!(ax, [Point2f(scale_x0, scale_y0)], [Vec2f(Float32(scale_ref_kWm * scale), 0f0)];
-           color = :black, arrowsize = 12, linewidth = 2.5)
+           color = :black, arrowsize = 7, linewidth = 2.5)
    text!(ax, scale_x0, scale_y0 - 0.25; text = "$(scale_ref_kWm) kW/m",
          fontsize = 11, color = :black)
 
