@@ -98,13 +98,11 @@ fm    = sqrt.(tfx.^2 .+ tfy.^2)
 fm_kW = fm ./ 1000                  # W/m -> kW/m
 
 
-# --- arrow scale factor, still derived from the full-domain field magnitude,
-#     so mooring arrow lengths mean something physical relative to the domain ---
+# --- reference physical arrow length (in degrees) that the fixed kW/m
+#     reference values below will be scaled to ---
 cell_x = (maxlon - minlon) / NX
 cell_y = (maxlat - minlat) / NY
-maxmag = maximum(fm_kW[isfinite.(fm_kW)])
 target = 5f0 * Float32(min(cell_x, cell_y))
-scale  = maxmag == 0 ? 1f0 : (target / Float32(maxmag)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -188,21 +186,15 @@ scale_x0 = minlon + 0.4
 scale_y0 = maxlat - 0.4
 
 
-scale_mode1 = scale
-scale_mode2 = 0.05
+# fixed reference values for each panel's legend -- these now ALSO drive the
+# arrow scale factor below, so the plotted mooring arrows and the legend
+# arrow are both scaled from the same fixed number, not independently
+scale_ref_kWm1 = 2.0     # fixed reference for mode 1, in kW/m
+scale_ref_kWm2 = 0.05    # fixed reference for mode 2, in kW/m
 
 
-# reference value for each panel's legend = the actual max flux magnitude
-# present in that panel (IWAP or model, whichever is larger) -- so the legend
-# arrow genuinely represents the data, not an arbitrary fixed number
-mag1_iwap  = sqrt.(Fu_iwap_mode1.^2  .+ Fv_iwap_mode1.^2)
-mag1_model = sqrt.(Fu_model_mode1.^2 .+ Fv_model_mode1.^2)
-scale_ref_kWm1 = maximum(vcat(mag1_iwap, mag1_model))
-
-
-mag2_iwap  = sqrt.(Fu_iwap_mode2.^2  .+ Fv_iwap_mode2.^2)
-mag2_model = sqrt.(Fu_model_mode2.^2 .+ Fv_model_mode2.^2)
-scale_ref_kWm2 = maximum(vcat(mag2_iwap, mag2_model))
+scale_mode1 = (target / Float32(scale_ref_kWm1)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
+scale_mode2 = (target / Float32(scale_ref_kWm2)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
 
 
 # --- Panel 1: Mode 1 ---
@@ -239,7 +231,7 @@ for p in 1:n_points
 end=#
 
 
-# --- scale legend arrow for panel 1 (length = actual max flux magnitude in this panel) ---
+# --- scale legend arrow for panel 1 (fixed reference: 2 kW/m) ---
 scale_len1 = Float32(scale_ref_kWm1 * scale_mode1)
 lines!(ax1, [scale_x0, scale_x0 + scale_len1], [scale_y0, scale_y0];
        color = :black, linewidth = 2.5)
@@ -282,7 +274,7 @@ for p in 1:n_points
 end=#
 
 
-# --- scale legend arrow for panel 2 (length = actual max flux magnitude in this panel) ---
+# --- scale legend arrow for panel 2 (fixed reference: 0.05 kW/m) ---
 scale_len2 = Float32(scale_ref_kWm2 * scale_mode2)
 lines!(ax2, [scale_x0, scale_x0 + scale_len2], [scale_y0, scale_y0];
        color = :black, linewidth = 2.5)
@@ -306,7 +298,7 @@ Legend(fig[2, 1:3], [elem_iwap, elem_model],
 display(fig)
 
 
-png_file = joinpath(FIGDIR, "Flux_corr_modes1_2_moorings_V2.png")
+png_file = joinpath(FIGDIR, "Flux_corr_modes1_2_moorings_V3.png")
 save(png_file, fig)
 println("Saved: $png_file")
 
