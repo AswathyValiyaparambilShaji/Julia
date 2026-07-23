@@ -164,14 +164,7 @@ Fu_model_mode2 = Float64.(uflux_model_modes[:, 2])
 Fv_model_mode2 = Float64.(vflux_model_modes[:, 2])
 
 
-for p in 1:n_points
-  dlat = abs(lat_model[p] - target_lats[p])
-  dlon = abs(lon_model[p] - target_lons[p])
-  if dlat > 0.01 || dlon > 0.01
-      @warn "Model file station $p lat/lon ($(lat_model[p]), $(lon_model[p])) " *
-            "does not match expected mooring $(mooring_ids[p])"
-  end
-end
+FONT = "FreeSerif Bold"
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -179,7 +172,8 @@ end
 #    -- pcolor background only, NO background quiver arrows
 #    -- each mode has its OWN arrow scale factor
 # ════════════════════════════════════════════════════════════════════════
-fig = Figure(resolution = (600, 400))
+fig = Figure(resolution = (600, 400), figure_padding =(5,5,5,5),
+             fonts=(; regular=FONT))
 
 
 scale_x0 = minlon + 0.4
@@ -200,12 +194,18 @@ scale_mode2 = (target / Float32(scale_ref_kWm2)) * Float32(ARROW_SCALEUP)   # kW
 # --- Panel 1: Mode 1 ---
 ax1 = Axis(fig[1, 1],
      aspect = DataAspect(),
-    title      = "Mode 1 flux (mooring vs model) over corrected total flux",
+    title      = "Mode 1 flux  ",
     xlabel     = "Longitude [°]",
     ylabel     = "Latitude [°]",
-    xlabelsize = 18,
-    ylabelsize = 18,
-    titlesize  = 16)
+    xlabelsize = 12,
+    ylabelsize = 12,
+    titlesize  = 10,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    )
 ax1.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
@@ -244,12 +244,20 @@ text!(ax1, scale_x0, scale_y0 - 0.25; text = "$(round(scale_ref_kWm1, digits=2))
 # --- Panel 2: Mode 2 ---
 ax2 = Axis(fig[1, 2],
      aspect = DataAspect(),
-    title      = "Mode 2 flux (mooring vs model) over corrected total flux",
+    title      = "Mode 2 flux  ",
     xlabel     = "Longitude [°]",
-    ylabel     = "Latitude [°]",
-    xlabelsize = 18,
-    ylabelsize = 18,
-    titlesize  = 16)
+    ylabel     = " ",
+    xticklabelsvisible = false,
+
+    xlabelsize = 12,
+    ylabelsize = 12,
+    titlesize  = 10,
+    titlefont         = FONT,
+    xlabelfont        = FONT,
+    ylabelfont        = FONT,
+    xticklabelfont    = FONT,
+    yticklabelfont    = FONT,
+    )
 ax2.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
@@ -284,7 +292,7 @@ text!(ax2, scale_x0, scale_y0 - 0.25; text = "$(round(scale_ref_kWm2, digits=2))
       fontsize = 11, color = :black)
 
 
-Colorbar(fig[1, 3], hm1, label = "(kW/m)")
+Colorbar(fig[1, 3], hm1, label = "(kW/m)", labelsize = 9, ticklabelsize=7 , width = 4.5)
 
 
 # shared legend for arrow colors (IWAP vs model)
@@ -292,7 +300,7 @@ elem_iwap  = LineElement(color = :black,  linewidth = 3)
 elem_model = LineElement(color = :magenta, linewidth = 3)
 Legend(fig[2, 1:3], [elem_iwap, elem_model],
       ["IWAP (observed)", "Model (reconstructed)"],
-      orientation = :horizontal, tellwidth = false)
+      orientation = :horizontal, tellwidth = false, labelfont = FONT)
 
 
 display(fig)

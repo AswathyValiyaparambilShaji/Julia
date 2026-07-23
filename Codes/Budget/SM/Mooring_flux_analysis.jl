@@ -107,7 +107,7 @@ scale_ref_kWm1 = 2.0
 mag2_iwap  = sqrt.(Fu_iwap_mode2.^2  .+ Fv_iwap_mode2.^2)
 #mag2_model = sqrt.(Fu_model_mode2.^2 .+ Fv_model_mode2.^2)
 #scale_ref_kWm2 = maximum(vcat(mag2_iwap, mag2_model))
-scale_ref_kWm2 = 0.1
+scale_ref_kWm2 = 0.5
 
 
 scale_mode1 = (target / (scale_ref_kWm1)) * (ARROW_SCALEUP)   # kW/m -> degrees
@@ -164,7 +164,7 @@ iwap_vecs2  = Vec2f.((Fu_iwap_mode2 .* scale_mode2), (Fv_iwap_mode2 .* scale_mod
 
 arrows!(ax2, mooring_pos, iwap_vecs2;  color = :black,  arrowsize = 7, linewidth = 3)
 #arrows!(ax2, mooring_pos, model_vecs2; color = :magenta, arrowsize = 7, linewidth = 3)
-
+ 
 
 # --- scale legend arrow for panel 2 (length = actual max flux magnitude in this panel) ---
 scale_len2 = (scale_ref_kWm2 * scale_mode2)
