@@ -234,11 +234,11 @@ end=#
 # --- scale legend arrow for panel 1 (fixed reference: 2 kW/m) ---
 scale_len1 = Float32(scale_ref_kWm1 * scale_mode1)
 lines!(ax1, [scale_x0, scale_x0 + scale_len1], [scale_y0, scale_y0];
-       color = :black, linewidth = 2.5)
+       color = :black, linewidth = 1.5)
 arrows!(ax1, [Point2f(scale_x0, scale_y0)], [Vec2f(scale_len1, 0f0)];
-        color = :black, arrowsize = 7, linewidth = 2.5)
+        color = :black, arrowsize = 7, linewidth = 1.5)
 text!(ax1, scale_x0, scale_y0 - 0.25; text = "$(round(scale_ref_kWm1, digits=2)) kW/m",
-      fontsize = 11, color = :black)
+      fontsize = 6, color = :black)
 
 
 # --- Panel 2: Mode 2 ---
@@ -247,7 +247,7 @@ ax2 = Axis(fig[1, 2],
     title      = "Mode 2 flux  ",
     xlabel     = "Longitude [°]",
     ylabel     = " ",
-    xticklabelsvisible = false,
+    yticklabelsvisible = false,
 
     xlabelsize = 12,
     ylabelsize = 12,
@@ -285,11 +285,11 @@ end=#
 # --- scale legend arrow for panel 2 (fixed reference: 0.05 kW/m) ---
 scale_len2 = Float32(scale_ref_kWm2 * scale_mode2)
 lines!(ax2, [scale_x0, scale_x0 + scale_len2], [scale_y0, scale_y0];
-       color = :black, linewidth = 2.5)
+       color = :black, linewidth =1.5)
 arrows!(ax2, [Point2f(scale_x0, scale_y0)], [Vec2f(scale_len2, 0f0)];
-        color = :black, arrowsize = 7, linewidth = 2.5)
+        color = :black, arrowsize = 7, linewidth = 1.5)
 text!(ax2, scale_x0, scale_y0 - 0.25; text = "$(round(scale_ref_kWm2, digits=2)) kW/m",
-      fontsize = 11, color = :black)
+      fontsize = 6, color = :black)
 
 
 Colorbar(fig[1, 3], hm1, label = "(kW/m)", labelsize = 9, ticklabelsize=7 , width = 4.5)
@@ -301,6 +301,8 @@ elem_model = LineElement(color = :magenta, linewidth = 3)
 Legend(fig[2, 1:3], [elem_iwap, elem_model],
       ["IWAP (observed)", "Model (reconstructed)"],
       orientation = :horizontal, tellwidth = false, labelfont = FONT)
+colgap!(fig.layout,1,3)
+colgap!(fig.layout,2,3)
 
 
 display(fig)
