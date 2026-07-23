@@ -184,7 +184,7 @@ scale_y0 = maxlat - 0.4
 # arrow scale factor below, so the plotted mooring arrows and the legend
 # arrow are both scaled from the same fixed number, not independently
 scale_ref_kWm1 = 2.0     # fixed reference for mode 1, in kW/m
-scale_ref_kWm2 = 0.05    # fixed reference for mode 2, in kW/m
+scale_ref_kWm2 = 0.1    # fixed reference for mode 2, in kW/m
 
 
 scale_mode1 = (target / Float32(scale_ref_kWm1)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
