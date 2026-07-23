@@ -26,7 +26,8 @@ KEint  = ds["KEint"][:, :]
 PEint  = ds["PEint"][:, :]
 Eint   = ds["Eint"][:, :]
 
-
+println(lat)
+println(lon)
 
 
 close(ds)

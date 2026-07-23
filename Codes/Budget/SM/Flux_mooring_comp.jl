@@ -48,7 +48,7 @@ safe_chunks = [c for c in 1:n_chunks
 FIGDIR        = cfg["fig_base"]
 HEAT_CBAR_MAX = 15
 QUIVER_STEP   = 20
-ARROW_SCALEUP = 15.0
+ARROW_SCALEUP = 5.0
 mkpath(FIGDIR)
 
 
@@ -179,7 +179,7 @@ end
 #    -- pcolor background only, NO background quiver arrows
 #    -- each mode has its OWN arrow scale factor
 # ════════════════════════════════════════════════════════════════════════
-fig = Figure(resolution = (1200, 800))
+fig = Figure(resolution = (600, 400))
 
 
 scale_x0 = minlon + 0.4

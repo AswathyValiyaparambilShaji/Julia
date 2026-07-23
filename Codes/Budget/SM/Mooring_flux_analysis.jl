@@ -35,25 +35,23 @@ lato3 = vec(read(f3, "lato"))
 lono3 = vec(read(f3, "lono"))
 Fuo3  = read(f3, "Fuo")   # (n_moorings, n_modes)
 Fvo3  = read(f3, "Fvo")   # (n_moorings, n_modes)
+println(lato3)
+println(lono3)
+println(Fuo3[:,2])
+println(Fvo3[:,2])
+for name in keys(f3)
+    data = read(f3, name)
+    println("Variable: ", name)
+    println("  Type: ", typeof(data))
+    println("  Size: ", size(data))
+    println()
+end
 close(f3)
-
 
 Fu_iwap_mode1 = [Fuo3[iwap_idx[p], 1] for p in 1:n_points]
 Fv_iwap_mode1 = [Fvo3[iwap_idx[p], 1] for p in 1:n_points]
 Fu_iwap_mode2 = [Fuo3[iwap_idx[p], 2] for p in 1:n_points]
 Fv_iwap_mode2 = [Fvo3[iwap_idx[p], 2] for p in 1:n_points]
-
-
-for p in 1:n_points
-  idx = iwap_idx[p]
-  dlat = abs(lato3[idx] - target_lats[p])
-  dlon = abs(lono3[idx] - target_lons[p])
-  if dlat > 0.01 || dlon > 0.01
-      @warn "Mooring $(mooring_ids[p]): IWAP file lat/lon ($(lato3[idx]), $(lono3[idx])) " *
-            "does not closely match expected ($(target_lats[p]), $(target_lons[p]))"
-  end
-end
-
 
 # ════════════════════════════════════════════════════════════════════════
 # 3) Model flux, per mode (depth-integrated, kW/m)
@@ -112,10 +110,10 @@ mag2_iwap  = sqrt.(Fu_iwap_mode2.^2  .+ Fv_iwap_mode2.^2)
 scale_ref_kWm2 = 0.1
 
 
-scale_mode1 = (target / Float32(scale_ref_kWm1)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
-scale_mode2 = (target / Float32(scale_ref_kWm2)) * Float32(ARROW_SCALEUP)   # kW/m -> degrees
+scale_mode1 = (target / (scale_ref_kWm1)) * (ARROW_SCALEUP)   # kW/m -> degrees
+scale_mode2 = (target / (scale_ref_kWm2)) * (ARROW_SCALEUP)   # kW/m -> degrees
 
-mooring_pos = Point2f.(Float32.(target_lons), Float32.(target_lats))
+mooring_pos = Point2f.((target_lons), (target_lats))
 
 
 # --- Panel 1: Mode 1 ---
@@ -130,7 +128,7 @@ ax1 = Axis(fig[1, 1],
 ax1.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
-iwap_vecs1  = Vec2f.(Float32.(Fu_iwap_mode1 .* scale_mode1), Float32.(Fv_iwap_mode1 .* scale_mode1))
+iwap_vecs1  = Vec2f.((Fu_iwap_mode1 .* scale_mode1), (Fv_iwap_mode1 .* scale_mode1))
 #model_vecs1 = Vec2f.(Float32.(Fu_model_mode1 .* scale_mode1), Float32.(Fv_model_mode1 .* scale_mode1))
 
 
@@ -139,7 +137,7 @@ arrows!(ax1, mooring_pos, iwap_vecs1;  color = :black,  arrowsize = 7, linewidth
 
 
 # --- scale legend arrow for panel 1 (length = actual max flux magnitude in this panel) ---
-scale_len1 = Float32(scale_ref_kWm1 * scale_mode1)
+scale_len1 = (scale_ref_kWm1 * scale_mode1)
 lines!(ax1, [scale_x0, scale_x0 + scale_len1], [scale_y0, scale_y0];
        color = :black, linewidth = 2.5)
 arrows!(ax1, [Point2f(scale_x0, scale_y0)], [Vec2f(scale_len1, 0f0)];
@@ -160,7 +158,7 @@ ax2 = Axis(fig[1, 2],
 ax2.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
-iwap_vecs2  = Vec2f.(Float32.(Fu_iwap_mode2 .* scale_mode2), Float32.(Fv_iwap_mode2 .* scale_mode2))
+iwap_vecs2  = Vec2f.((Fu_iwap_mode2 .* scale_mode2), (Fv_iwap_mode2 .* scale_mode2))
 #model_vecs2 = Vec2f.(Float32.(Fu_model_mode2 .* scale_mode2), Float32.(Fv_model_mode2 .* scale_mode2))
 
 
@@ -169,7 +167,7 @@ arrows!(ax2, mooring_pos, iwap_vecs2;  color = :black,  arrowsize = 7, linewidth
 
 
 # --- scale legend arrow for panel 2 (length = actual max flux magnitude in this panel) ---
-scale_len2 = Float32(scale_ref_kWm2 * scale_mode2)
+scale_len2 = (scale_ref_kWm2 * scale_mode2)
 lines!(ax2, [scale_x0, scale_x0 + scale_len2], [scale_y0, scale_y0];
        color = :black, linewidth = 2.5)
 arrows!(ax2, [Point2f(scale_x0, scale_y0)], [Vec2f(scale_len2, 0f0)];
