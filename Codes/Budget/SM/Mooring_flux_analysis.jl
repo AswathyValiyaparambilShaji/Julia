@@ -128,7 +128,7 @@ ax1 = Axis(fig[1, 1],
 ax1.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
-iwap_vecs1  = Vec2f.((Fu_iwap_mode1 .* scale_mode1), (Fv_iwap_mode1 .* scale_mode1))
+iwap_vecs1  = Vec2f.((Fu_iwap_mode1 .* scale_mode1), (-Fv_iwap_mode1 .* scale_mode1))
 #model_vecs1 = Vec2f.(Float32.(Fu_model_mode1 .* scale_mode1), Float32.(Fv_model_mode1 .* scale_mode1))
 
 
@@ -158,7 +158,7 @@ ax2 = Axis(fig[1, 2],
 ax2.limits[] = ((minlon, maxlon), (minlat, maxlat))
 
 
-iwap_vecs2  = Vec2f.((Fu_iwap_mode2 .* scale_mode2), (Fv_iwap_mode2 .* scale_mode2))
+iwap_vecs2  = Vec2f.((Fu_iwap_mode2 .* scale_mode2), (-Fv_iwap_mode2 .* scale_mode2))
 #model_vecs2 = Vec2f.(Float32.(Fu_model_mode2 .* scale_mode2), Float32.(Fv_model_mode2 .* scale_mode2))
 
 
@@ -190,6 +190,47 @@ display(fig)
 png_file = joinpath(FIGDIR, "Mooring_modes1_2_only.png")
 save(png_file, fig)
 println("Saved: $png_file")
+
+
+
+
+# ===================================================================
+
+using DataFrames, Printf
+
+
+# ============================================================================
+# ABSOLUTE (MAGNITUDE) FLUX PER MODE, PER MOORING
+# Requires Fu_iwap_mode1/2, Fv_iwap_mode1/2, Fu_model_mode1/2, Fv_model_mode1/2,
+# mooring_ids, target_lats, target_lons already in memory from the plotting script.
+# ============================================================================
+abs_iwap_mode1  = sqrt.(Fu_iwap_mode1.^2  .+ Fv_iwap_mode1.^2)
+abs_iwap_mode2  = sqrt.(Fu_iwap_mode2.^2  .+ Fv_iwap_mode2.^2)
+abs_model_mode1 = sqrt.(Fu_model_mode1.^2 .+ Fv_model_mode1.^2)
+abs_model_mode2 = sqrt.(Fu_model_mode2.^2 .+ Fv_model_mode2.^2)
+
+
+flux_table = DataFrame(
+    Mooring_ID      = mooring_ids,
+    Lat             = target_lats,
+    Lon             = target_lons,
+    IWAP_Mode1_kWm  = round.(abs_iwap_mode1,  digits=3),
+    Model_Mode1_kWm = round.(abs_model_mode1, digits=3),
+    IWAP_Mode2_kWm  = round.(abs_iwap_mode2,  digits=3),
+    Model_Mode2_kWm = round.(abs_model_mode2, digits=3),
+)
+
+
+println(flux_table)
+
+
+@printf("\n%-10s %-10s %-14s %-14s %-14s %-14s\n", "Mooring", "Lat", "IWAP Mode1", "Model Mode1", "IWAP Mode2", "Model Mode2")
+for p in 1:length(mooring_ids)
+    @printf("%-10d %-10.4f %-14.3f %-14.3f %-14.3f %-14.3f\n",
+        mooring_ids[p], target_lats[p],
+        abs_iwap_mode1[p], abs_model_mode1[p],
+        abs_iwap_mode2[p], abs_model_mode2[p])
+end
 
 
 

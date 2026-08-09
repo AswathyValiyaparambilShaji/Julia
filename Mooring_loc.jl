@@ -136,11 +136,7 @@ println("\n=== File 3 (ALL_IWAP): $(length(lato3)) moorings ===")
 for i in eachindex(lato3)
     println("  Mooring $i: (lat=$(lato3[i]), lon=$(lono3[i]))")
 end
-println("\n=== NC file (intrfreq2_M2): $(length(lat_nc)) points ===")
-for i in eachindex(lat_nc)
-    println("  Point $i: (lat=$(lat_nc[i]), lon=$(lon_nc[i]))")
-end
-
+ 
 
 println("\n=== Unique mooring locations: $(length(unique_points)) ===")
 for (k, p) in enumerate(unique_points)

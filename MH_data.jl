@@ -28,11 +28,14 @@ Eint   = ds["Eint"][:, :]
 
 println(lat)
 println(lon)
+lon = mod.(lon,360)
 
 
+for i in eachindex(lat)
+    println("  Mooring $i: (lat=$(lat[i]), lon=$(lon[i]))")
+end
+ 
 close(ds)
-
-
 
 
 # ── Apply Matthew's corrections ────────────────────────────────────────────────
@@ -42,7 +45,11 @@ umtot[58] = 0.6767;  vmtot[58] = 0.1443
 umtot[59] = 0.1878;  vmtot[59] = 0.1880
 umtot[60] = 0.46;    vmtot[60] = 0.37
 
-
+lon[10]
+lon[57]
+lon[58]
+lon[59]
+lon[60]
 
 
 # ── Derived quantities ─────────────────────────────────────────────────────────

@@ -308,7 +308,7 @@ FONT = "FreeSerif Bold"
 
     # Row 2, Column 1: Shear Production
     ax5 = Axis(fig[2, 1],
-        title = "(e) ⟨Ps⟩ (Vertical)",
+        title = rich("(e) ⟨P",subscript("s"),"⟩ (Vertical) "),
         xlabel = "Longitude [°]",
         ylabel = "Latitude [°]",
     ylabelsize = 16,
@@ -332,7 +332,7 @@ FONT = "FreeSerif Bold"
 
     # Row 2, Column 2: Buoyancy Production
     ax6 = Axis(fig[2, 3],
-        title = "(g) ⟨Pb⟩",
+        title = rich("(g) ⟨P",subscript("b"),"⟩  "),
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false,
@@ -406,7 +406,7 @@ FONT = "FreeSerif Bold"
 
     #
     ax9 = Axis(fig[2, 2],
-        title = "(f) ⟨Ps⟩ (Horizontal) ",
+        title = rich("(f) ⟨P",subscript("s"),"⟩ (Horizontal) "),
         xlabel = "Longitude [°]",
         ylabel = "",
         yticklabelsvisible = false,
