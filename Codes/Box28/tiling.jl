@@ -132,7 +132,7 @@ for varname in vars_3d
     for ts in 1:nt
         dt    = t_start + Hour(ts - 1)
         dtstr = Dates.format(dt, "yyyymmddTHHMMSS")
-        fpath = joinpath(input_dir, "$(varname)_$(NX)x(NY)x(NZ).$dtstr")
+        fpath = joinpath(input_dir, "$(varname)_$(NX)x$(NY)x$(NZ).$dtstr")
 
 
         if !isfile(fpath)
@@ -161,7 +161,7 @@ for varname in vars_2d
     for ts in 1:nt
         dt    = t_start + Hour(ts - 1)
         dtstr = Dates.format(dt, "yyyymmddTHHMMSS")
-        fpath = joinpath(input_dir, "$(varname)_$(NX)x(NY).dtstr")
+        fpath = joinpath(input_dir, "$(varname)_$(NX)x$(NY).$dtstr")
 
 
         if !isfile(fpath)
