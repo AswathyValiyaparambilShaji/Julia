@@ -3,7 +3,7 @@ using Printf, TOML, Dates
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "config", "run_debug.toml"))
 cfg     = TOML.parsefile(config_file)
-basein  = cfg["/nobackup/avaliyap/LLC4320_V2/Box27b/grid/"]   # <- same keys used in the fixed box28 U/V/W/Salt/Theta script
+basein  = "/nobackup/avaliyap/LLC4320_V2/Box27b/grid/"  # <- same keys used in the fixed box28 U/V/W/Salt/Theta script
 baseout = cfg["bp_box27b"]
 
 
