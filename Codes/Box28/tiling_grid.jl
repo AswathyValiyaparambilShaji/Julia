@@ -3,7 +3,7 @@ using Printf, TOML, Dates
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "config", "run_debug.toml"))
 cfg     = TOML.parsefile(config_file)
-basein  = "/nobackup/avaliyap/LLC4320_V2/Box28/grid/"   # FIXED: was cfg["/nobackup/avaliyap/LLC4320_V2/Box27b/"] — that's a path, not a config key.
+basein  =  cfg["bp_box28_v2"]  # FIXED: was cfg["/nobackup/avaliyap/LLC4320_V2/Box27b/"] — that's a path, not a config key.
 baseout = cfg["bp_box28"]      # <- verify these two key names against your run_debug.toml; rename if different.
 
 
