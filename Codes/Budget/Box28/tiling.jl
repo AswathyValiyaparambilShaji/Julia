@@ -4,7 +4,7 @@ using Printf, TOML, Dates
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "config", "run_debug.toml"))
 cfg     = TOML.parsefile(config_file)
 basein  = cfg["bp_box28_v2"]
-baseout = cfg["bp_box27b"]
+baseout = cfg["bp_box28"]
 
 
 # ── Fixed dimensions for THIS box ───────────────────────────────────────────────
