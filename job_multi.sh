@@ -51,8 +51,10 @@ echo "Job 12 submitted: $JOB12"
 JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling.jl -W depend=afterok:$JOB12 $PBS)
 echo "Job 13 submitted: $JOB13"
 
-#JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NT/Energy_line_plot_nt.jl -W depend=afterok:$JOB13 $PBS)
-#echo "Job 14 submitted: $JOB14"
+JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box28/tiling_grid.jl -W depend=afterok:$JOB13 $PBS)
+echo "Job 14 submitted: $JOB14"
+JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling_grid.jl -W depend=afterok:$JOB14 $PBS)
+echo "Job 15 submitted: $JOB15"
 # Add as many scripts as you need following the same pattern...
 
 
