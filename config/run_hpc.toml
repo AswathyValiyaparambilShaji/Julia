@@ -4,12 +4,24 @@ base_path = "/nobackup/avaliyap/Box56/"
 base_path2 = "/nobackup/avaliyap/Box56/SM_I/"
 base_path_nt = "/nobackup/avaliyap/Box56/NT/"
 base_pathv2 = "/nobackup/avaliyap/LLC4320_V2/Box56/"
+bp_box28_v2 = "/nobackup/avaliyap/LLC4320_V2/Box28/"
+bp_box27b_v2 = "/nobackup/avaliyap/LLC4320_V2/Box27b/"
+
 base_path_V2 = "/nobackup/avaliyap/V2/Box56/"
+bp_box28 = "/nobackup/avaliyap/V2/Box28/"
+bp_box27b = "/nobackup/avaliyap/V2/Box27b/"
 
 fig_base = "/nobackup/avaliyap/Figure/Box56/"
-
+fig_base_28 = "/nobackup/avaliyap/Figure/Box28/"
+fig_base_27b = "/nobackup/avaliyap/Figure/Box27b/"
 
 xn_start = 1
 xn_end   = 6
 yn_start = 1
 yn_end   = 7
+
+xn_e27b   = 7
+yn_e27b   = 7
+
+xn_e28   = 7
+yn_e28   = 5

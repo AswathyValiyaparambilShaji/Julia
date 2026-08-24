@@ -4,6 +4,9 @@ base_path = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/"
 base_path2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/SM_I/"
 base_path_nt = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/NT/"
 
+bp_box28 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Box28/"
+bp_box27b = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Box27b/"
+
 base_path_V2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/DataV2/"
 fig_base  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/Figures/"
 

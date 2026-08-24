@@ -763,3 +763,250 @@ println("Saved: $png_file2")
 
 
 
+
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 6) Second figure: Mode 1 & Mode 2 flux, LINEAR arrow lengths,
+#    moorings labeled MP1..MP4, blue = IWAP, red = model
+# ════════════════════════════════════════════════════════════════════════
+fig2 = Figure(resolution = (450, 600))
+scale_x0 = minlon + 0.4
+scale_y0 = maxlat - 0.4
+mag1_iwap  = sqrt.(Fu_iwap_mode1.^2  .+ Fv_iwap_mode1.^2)
+mag1_model = sqrt.(Fu_model_mode1.^2 .+ Fv_model_mode1.^2)
+scale_ref_kWm1 = 2.0
+mag2_iwap  = sqrt.(Fu_iwap_mode2.^2  .+ Fv_iwap_mode2.^2)
+mag2_model = sqrt.(Fu_model_mode2.^2 .+ Fv_model_mode2.^2)
+scale_ref_kWm2 = 0.5
+scale_ref_kWm  = 2.0
+
+
+
+
+scale_mode1 = (target / (scale_ref_kWm1)) * (ARROW_SCALEUP)
+scale_mode2 = (target / (scale_ref_kWm2)) * (ARROW_SCALEUP)
+scale_mode  = (target / (scale_ref_kWm))  * (ARROW_SCALEUP)
+
+
+
+
+mooring_pos = Point2f.((target_lons), (target_lats))
+
+
+
+
+mp_labels = ["MP$(p)" for p in 1:n_points]
+
+
+
+
+# Linear scaling: preserves direction and magnitude proportionally (no log)
+function linear_scaled_vecs(Fu, Fv, scale)
+   return Vec2f.(Float32.(Fu .* scale), Float32.(Fv .* scale))
+end
+
+
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Rotate observed (IWAP) fluxes by 60° before plotting/comparing
+# (see Zhao et al., 2010, page 3) — matches MATLAB's theta = pi/3 rotation.
+# Model fluxes are NOT rotated, exactly as in the MATLAB script.
+# ════════════════════════════════════════════════════════════════════════
+function rotate_flux(Fu, Fv, theta)
+   R = [cos(theta) -sin(theta);
+        sin(theta)  cos(theta)]
+   Fu_rot = similar(Fu)
+   Fv_rot = similar(Fv)
+   for i in eachindex(Fu)
+       v = R * [Fu[i]; Fv[i]]
+       Fu_rot[i] = v[1]
+       Fv_rot[i] = v[2]
+   end
+   return Fu_rot, Fv_rot
+end
+
+
+
+
+theta_rot = pi/3   # 60 degrees, matches MATLAB's theta
+
+
+
+
+Fu_iwap_mode1_R, Fv_iwap_mode1_R = rotate_flux(Fu_iwap_mode1, Fv_iwap_mode1, theta_rot)
+Fu_iwap_mode2_R, Fv_iwap_mode2_R = rotate_flux(Fu_iwap_mode2, Fv_iwap_mode2, theta_rot)
+
+
+
+
+iwap_linvecs1  = linear_scaled_vecs(Fu_iwap_mode1_R,  Fv_iwap_mode1_R,  scale_mode1)
+model_linvecs1 = linear_scaled_vecs(Fu_model_mode1, Fv_model_mode1, scale_mode1)
+iwap_linvecs2  = linear_scaled_vecs(Fu_iwap_mode2_R,  Fv_iwap_mode2_R,  scale_mode2)
+model_linvecs2 = linear_scaled_vecs(Fu_model_mode2, Fv_model_mode2, scale_mode2)
+
+# Fu_model_mode1/2, Fv_model_mode1/2 are left untouched — matches MATLAB
+# (unearest/vnearest, i.e. the model fluxes, are never rotated there)
+
+scale_x0 = minlon + 0.4
+scale_y0 = maxlat - 0.4
+
+# --- Panel 1: Mode 1 (linear arrows) ---
+ax1b = Axis(fig2[1, 1],
+   title      = "Mode 1 flux",
+   xlabel     = "Longitude [°]",
+   ylabel     = "Latitude [°]",
+   xlabelsize = 18, ylabelsize = 18, titlesize = 16)
+ax1b.limits[] = ((minlon, 200), (minlat, maxlat))
+arrows!(ax1b, mooring_pos, iwap_linvecs1;  color = :blue, arrowsize = 10, linewidth = 3)
+arrows!(ax1b, mooring_pos, model_linvecs1; color = :red,  arrowsize = 10, linewidth = 3)
+for p in 1:n_points
+   text!(ax1b, target_lons[p] + 0.05, target_lats[p] + 0.05;
+         text = mp_labels[p], fontsize = 13, color = :black)
+end
+# scale bar
+sl_1 = scale_ref_kWm1 * scale_mode1
+arrows!(ax1b, [Point2f(scale_x0, scale_y0)], [Vec2f(sl_1, 0f0)]; color = :black, arrowsize = 7, linewidth = 2.5)
+text!(ax1b, scale_x0, scale_y0 - 0.25; text = "$(scale_ref_kWm1) kW/m", fontsize = 11, color = :black)
+# --- Legend for Panel 1 (Mode 1) ---
+legend_elements_1 = [
+    LineElement(color = :red,  linewidth = 3),
+    LineElement(color = :blue, linewidth = 3)
+]
+legend_labels_1 = ["MITgcm LLC4320", "IWAP mooring"]
+
+
+axislegend(ax1b, legend_elements_1, legend_labels_1;
+    position = :rb,      # bottom-right; change to :lt, :rt, :lb as needed
+    labelsize = 11,
+    framevisible = true)
+
+
+display(fig2)
+png_file2 = joinpath(FIGDIR, "Mooring_modes_linear.png")
+save(png_file2, fig2)
+println("Saved: $png_file2")
+
+
+#= =================================================
+
+percentage calculation 
+===============================================#
+
+mag_model = sqrt.(Fu_model_mode1.^2 .+ Fv_model_mode1.^2)
+mag_obs   = sqrt.(Fu_iwap_mode1_R.^2  .+ Fv_iwap_mode1_R.^2)
+
+
+# per-mooring-point percent difference
+pct_diff = 100 .* (mag_model .- mag_obs) ./ mag_obs
+println("Per-point % difference (model vs obs): ", round.(pct_diff, digits=2))
+
+
+# overall bias  average of individual percent differences
+mean_pct_diff = mean(pct_diff)
+println("Mean % difference across moorings: ", round(mean_pct_diff, digits=2), "%")
+
+
+# alternative: bulk % difference using summed/averaged magnitudes rather than
+# per-point average (less sensitive to one noisy/small-flux outlier point)
+bulk_pct_diff = 100 * (mean(mag_model) - mean(mag_obs)) / mean(mag_obs)
+println("Bulk % difference (mean magnitudes): ", round(bulk_pct_diff, digits=2), "%")
+
+
+mag_model = sqrt.(Fu_model_mode1.^2 .+ Fv_model_mode1.^2)
+mag_obs   = sqrt.(Fu_iwap_mode1.^2  .+ Fv_iwap_mode1.^2)
+
+
+# per-mooring-point percent difference
+pct_diff = 100 .* (mag_model .- mag_obs) ./ mag_obs
+println("Per-point % difference (model vs obs): ", round.(pct_diff, digits=2))
+
+
+# overall bias  average of individual percent differences
+#mean_pct_diff = mean(pct_diff)
+#println("Mean % difference across moorings: ", round(mean_pct_diff, digits=2), "%")
+
+
+# alternative: bulk % difference using summed/averaged magnitudes rather than
+# per-point average (less sensitive to one noisy/small-flux outlier point)
+bulk_pct_diff = 100 * (mean(mag_model) - mean(mag_obs)) / mean(mag_obs)
+println("Bulk % difference (mean magnitudes): ", round(bulk_pct_diff, digits=2), "%")
+
+ratio_per_point = mag_model ./ mag_obs
+println("Model/Obs ratio per point: ", round.(ratio_per_point, digits=2))
+
+
+# overall ratio using averaged magnitudes (more robust than averaging per-point ratios)
+bulk_ratio = mean(mag_model) / mean(mag_obs)
+println("Bulk model/obs ratio: ", round(bulk_ratio, digits=2))
+
+
+# alternative: mean of the per-point ratios
+#mean_of_ratios = mean(ratio_per_point)
+#println("Mean of per-point ratios: ", round(mean_of_ratios, digits=2))
+
+
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Quantitative model–observation comparison metrics (Mode 1)
+# Following Ansong et al. (2017) style comparison: magnitude ratio (γ)
+# and directional agreement (angle between model and obs vectors)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# --- Magnitude ratio γ = mean(|F_model|) / mean(|F_obs|) ---
+# Use the UNROTATED, UNSCALED original flux components (not the plotted
+# linear_scaled_vecs, which are only for arrow rendering)
+mag1_model_mean = mean(mag1_model)     # mag1_model already computed above
+mag1_iwap_mean  = mean(mag1_iwap)      # mag1_iwap already computed above
+
+
+gamma_mode1 = mag1_model_mean / mag1_iwap_mean
+
+
+println("── Mode 1 magnitude comparison ──")
+println("Mean |F_model| = $(round(mag1_model_mean, digits=3)) kW/m")
+println("Mean |F_obs|   = $(round(mag1_iwap_mean, digits=3)) kW/m")
+println("γ = $(round(gamma_mode1, digits=3))  →  model is $(round((gamma_mode1-1)*100, digits=1))% $(gamma_mode1 >= 1 ? "larger" : "smaller") than observed, on average")
+
+
+# --- Per-mooring magnitude ratio (optional, useful for spotting outliers like MP1) ---
+println("\n── Per-mooring magnitude ratio (model/obs) ──")
+for p in 1:n_points
+    ratio_p = mag1_model[p] / mag1_iwap[p]
+    println("$(mp_labels[p]): γ = $(round(ratio_p, digits=3))  " *
+            "(model = $(round(mag1_model[p], digits=3)) kW/m, " *
+            "obs = $(round(mag1_iwap[p], digits=3)) kW/m)")
+end
+
+
+# --- Angle between model and observed flux vectors at each mooring ---
+# θ = angle(F_model) − angle(F_obs), wrapped to [-180°, 180°]
+function angle_between_deg(Fu1, Fv1, Fu2, Fv2)
+    ang1 = atand(Fv1, Fu1)
+    ang2 = atand(Fv2, Fu2)
+    diff = ang1 - ang2
+    # wrap to [-180, 180]
+    diff = mod(diff + 180, 360) - 180
+    return abs(diff)
+end
+
+
+println("\n── Angle between modeled and observed flux vectors ──")
+angles_mode1 = Float64[]
+for p in 1:n_points
+    # Use rotated IWAP components (Fu_iwap_mode1_R, Fv_iwap_mode1_R) since
+    # those are the ones being compared to the model in the plot
+    θ = angle_between_deg(Fu_model_mode1[p], Fv_model_mode1[p],
+                           Fu_iwap_mode1_R[p], Fv_iwap_mode1_R[p])
+    push!(angles_mode1, θ)
+    println("$(mp_labels[p]): θ = $(round(θ, digits=1))°")
+end
+
+
+n_within_60 = count(θ -> θ <= 60, angles_mode1)
+println("\nDirectional agreement (γ_dir, Ansong et al. 2017 style): " *
+        "$(n_within_60)/$(n_points) moorings have θ ≤ 60° " *
+        "($(round(100*n_within_60/n_points, digits=1))%)")
