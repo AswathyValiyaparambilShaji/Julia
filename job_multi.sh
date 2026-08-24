@@ -45,10 +45,10 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NIW/Shear_pdh_niw.jl  $PBS)
 #echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Budget/Box28/tiling.jl  $PBS)
+JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box28/tiling.jl  $PBS)
 echo "Job 12 submitted: $JOB12"
 
-JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Budget/Box27b/tiling.jl -W depend=afterok:$JOB12 $PBS)
+JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling.jl -W depend=afterok:$JOB12 $PBS)
 echo "Job 13 submitted: $JOB13"
 
 #JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NT/Energy_line_plot_nt.jl -W depend=afterok:$JOB13 $PBS)

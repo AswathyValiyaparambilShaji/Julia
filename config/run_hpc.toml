@@ -9,7 +9,10 @@ bp_box27b_v2 = "/nobackup/avaliyap/LLC4320_V2/Box27b/"
 
 base_path_V2 = "/nobackup/avaliyap/V2/Box56/"
 bp_box28 = "/nobackup/avaliyap/V2/Box28/"
+bp_box28_nt = "/nobackup/avaliyap/V2/Box28/NT/"
+
 bp_box27b = "/nobackup/avaliyap/V2/Box27b/"
+bp_box27b_nt = "/nobackup/avaliyap/V2/Box27b/NT/"
 
 fig_base = "/nobackup/avaliyap/Figure/Box56/"
 fig_base_28 = "/nobackup/avaliyap/Figure/Box28/"
