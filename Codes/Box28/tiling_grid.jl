@@ -20,7 +20,7 @@ ntiles_y = 5
 
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
-vars_3d = ["hFacC_384x337x168"]
+vars_3d = ["hFacC"]
 vars_2d = ["DXC", "DYC", "RAC","GEBCO2025_on_LLC4320_v16b"]
 
 
