@@ -27,7 +27,7 @@ nt      = 558
 
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
-vars_3d = ["V", "Salt", "Theta", "W"]
+vars_3d = ["V", "Salt", "Theta", "W","U"]
 vars_2d = ["Eta", "oceTAUX", "oceTAUY"]
 
 
