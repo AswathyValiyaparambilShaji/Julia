@@ -6,14 +6,14 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-basein = cfg["bp_box28"]
+base = cfg["bp_box28"]
 baseout = cfg["bp_box28_nt"]
 
 
 # --- Domain & grid of 27b ---
 NX, NY = 384, 336
 minlat, maxlat = -24.5, -18.5
-minlon, maxlon = 337.5, 345.5
+minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 
@@ -31,23 +31,24 @@ kz = 1
 nt = 558
 
 
-# --- Filter (10.2–32.2 hr broadband: 0.8f₀ to 2.5f₀ at mean lat 27.695°N) ---
-T1, T2, delt, N = 10.2, 32.2, 1.0, 4
-mkpath(joinpath(base, "NT"))
-mkpath(joinpath(base, "NT","UVW_NT"))
-
 # --- Loop over all tiles ---
-for xn in cfg["xn_start"]:cfg["xn_e28"]
-    for yn in cfg["yn_start"]:cfg["yn_e28"]
+for xn in cfg["xn_start"]:cfg["xn_end"]
+    for yn in cfg["yn_start"]:cfg["yn_end"]
 
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
         # --- Read fields ---
-        U = read_bin(joinpath(base, "U/U_$suffix.bin"), (nx, ny, nz, nt))
-        V = read_bin(joinpath(base, "V/V_$suffix.bin"), (nx, ny, nz, nt))
-        W = read_bin(joinpath(base, "W/W_$suffix.bin"), (nx, ny, nz, nt))
+        U = Float64.(open(joinpath(base, "U","U_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)#
+        V = Float64.(open(joinpath(base, "V", "V_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)
+        W = Float64.(open(joinpath(base, "W","W_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)
 
 
         # C-grid to centers

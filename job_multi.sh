@@ -45,15 +45,15 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NIW/Shear_pdh_niw.jl  $PBS)
 #echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box28/tiling.jl  $PBS)
+JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box28/3day_mean/Mean_UV.jl  $PBS)
 echo "Job 12 submitted: $JOB12"
 
-JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling.jl -W depend=afterok:$JOB12 $PBS)
+JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/Mean_UV.jl -W depend=afterok:$JOB12 $PBS)
 echo "Job 13 submitted: $JOB13"
 
-JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box28/tiling_grid.jl -W depend=afterok:$JOB13 $PBS)
+JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/UVW_nt_filter.jl -W depend=afterok:$JOB13 $PBS)
 echo "Job 14 submitted: $JOB14"
-JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling_grid.jl -W depend=afterok:$JOB14 $PBS)
+JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl -W depend=afterok:$JOB14 $PBS)
 echo "Job 15 submitted: $JOB15"
 # Add as many scripts as you need following the same pattern...
 

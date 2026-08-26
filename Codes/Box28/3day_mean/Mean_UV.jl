@@ -6,14 +6,14 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["bp_box27b"]
+base = cfg["bp_box28"]
 
 
 # --- Domain & grid ---
 # --- Domain & grid of 27b ---
-NX, NY = 1056, 1026 
-minlat, maxlat = -60.0, -48.0
-minlon, maxlon = 142.0208530805687, 163.9791469194313
+NX, NY = 384, 336
+minlat, maxlat = -24.5, -18.5
+minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
