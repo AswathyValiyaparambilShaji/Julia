@@ -45,7 +45,7 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NIW/Shear_pdh_niw.jl  $PBS)
 #echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl -W  $PBS)
+JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
 echo "Job 12 submitted: $JOB12"
 
 JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Perturbation_nt.jl -W depend=afterok:$JOB12 $PBS)
