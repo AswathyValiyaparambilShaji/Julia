@@ -7,17 +7,17 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/density.jl  $PBS)
-echo "Job 1 submitted: $JOB1"
+#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/density.jl  $PBS)
+#echo "Job 1 submitted: $JOB1"
 
-JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box28/density.jl  -W depend=afterok:$JOB1 $PBS)
-echo "Job 2 submitted: $JOB2"
+#JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box28/density.jl  -W depend=afterok:$JOB1 $PBS)
+#echo "Job 2 submitted: $JOB2"
 
-JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/UVW_nt_filter.jl -W depend=afterok:$JOB2 $PBS)
-echo "Job 3 submitted: $JOB3"
+#JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/UVW_nt_filter.jl -W depend=afterok:$JOB2 $PBS)
+#echo "Job 3 submitted: $JOB3"
 
-JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/Mean_UV.jl -W depend=afterok:$JOB3 $PBS)
-echo "Job 4 submitted: $JOB4"
+#JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/Mean_UV.jl -W depend=afterok:$JOB3 $PBS)
+#echo "Job 4 submitted: $JOB4"
 
 #JOB5=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/Buoyancy_pd_sm.jl  -W depend=afterok:$JOB4 $PBS)
 #echo "Job 5 submitted: $JOB5"
@@ -45,7 +45,7 @@ echo "Job 4 submitted: $JOB4"
 #JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NIW/Shear_pdh_niw.jl  $PBS)
 #echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl -W depend=afterok:$JOB4 $PBS)
+JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl -W  $PBS)
 echo "Job 12 submitted: $JOB12"
 
 JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Perturbation_nt.jl -W depend=afterok:$JOB12 $PBS)
