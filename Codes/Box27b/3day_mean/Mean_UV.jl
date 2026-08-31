@@ -20,10 +20,10 @@ NZ = 173
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 47, 66
+tx, ty = 150, 146
 nx = tx + 2*buf
 ny = ty + 2*buf
-nz = 168
+nz = 170
 kz = 1
 nt = 558
 timesteps_per_3days = 72  # 3 timesteps = 72 hours

@@ -16,19 +16,23 @@ minlat, maxlat = -24.5, -18.5
 minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
+NZ = 173
 
-
-# --- Tile & time ---
+# --- Tile & time --- 
 buf = 3
 tx, ty = 54, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
-NZ = 168
+nz = 168
 
 
 
 kz = 1
 nt = 558
+# --- Filter (10.2–32.2 hr broadband: 0.8f₀ to 2.5f₀ at mean lat 27.695°N) ---
+T1, T2, delt, N = 10.2, 32.2, 1.0, 4
+mkpath(joinpath(base, "NT"))
+mkpath(joinpath(base, "NT","UVW_NT"))
 
 
 # --- Loop over all tiles ---

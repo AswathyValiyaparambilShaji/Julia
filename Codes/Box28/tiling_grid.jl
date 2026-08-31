@@ -8,7 +8,7 @@ baseout = cfg["bp_box28"]      # <- verify these two key names against your run_
 
 
 # ── Fixed dimensions for THIS box ───────────────────────────────────────────────
-NX, NY, NZ = 384, 337, 168
+NX, NY, NZ = 384, 337, 173
 
 
 buf = 3

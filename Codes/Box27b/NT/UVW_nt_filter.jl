@@ -23,7 +23,8 @@ buf = 3
 tx, ty = 150, 146
 nx = tx + 2*buf
 ny = ty + 2*buf
-NZ = 168
+NZ = 173
+nz= 170
 
 
 
@@ -44,10 +45,16 @@ for xn in cfg["xn_start"]:cfg["xn_e27b"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-        # --- Read fields ---
-        U = read_bin(joinpath(base, "U/U_$suffix.bin"), (nx, ny, nz, nt))
-        V = read_bin(joinpath(base, "V/V_$suffix.bin"), (nx, ny, nz, nt))
-        W = read_bin(joinpath(base, "W/W_$suffix.bin"), (nx, ny, nz, nt))
+          # --- Read fields ---
+        U = Float64.(open(joinpath(base, "U","U_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)#
+        V = Float64.(open(joinpath(base, "V", "V_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)
+        W = Float64.(open(joinpath(base, "W","W_v2_$suffix.bin"), "r") do io
+            reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny,nz,nt)
+        end)
 
 
         # C-grid to centers

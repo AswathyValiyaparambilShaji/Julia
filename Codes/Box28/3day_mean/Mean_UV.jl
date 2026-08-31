@@ -20,7 +20,7 @@ NZ = 173
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 47, 66
+tx, ty = 54, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 168
