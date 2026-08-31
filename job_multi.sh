@@ -45,16 +45,16 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Budget/NIW/Shear_pdh_niw.jl  $PBS)
 #echo "Job 11 submitted: $JOB11"
 
-JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
-echo "Job 12 submitted: $JOB12"
+#JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
+#echo "Job 12 submitted: $JOB12"
 
-JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Perturbation_nt.jl -W depend=afterok:$JOB12 $PBS)
+JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Perturbation_nt.jl $PBS)
 echo "Job 13 submitted: $JOB13"
 
-JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl -W depend=afterok:$JOB13 $PBS)
-echo "Job 14 submitted: $JOB14"
-JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flux_plot_nt.jl -W depend=afterok:$JOB14 $PBS)
-echo "Job 15 submitted: $JOB15"
+#JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl -W depend=afterok:$JOB13 $PBS)
+#echo "Job 14 submitted: $JOB14"
+#JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flux_plot_nt.jl -W depend=afterok:$JOB14 $PBS)
+#echo "Job 15 submitted: $JOB15"
 
 JOB16=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Flux_plot_nt.jl -W depend=afterok:$JOB15 $PBS)
 echo "Job 16 submitted: $JOB16"

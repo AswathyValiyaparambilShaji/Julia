@@ -51,7 +51,8 @@ end
 
 
 
-for xn in cfg["xn_start"]:cfg["xn_e28"]
+
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
     for yn in cfg["yn_start"]:cfg["yn_e28"]
 
 

@@ -3,7 +3,11 @@ using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 
 
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
-using .FluxUtils: read_bin, bandpassfilter
+using .FluxUtils: read_bin
+# NOTE: FluxUtils.bandpassfilter is intentionally NOT imported/used here.
+# It's shared by other scripts in the pipeline and is left untouched.
+# This script defines its own local, memory-safe filtering function
+# below (bandpassfilter_fast) instead.
 
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
@@ -37,6 +41,52 @@ T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 
 mkpath(joinpath(base, "NT"))
 mkpath(joinpath(base, "NT", "UVW_NT"))
+
+
+# ------------------------------------------------------------------
+# Local, memory-safe replacement for FluxUtils.bandpassfilter, scoped
+# to this script only. Same math (Butterworth bandpass, filtfilt along
+# the last/time dimension), but:
+#   - designs the filter once (same as the original — this was never
+#     the problem)
+#   - filters along the last dimension directly via a view, instead of
+#     permutedims-ing the whole array to move time to the front and
+#     back again (that was 2 extra full-array copies)
+#   - writes into one preallocated output array via a plain loop
+#     instead of mapslices
+#   - uses a "function barrier" (_bandpassfilter_fast_apply takes `b`
+#     as an argument) so Julia compiles a version specialized to `b`'s
+#     concrete type, instead of the type-unstable closure that
+#     mapslices was calling millions of times — this is what was
+#     generating the huge allocation counts in the crash.
+# ------------------------------------------------------------------
+function bandpassfilter_fast(y::AbstractArray{T,ND}, Tl, Th, dt, N, nt) where {T<:AbstractFloat, ND}
+    @assert size(y, ndims(y)) == nt "nt must equal size(y, end)"
+    fs = 1 / dt
+    f1, f2 = 1 / Th, 1 / Tl
+
+
+    b = digitalfilter(Bandpass(f1, f2), Butterworth(N); fs = fs)
+
+
+    return _bandpassfilter_fast_apply(y, b)
+end
+
+
+function _bandpassfilter_fast_apply(y::AbstractArray{T,ND}, b) where {T<:AbstractFloat, ND}
+    out = similar(y)
+    front_dims = size(y)[1:end-1]
+
+
+    @inbounds for idx in CartesianIndices(front_dims)
+        ts64 = Float64.(@view y[idx, :])
+        filtered = filtfilt(b, ts64)
+        @views out[idx, :] .= T.(filtered)
+    end
+
+
+    return out
+end
 
 
 # ------------------------------------------------------------------
@@ -76,7 +126,7 @@ function process_component(base::String, letter::String, suffix::String,
     GC.gc()
 
 
-    filtered = bandpassfilter(centered, T1, T2, delt, N, nt)
+    filtered = bandpassfilter_fast(centered, T1, T2, delt, N, nt)
 
 
     centered = nothing
@@ -95,7 +145,7 @@ end
 
 
 # --- Loop over all tiles ---
-for xn in cfg["xn_start"]:cfg["xn_e27b"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
     for yn in cfg["yn_start"]:cfg["yn_e27b"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
