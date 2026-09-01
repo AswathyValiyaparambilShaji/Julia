@@ -26,7 +26,7 @@ lon = range(minlon, maxlon, length=NX)
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 150, 146
+tx, ty = 75, 73
 nx = tx + 2 * buf
 ny = ty + 2 * buf
 NZ = 173
