@@ -128,7 +128,7 @@ Ux = DO_TRANSPOSE ? tfx'   : tfx
 Uy = DO_TRANSPOSE ? tfy'   : tfy
 
 
-fig = Figure(resolution = (600, 800))
+fig = Figure(resolution = (1200, 500))
 ax  = Axis(fig[1, 1],
     title      = "MITgcm Perturbation Flux",
     xlabel     = "Longitude [°]",
