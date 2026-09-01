@@ -16,8 +16,8 @@ buf = 3
 
 # 
 
-ntiles_x = 7
-ntiles_y = 7
+ntiles_x = 14
+ntiles_y = 14
 
 
 #  Time info 

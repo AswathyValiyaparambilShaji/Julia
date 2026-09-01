@@ -7,11 +7,11 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/density.jl  $PBS)
-#echo "Job 1 submitted: $JOB1"
+JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling.jl  $PBS)
+echo "Job 1 submitted: $JOB1"
 
-#JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box28/density.jl  -W depend=afterok:$JOB1 $PBS)
-#echo "Job 2 submitted: $JOB2"
+JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/tiling_grid.jl  $PBS)
+echo "Job 2 submitted: $JOB2"
 
 #JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/UVW_nt_filter.jl -W depend=afterok:$JOB2 $PBS)
 #echo "Job 3 submitted: $JOB3"
@@ -56,8 +56,8 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flux_plot_nt.jl -W depend=afterok:$JOB14 $PBS)
 #echo "Job 15 submitted: $JOB15"
 
-JOB16=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Flux_plot_nt.jl  $PBS)
-echo "Job 16 submitted: $JOB16"
+#JOB16=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Flux_plot_nt.jl  $PBS)
+#echo "Job 16 submitted: $JOB16"
 # Add as many scripts as you need following the same pattern...
 
 

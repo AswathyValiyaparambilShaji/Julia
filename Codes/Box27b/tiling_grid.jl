@@ -18,8 +18,8 @@ buf = 3
 #   x: 1050 / 7 = 150 exactly -> nothing dropped
 #   y: 1024 / 7 = 146 remainder 2 -> dropped SYMMETRICALLY: 1 grid row at the
 #      very start (y = 1) and 1 grid row at the very end (y = 1030)
-ntiles_x = 7
-ntiles_y = 7
+ntiles_x = 14
+ntiles_y = 14
 
 
 # ── Variable lists ─────────────────────────────────────────────────────────────
