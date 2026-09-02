@@ -51,7 +51,7 @@ rho0  = 1027.5
 g     = 9.8
 dt_output =3600
 
-for xn in cfg["xn_start"]:cfg["xn_e28"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
     for yn in cfg["yn_start"]:cfg["yn_e28"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         println("Starting tile: $suffix")
