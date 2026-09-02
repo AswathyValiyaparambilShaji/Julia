@@ -51,7 +51,7 @@ echo "Job 1 submitted: $JOB1"
 #JOB13=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Perturbation_nt.jl $PBS)
 #echo "Job 13 submitted: $JOB13"
 
-JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl -W depend=afterok:$JOB3 $PBS)
+JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl -W depend=afterok:$JOB1 $PBS)
 echo "Job 14 submitted: $JOB14"
 JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flux_plot_nt.jl -W depend=afterok:$JOB14 $PBS)
 echo "Job 15 submitted: $JOB15"
