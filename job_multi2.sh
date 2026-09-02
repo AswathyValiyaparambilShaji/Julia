@@ -3,7 +3,7 @@
 
 
 BASE=/home3/avaliyap/Documents/Julia_new/Julia/Codes/
-PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
+PBS=/home3/avaliyap/Documents/Julia_new/Julia/m2_run_j.pbs
 
 
 # Submit all jobs chained one after another
