@@ -7,10 +7,10 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m2_run_j.pbs
 
 
 # Submit all jobs chained one after another
-JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Conversion_nt.jl  $PBS)
+#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Conversion_nt.jl  $PBS)
 echo "Job 1 submitted: $JOB1"
 
-JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/FlxDiv_nt.jl  $PBS)
+JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box28/3day_mean/Mean_UV.jl  $PBS)
 echo "Job 2 submitted: $JOB2"
 
 JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box28/3day_mean/N2_3day_mean.jl -W depend=afterok:$JOB2 $PBS)
