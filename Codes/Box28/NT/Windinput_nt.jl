@@ -6,28 +6,31 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["base_path_V2"]
+base = cfg["bp_box28"]
 base2 = (joinpath(base, "NT"))    
 
 
-
 # --- Domain & grid ---
-NX, NY = 288, 468
-minlat, maxlat = 24.0, 31.91
-minlon, maxlon = 193.0, 199.0
+NX, NY = 384, 336
+minlat, maxlat = -24.5, -18.5
+minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 47, 66
+tx, ty = 54, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 168
 kz = 1
 nt = 558
-rho0 = 1027.5
+ts = 72
+nt_avg = div(nt, ts)
+nt_chunk = 72
+n_chunks = div(nt,nt_chunk)
+# --- Thickness & constants ---
 thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
                 raw = read(io,  NZ * sizeof(Float32))
                 ntoh.(reshape(reinterpret(Float32, raw), NZ))
@@ -36,7 +39,8 @@ thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
 DRF  = thk[1:nz]
 sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.81
+rho0  = 1027.5
+g     = 9.8
 # --- Filter parameters (9-15 hour band) ---
 T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 
@@ -53,8 +57,8 @@ println("\nOutput directory: $OUTDIR")
 diag_records = []   # will store NamedTuple for each tile
 
 
-for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
+for xn in cfg["xn_start"]:cfg["xn_e28"]
+    for yn in cfg["yn_start"]:cfg["yn_e28"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         println("\n[Tile $suffix]")
         

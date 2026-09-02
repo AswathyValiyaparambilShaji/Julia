@@ -6,7 +6,7 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["base_path_V2"]
+base = cfg["bp_box28"]
 base2 = (joinpath(base, "NT"))    
 
 
@@ -21,16 +21,17 @@ wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
 
 # --- Domain & grid ---
-NX, NY = 288, 468
-minlat, maxlat = 24.0, 31.91
-minlon, maxlon = 193.0, 199.0
+# --- Domain & grid ---
+NX, NY = 384, 336
+minlat, maxlat = -24.5, -18.5
+minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 47, 66
+tx, ty = 54, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 168
@@ -54,8 +55,8 @@ rho0  = 1027.5
 N2_threshold = 1.0e-8
 
 
-for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
+for xn in cfg["xn_start"]:cfg["xn_e28"]
+    for yn in cfg["yn_start"]:cfg["yn_e28"]
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
         println("Starting tile: $suffix")
 

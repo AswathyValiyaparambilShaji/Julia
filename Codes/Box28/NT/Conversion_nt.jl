@@ -40,6 +40,10 @@ ny = ty + 2*buf
 nz = 168
 kz = 1
 nt = 558
+ts = 72
+nt_avg = div(nt, ts)
+nt_chunk = 72
+n_chunks = div(nt,nt_chunk)
 # --- Thickness & constants ---
 thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
                 raw = read(io,  NZ * sizeof(Float32))
@@ -49,8 +53,8 @@ thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
 DRF  = thk[1:nz]
 sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
-g = 9.81
-
+rho0  = 1027.5
+g     = 9.8
 T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 
 
