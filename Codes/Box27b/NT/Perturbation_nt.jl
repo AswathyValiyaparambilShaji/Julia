@@ -93,25 +93,29 @@ for xn in cfg["xn_start"]:cfg["xn_e27b"]
         pc_3d = 0.5 .* (pfz[:, :, 1:end-1, :] .+ pfz[:, :, 2:end, :])
         pa    = sum(pc_3d .* DRFfull, dims=3) ./ depth
         pp_3d = pc_3d .- pa
+        pfz = nothing; pa = nothing; GC.gc()
 
 
         mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
         pp_3d[repeat(mask4D, 1, 1, 1, size(pp_3d, 4))] .= 0.0
-        println(pp_3d[2,2,:,5])
+        #println(pp_3d[2,2,:,5])
 
         ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
         up_3d  = fu .- ucA_3d
         up_3d[repeat(mask4D, 1, 1, 1, size(up_3d, 4))] .= 0.0
-        println(up_3d[2,2,:,5])
+        #fu = nothing; ucA_3d = nothing; GC.gc()
+
+        #println(up_3d[2,2,:,5])
 
 
         vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
         vp_3d  = fv .- vcA_3d
         vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0.0
-        println(vp_3d[2,2,:,5])
+        #println(vp_3d[2,2,:,5])
+        #fv = nothing; vcA_3d = nothing; GC.gc()
 
         wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw .- wcA_3d
+        wp_3d  = fw 
         wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0.0
 
 

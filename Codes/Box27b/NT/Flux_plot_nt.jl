@@ -50,7 +50,7 @@ tfy = zeros(NX, NY)
 
 
 for xn in cfg["xn_start"]:cfg["xn_e27b"]
-    for yn in cfg["yn_start"]:cfg["yn_e7b"]
+    for yn in cfg["yn_start"]:cfg["yn_e27b"]
 
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
@@ -109,7 +109,7 @@ using CairoMakie
 
 
 FIGDIR        = cfg["fig_base_27b"]
-HEAT_CBAR_MAX = 15
+HEAT_CBAR_MAX = 1
 QUIVER_STEP   = 20
 ARROW_SCALEUP = 5.0
 DO_TRANSPOSE  = false
