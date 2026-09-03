@@ -1,5 +1,9 @@
+
+
 using DSP, MAT, Statistics, Printf, FilePathsBase, LinearAlgebra, TOML
 #using CairoMakie, SparseArrays
+
+
 
 
 include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
@@ -9,13 +13,16 @@ cfg = TOML.parsefile(config_file)
 base = cfg["bp_box27b"]
 
 
+
+
 # --- Domain & grid ---
-NX, NY = 1056, 1026 
+NX, NY = 1056, 1026
 minlat, maxlat = -60.0, -48.0
 minlon, maxlon = 142.0208530805687, 163.9791469194313
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
+
 
 # --- Tile & time ---
 buf = 3
@@ -26,115 +33,148 @@ nz = 170
 kz = 1
 nt = 558
 # --- Thickness & constants ---
-thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
-                raw = read(io,  NZ * sizeof(Float32))
-                ntoh.(reshape(reinterpret(Float32, raw), NZ))
-            end)
+thk = (open(joinpath(base, "hFacC", "delR.bin"), "r") do io
+    raw = read(io, NZ * sizeof(Float32))
+    ntoh.(reshape(reinterpret(Float32, raw), NZ))
+end)
+
 
 DRF  = thk[1:nz]
 sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.81
 
-# --- Filter (10.2–32.2 hr broadband: 0.8f₀ to 2.5f₀ at mean lat 27.695°N) ---
+
+# --- Filter (10.2-32.2 hr broadband: 0.8f0 to 2.5f0 at mean lat 27.695N) ---
 T1, T2, delt, N = 10.2, 32.2, 1.0, 4
 fcutlow, fcuthigh = 1 / T2, 1 / T1
 fnq = 1 / delt
 bpf = digitalfilter(Bandpass(fcutlow, fcuthigh), Butterworth(N); fs = fnq)
 
-base2 = (joinpath(base, "NT"))       
-for d in ["xflux","yflux","zflux"]
+
+base2 = joinpath(base, "NT")
+for d in ["xflux", "yflux", "zflux"]
     mkpath(joinpath(base2, d))
 end
 
 
 
-for xn in cfg["xn_start"]:cfg["xn_e27b"]
-    for yn in cfg["yn_start"]:cfg["yn_e27b"]
+
+# ---------------------------------------------------------------------
+# Everything that used to live inside the double for-loop now lives in
+# this function instead. That's the main fix: local variables here are
+# guaranteed to be freed by Julia as soon as the function returns, so
+# memory from one tile can't linger into the next tile the way it could
+# when all these big arrays were globals. No manual `= nothing` bookkeeping
+# needed for anything declared inside the function body.
+# ---------------------------------------------------------------------
+function process_tile(xn, yn, buf, nx, ny, nz, nt, base, base2, DRF3d, g, T1, T2, delt, N)
 
 
-        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
+    suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
 
 
-        hFacC = read_bin(joinpath(base, "hFacC/hFacC_v2_$suffix.bin"), (nx, ny, nz))
+    hFacC = read_bin(joinpath(base, "hFacC/hFacC_v2_$suffix.bin"), (nx, ny, nz))
 
 
-        rho = Float64.(open(joinpath(base,"Density", "rho_in_$suffix.bin"), "r") do io
-            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float64))
-            reshape(reinterpret(Float64, raw_bytes), nx, ny, nz, nt)
-        end)
+    rho = Float64.(open(joinpath(base, "Density", "rho_in_$suffix.bin"), "r") do io
+        raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float64))
+        reshape(reinterpret(Float64, raw_bytes), nx, ny, nz, nt)
+    end)
 
 
-        DRFfull = hFacC .* DRF3d
-        z = cumsum(DRFfull, dims=3)
-        zz = cat(zeros(nx, ny, 1), z; dims=3)
-        za = -0.5 .* (zz[:, :, 1:end-1] .+ zz[:, :, 2:end])
-        depth = sum(DRFfull, dims=3)
-        DRFfull[hFacC .== 0] .= 0.0
+    DRFfull = hFacC .* DRF3d
+    z  = cumsum(DRFfull, dims=3)
+    zz = cat(zeros(nx, ny, 1), z; dims=3)
+    za = -0.5 .* (zz[:, :, 1:end-1] .+ zz[:, :, 2:end])
+    depth = sum(DRFfull, dims=3)
+    DRFfull[hFacC .== 0] .= 0.0
 
 
-        fu = Float64.(open(joinpath(base2, "UVW_NT", "fu_nt_$suffix.bin"), "r") do io
-            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
-            reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
-        end)
-        fv = Float64.(open(joinpath(base2, "UVW_NT", "fv_nt_$suffix.bin"), "r") do io
-            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
-            reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
-        end)
-        fw = Float64.(open(joinpath(base2, "UVW_NT", "fw_nt_$suffix.bin"), "r") do io
-            raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
-            reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
-        end)
+    fu = Float64.(open(joinpath(base2, "UVW_NT", "fu_nt_$suffix.bin"), "r") do io
+        raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
+        reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
+    end)
+    fv = Float64.(open(joinpath(base2, "UVW_NT", "fv_nt_$suffix.bin"), "r") do io
+        raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
+        reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
+    end)
+    fw = Float64.(open(joinpath(base2, "UVW_NT", "fw_nt_$suffix.bin"), "r") do io
+        raw_bytes = read(io, nx * ny * nz * nt * sizeof(Float32))
+        reshape(reinterpret(Float32, raw_bytes), nx, ny, nz, nt)
+    end)
 
 
-        fr = bandpassfilter(rho, T1, T2, delt, N, nt)
-        pres  = g .* cumsum(fr .* DRFfull, dims=3)
-        pfz   = cat(zeros(nx, ny, 1, nt), pres; dims=3)
-        pc_3d = 0.5 .* (pfz[:, :, 1:end-1, :] .+ pfz[:, :, 2:end, :])
-        pa    = sum(pc_3d .* DRFfull, dims=3) ./ depth
-        pp_3d = pc_3d .- pa
-        pfz = nothing; pa = nothing; GC.gc()
+    fr    = bandpassfilter(rho, T1, T2, delt, N, nt)
+    pres  = g .* cumsum(fr .* DRFfull, dims=3)
+    pfz   = cat(zeros(nx, ny, 1, nt), pres; dims=3)
+    pc_3d = 0.5 .* (pfz[:, :, 1:end-1, :] .+ pfz[:, :, 2:end, :])
+    pa    = sum(pc_3d .* DRFfull, dims=3) ./ depth
+    pp_3d = pc_3d .- pa
 
 
-        mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
-        pp_3d[repeat(mask4D, 1, 1, 1, size(pp_3d, 4))] .= 0.0
-        #println(pp_3d[2,2,:,5])
-
-        ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
-        up_3d  = fu .- ucA_3d
-        up_3d[repeat(mask4D, 1, 1, 1, size(up_3d, 4))] .= 0.0
-        #fu = nothing; ucA_3d = nothing; GC.gc()
-
-        #println(up_3d[2,2,:,5])
+    # mask computed once as (nx,ny,nz,1); broadcasting `.=`/`ifelse.` against it
+    # zeroes out the masked points without ever materializing a full-size
+    # (nx,ny,nz,nt) copy of the mask the way `repeat(...)` used to (that was
+    # 4 extra multi-hundred-MB allocations per tile, on top of everything else).
+    mask4D = reshape(hFacC .== 0, nx, ny, nz, 1)
 
 
-        vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
-        vp_3d  = fv .- vcA_3d
-        vp_3d[repeat(mask4D, 1, 1, 1, size(vp_3d, 4))] .= 0.0
-        #println(vp_3d[2,2,:,5])
-        #fv = nothing; vcA_3d = nothing; GC.gc()
-
-        wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d  = fw 
-        wp_3d[repeat(mask4D, 1, 1, 1, size(wp_3d, 4))] .= 0.0
+    pp_3d .= ifelse.(mask4D, 0.0, pp_3d)
+    println(pp_3d[2, 2, :, 5])
 
 
-        xflx_3d = up_3d .* pp_3d
-        yflx_3d = vp_3d .* pp_3d
-        zflx_3d = wp_3d .* pp_3d
+    ucA_3d = sum(fu .* DRFfull, dims=3) ./ depth
+    up_3d  = fu .- ucA_3d
+    up_3d .= ifelse.(mask4D, 0.0, up_3d)
+    println(up_3d[2, 2, :, 5])
 
 
-       
-        open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, Float32.(xflx_3d)); end
-        open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, Float32.(yflx_3d)); end
-        open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, Float32.(zflx_3d)); end
+    vcA_3d = sum(fv .* DRFfull, dims=3) ./ depth
+    vp_3d  = fv .- vcA_3d
+    vp_3d .= ifelse.(mask4D, 0.0, vp_3d)
+    println(vp_3d[2, 2, :, 5])
 
-        fu = fv =fw = vcA_3d =ucA_3d = wcA_3d = nothing; GC.gc()
 
-        println("Completed tile: $suffix")
-    end
+    wcA_3d = sum(fw .* DRFfull, dims=3) ./ depth
+    wp_3d  = fw .- wcA_3d
+    wp_3d .= ifelse.(mask4D, 0.0, wp_3d)
+
+
+    xflx_3d = up_3d .* pp_3d
+    yflx_3d = vp_3d .* pp_3d
+    zflx_3d = wp_3d .* pp_3d
+
+
+    open(joinpath(base2, "xflux", "xflx_$suffix.bin"), "w") do io; write(io, Float32.(xflx_3d)); end
+    open(joinpath(base2, "yflux", "yflx_$suffix.bin"), "w") do io; write(io, Float32.(yflx_3d)); end
+    open(joinpath(base2, "zflux", "zflx_$suffix.bin"), "w") do io; write(io, Float32.(zflx_3d)); end
+
+
+    println("Completed tile: $suffix")
+
+
+    return nothing
 end
 
 
+
+
+
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
+    for yn in cfg["yn_start"]:cfg["yn_e27b"]
+        process_tile(xn, yn, buf, nx, ny, nz, nt, base, base2, DRF3d, g, T1, T2, delt, N)
+
+
+        # Belt-and-suspenders: everything from process_tile is already out of
+        # scope and garbage the moment it returns, but forcing a full
+        # collection here keeps the process's actual memory footprint (RSS)
+        # low between tiles instead of waiting for Julia to decide on its own
+        # that it's time to collect. This is what was missing before, and is
+        # the most likely reason the run would eventually stall on a giant
+        # read after several tiles had already gone by.
+        GC.gc(true)
+    end
+end
 
 
