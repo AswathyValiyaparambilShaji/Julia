@@ -1,4 +1,4 @@
-using Printf, Plots
+using Printf, CairoMakie
 
 
 fname = "/nobackup/kzhang/llc_4320/regions/Moorings/U/U_1996.20230524T060000"
@@ -15,12 +15,16 @@ u    = reshape(data, nlev, nstat)   # (levels, stations) -- try (nstat, nlev) if
 @printf("min/max/mean: %.4f / %.4f / %.4f\n", minimum(u), maximum(u), sum(u) / length(u))
 
 
-plot(1:nlev, u[:, 1],  label="station 1",  xlabel="level index", ylabel="U (m/s)",
-     title="U profile check", lw=2)
-plot!(1:nlev, u[:, 88], label="station 88", lw=2)
+fig = Figure()
+ax = Axis(fig[1, 1], xlabel="level index", ylabel="U (m/s)", title="U profile check")
+lines!(ax, 1:nlev, u[:, 1],  label="station 1",  linewidth=2)
+lines!(ax, 1:nlev, u[:, 88], label="station 88", linewidth=2)
+axislegend(ax)
 
 
-savefig("U_profile_check.png")
+save("U_profile_check.png", fig)
 println("Saved plot to U_profile_check.png")
+
+
 
 
