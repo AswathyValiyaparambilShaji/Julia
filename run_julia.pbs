@@ -21,7 +21,7 @@ julia ${JULIA_SCRIPT}
 #julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Box28/NT/Flux_plot_nt.jl
 
 
-JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl )
+JOB14=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Perturbation_nt.jl $PBS)
 echo "Job 14 submitted: $JOB14"
 
 
