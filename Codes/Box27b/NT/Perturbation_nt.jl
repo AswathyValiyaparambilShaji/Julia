@@ -157,24 +157,23 @@ function process_tile(xn, yn, buf, nx, ny, nz, nt, base, base2, DRF3d, g, T1, T2
     return nothing
 end
 
+const MAX_CONCURRENT_TILES = 3   # tune: budget_GB / peak_GB_per_tile, with margin
+sem = Base.Semaphore(MAX_CONCURRENT_TILES)
 
+tiles = [(xn, yn) for xn in cfg["xn_start"]:cfg["xn_e27b"], yn in cfg["yn_start"]:cfg["yn_e27b"]]
 
-
-
-Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
-    for yn in cfg["yn_start"]:cfg["yn_e27b"]
+Threads.@threads for (xn, yn) in tiles
+    Base.acquire(sem)
+    try
         process_tile(xn, yn, buf, nx, ny, nz, nt, base, base2, DRF3d, g, T1, T2, delt, N)
+                GC.gc(true)
 
-
-        # Belt-and-suspenders: everything from process_tile is already out of
-        # scope and garbage the moment it returns, but forcing a full
-        # collection here keeps the process's actual memory footprint (RSS)
-        # low between tiles instead of waiting for Julia to decide on its own
-        # that it's time to collect. This is what was missing before, and is
-        # the most likely reason the run would eventually stall on a giant
-        # read after several tiles had already gone by.
-        GC.gc(true)
+    finally
+        Base.release(sem)
     end
 end
+
+
+
 
 
