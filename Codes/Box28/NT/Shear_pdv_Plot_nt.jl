@@ -47,8 +47,8 @@ SP_V_full = fill(NaN, NX, NY)
 
 
 
-Threads.@threads for xn in cfg["xn_start"]:cfg["xn_end"]
-    for yn in cfg["yn_start"]:cfg["yn_end"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
+    for yn in cfg["yn_start"]:cfg["yn_e28"]
 
 
         suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
