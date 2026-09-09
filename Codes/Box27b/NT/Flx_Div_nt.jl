@@ -41,6 +41,11 @@ ny = ty + 2*buf
 nz = 170
 kz = 1
 nt = 558
+ts = 72
+nt_avg = div(nt, ts)
+nt_chunk = 72
+n_chunks = div(nt,nt_chunk)
+
 # --- Thickness & constants ---
 thk = (open(joinpath(base, "hFacC", "delR.bin"), "r") do io
     raw = read(io, NZ * sizeof(Float32))
