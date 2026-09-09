@@ -57,9 +57,14 @@ DRF  = thk[1:nz]
 sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.81
+const MAX_CONCURRENT_TILES = 3   # tune: budget_GB / peak_GB_per_tile, with margin
+sem = Base.Semaphore(MAX_CONCURRENT_TILES)
 
-for xn in cfg["xn_start"]:cfg["xn_e27b"]
-    for yn in cfg["yn_start"]:cfg["yn_e27b"]
+tiles = [(xn, yn) for xn in cfg["xn_start"]:cfg["xn_e27b"], yn in cfg["yn_start"]:cfg["yn_e27b"]]
+
+Threads.@threads for (xn, yn) in tiles
+    Base.acquire(sem)
+    try
         suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
         println("Starting tile: $suffix")
@@ -121,8 +126,10 @@ for xn in cfg["xn_start"]:cfg["xn_e27b"]
         end#
 
 
-        flxD = nothing; GC.gc()
+        flxD = nothing; GC.gc(true)
         println("Completed tile: $suffix")
+    finally
+        Base.release(sem)
     end
 end
 
