@@ -87,13 +87,13 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
 end
 fig = Figure(resolution=(600, 700))
 # --- Subplot 1: MITgcm Flux Heatmap + Quiver ---
-ax1 = Axis(fig[1, 1], title= rich("KE (KJ/m²"), xlabel="Longitude[°]", ylabel="Latitude[°]")
+ax1 = Axis(fig[1, 1], title= rich("KE (KJ/m²)"), xlabel="Longitude[°]", ylabel="Latitude[°]")
 ax1.limits[] = ((minimum(lon), maximum(lon)), 
                 (minimum(lat), maximum(lat)))
 hm = CairoMakie.heatmap!(ax1, lon, lat, KE./1000;
                         interpolate=false,
                         colormap=:jet,
-                        colorrange=(0, 15))
+                        colorrange=(0, 4.5))
 
 
 
