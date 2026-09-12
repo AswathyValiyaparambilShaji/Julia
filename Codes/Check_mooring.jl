@@ -7,9 +7,8 @@ using Printf
 # ==================================================================
 # CONFIG -- adjust paths / variable folder names here if needed
 # ==================================================================
-moordir  = "/nobackup/kzhang/llc_4320/regions/Moorings/"
-mydir  = "/nobackup/avaliyap/V2/Moorings/"
-
+moordir  = "/data3/aswathy/mnt/data/aswathy/MITgcm_NAS/"
+mydir    = "/nobackup/avaliyap/V2/Moorings/"
 matfile  = joinpath(moordir, "MooringLocations.mat")
 outfile  = joinpath(mydir, "Moorings_88_timeseries.nc")
 
@@ -42,7 +41,29 @@ nx      = Int(vars["nx"])          # total stations in the raw extraction, e.g. 
 nz      = Int(vars["nz"])          # vertical levels
 
 
+# hFacC: fraction of each cell that's open ocean (0 = land/below seafloor,
+# 1 = full cell). Static -- one value per (station, level), no time dependence.
+hFacC = vars["hFacC"]              # (nx, nz), same layout as U/V/Theta/Salt
+hFacC_moor = hFacC[1:n_moor, :]
+
+
+# DRF (nominal per-level cell thickness, nz-length, same everywhere on the
+# grid) is still needed downstream for dz = hFacC .* DRF in the flux script.
+# Not written into this file unless it's also in MooringLocations.mat --
+# check for it and warn if missing, rather than silently doing nothing.
+has_DRF = haskey(vars, "DRF")
+if has_DRF
+    DRF = vec(vars["DRF"])
+else
+    @warn "DRF not found in MooringLocations.mat -- you'll still need it " *
+          "(nz-length, per-level cell thickness) for the flux calculation's " *
+          "dz = hFacC .* DRF step. Ask Kate for it, or derive it from RC " *
+          "(RF(k+1) = 2*RC(k) - RF(k), starting from RF(1)=0)."
+end
+
+
 println("Loaded MooringLocations.mat: nx=$nx, nz=$nz, using first $n_moor stations.")
+println("hFacC found: size $(size(hFacC))  ->  using first $n_moor stations.")
 
 
 # ==================================================================
@@ -153,6 +174,14 @@ v_th.attrib["units"] = "degC"
 v_sa = defVar(ds, "Salt", Float32, ("time", "station", "depth"))
 v_sa.attrib["long_name"] = "salinity"
 v_sa.attrib["units"] = "psu"
+
+
+v_hfacc = defVar(ds, "hFacC", Float64, ("station", "depth"))
+v_hfacc.attrib["long_name"] = "fraction of vertical cell open to ocean"
+v_hfacc.attrib["units"] = "1"
+v_hfacc[:, :] = hFacC_moor    # static, written once -- no time dimension
+
+
 
 
 # ==================================================================
