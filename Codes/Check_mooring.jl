@@ -7,7 +7,7 @@ using Printf
 # ==================================================================
 # CONFIG -- adjust paths / variable folder names here if needed
 # ==================================================================
-moordir  = "/data3/aswathy/mnt/data/aswathy/MITgcm_NAS/"
+moordir  = "/nobackup/kzhang/llc_4320/regions/Moorings/"
 mydir    = "/nobackup/avaliyap/V2/Moorings/"
 matfile  = joinpath(moordir, "MooringLocations.mat")
 outfile  = joinpath(mydir, "Moorings_88_timeseries.nc")
