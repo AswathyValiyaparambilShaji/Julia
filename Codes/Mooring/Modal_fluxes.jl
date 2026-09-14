@@ -3,49 +3,37 @@ include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: bandpassfilter
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "densjmd95.jl"))
 
-
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg    = TOML.parsefile(config_file)
-base   = cfg["base_path"]
-base2  = cfg["base_path2"]
-FIGDIR = get(cfg, "fig_base", joinpath(@__DIR__, "figs"))
-mkpath(FIGDIR)
+FIGDIR = cfg["fig_base_m"]
 
+logfile = joinpath(FIGDIR, "run_log.txt")
+logio = open(logfile, "w")
+redirect_stdout(logio)
+redirect_stderr(logio)   # also captures @warn and error messages
 
 g    = 9.81
 rho0 = 1027.0
 T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 timesteps_per_3days = 72
 
+NZ = 173
+# --- Thickness & constants ---
+thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
+                raw = read(io,  NZ * sizeof(Float32))
+                ntoh.(reshape(reinterpret(Float32, raw), NZ))
+            end)
 
-# NOTE: min_ocean_cells was used in your pasted script but never defined.
-# Reading it from the config if present, otherwise defaulting to 5 --
-# confirm this matches what you actually intended before trusting results.
-min_ocean_cells = get(cfg, "min_ocean_cells", 5)
-println("Using min_ocean_cells = $min_ocean_cells", haskey(cfg, "min_ocean_cells") ? " (from config)" : " (DEFAULT -- not in config, please confirm)")
+DRF  = thk[1:NZ]
+sum(thk)
+g = 9.81
 
-
-# ============================================================================
-# READ MOORING NETCDF (point data: mooring_point, nz, nt)
-#
-# DEBUGGED to match what build_mooring_netcdf.jl actually produces:
-#   - filename is Moorings_88_timeseries.nc, not mooring_UVrho.nc -- update
-#     mydir below (or your config's base_path2) if your real path differs
-#   - variable names are lat/lon (not latitude/longitude) and U_east/V_north
-#     (not U/V) -- those are the already-rotated East/North components
-#   - hFacC is written directly now (Kate gave it to you), not DRFfull, so
-#     there's nothing to reconstruct -- DRFfull is computed once here instead
-#   - build_mooring_netcdf.jl declares dims as (time, station, depth), so
-#     Array(ds["U_east"]) comes back in THAT order. The rest of this script
-#     assumes (station, depth, time) -- reading positionally via size(U) as
-#     before would silently swap N_moor/nz/nt with no error. Permuting
-#     explicitly here instead of trusting size() fixes that.
-# ============================================================================
 mydir  = "/nobackup/avaliyap/V2/Moorings/"   # matches build_mooring_netcdf.jl's mydir
 ncfile = joinpath(mydir, "Moorings_88_timeseries.nc")
 ds = NCDataset(ncfile, "r")
 
-
+try
+    
 lon = Array(ds["lon"])
 lat = Array(ds["lat"])
 
@@ -58,10 +46,7 @@ U     = Float64.(permute_to_std(ds["U_east"]))
 V     = Float64.(permute_to_std(ds["V_north"]))
 Salt  = Float64.(permute_to_std(ds["Salt"]))
 Theta = Float64.(permute_to_std(ds["Theta"]))
-
-
 hFacC = Float64.(Array(ds["hFacC"]))   # (station, depth) -- already given, no reconstruction
-DRF   = Float64.(Array(ds["DRF"]))     # (depth,) -- confirm this var exists; only written if it was in MooringLocations.mat
 
 
 close(ds)
@@ -86,11 +71,6 @@ println("Saved mooring location check -> $loc_png")
 println("Review this BEFORE trusting the flux results below.")
 
 
-# ============================================================================
-# hFacC MASK AT MOORING POINTS -- given directly now, no reconstruction.
-# DRFfull (actual per-column cell thickness) still needed throughout the
-# rest of the pipeline below, so compute it forward instead of backward.
-# ============================================================================
 hFacC_moor = hFacC
 mask2D = hFacC_moor .== 0
 DRFfull = hFacC_moor .* reshape(DRF, 1, nz)
@@ -137,9 +117,7 @@ pp_3d[mask3D] .= 0
 
 
 # ============================================================================
-# SANITY CHECK: depth-integrated baroclinic pressure perturbation ≈ 0
-# (pp_3d is defined as the deviation from the depth-mean pressure, so its
-#  depth-weighted integral should vanish by construction, up to round-off)
+# SANITY CHECK
 # ============================================================================
 println("\nSanity check -- depth-integrated pp_3d (should be ≈ 0):")
 println(round.(sum(pp_3d .* DRFfull_r, dims=2) ./ depth_r, digits=4))
@@ -157,8 +135,7 @@ vp_3d[mask3D] .= 0
 
 
 # ============================================================================
-# SANITY CHECK: depth-integrated baroclinic velocity perturbation ≈ 0
-# (same reasoning as the pressure check above, applied to up_3d/vp_3d)
+# SANITY CHECK
 # ============================================================================
 println("\nSanity check -- depth-integrated up_3d (should be ≈ 0):")
 println(round.(sum(up_3d .* DRFfull_r, dims=2) ./ depth_r, digits=4))
@@ -542,6 +519,8 @@ end
 plot_modal_flux_map(lon, lat, uflux_int_out[:, 1], vflux_int_out[:, 1], 1)
 plot_modal_flux_map(lon, lat, uflux_int_out[:, 2], vflux_int_out[:, 2], 2)
 
-
+finally
+    close(logio)
+end
 
 

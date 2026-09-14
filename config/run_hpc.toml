@@ -17,6 +17,7 @@ bp_box27b_nt = "/nobackup/avaliyap/V2/Box27b/NT/"
 fig_base = "/nobackup/avaliyap/Figure/Box56/"
 fig_base_28 = "/nobackup/avaliyap/Figure/Box28/"
 fig_base_27b = "/nobackup/avaliyap/Figure/Box27b/"
+fig_base_m = "/nobackup/avaliyap/Figure/Moorings/"
 
 xn_start = 1
 xn_end   = 6
