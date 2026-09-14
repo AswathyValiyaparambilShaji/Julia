@@ -13,16 +13,17 @@ base = cfg["bp_box27b"]
 base2 = (joinpath(base, "NT")) 
 
 # --- Domain & grid ---
-NX, NY = 1056, 1026 
+NX, NY = 1056, 1026
 minlat, maxlat = -60.0, -48.0
 minlon, maxlon = 142.0208530805687, 163.9791469194313
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
 
+
 # --- Tile & time ---
 buf = 3
-tx, ty = 150, 146
+tx, ty = 75, 73
 nx = tx + 2*buf
 ny = ty + 2*buf
 nz = 170
@@ -46,12 +47,14 @@ rho0 = 1027.5
 
 # Create output directory
 mkpath(joinpath(base,"3day_mean", "N2"))
+const MAX_CONCURRENT_TILES = 3   # tune: budget_GB / peak_GB_per_tile, with margin
+sem = Base.Semaphore(MAX_CONCURRENT_TILES)
 
+tiles = [(xn, yn) for xn in cfg["xn_start"]:cfg["xn_e27b"], yn in cfg["yn_start"]:cfg["yn_e27b"]]
 
-for xn in cfg["xn_start"]:cfg["xn_e27b"]
-   for yn in cfg["yn_start"]:cfg["yn_e27b"]
-
-
+Threads.@threads for (xn, yn) in tiles
+    Base.acquire(sem)
+    try
        suffix = @sprintf("%02dx%02d_%d", xn, yn, buf)
       
        println("Processing tile: $suffix")
@@ -151,6 +154,8 @@ for xn in cfg["xn_start"]:cfg["xn_e27b"]
        end
       
        println("Completed tile: $suffix")
+       finally 
+        Base.release(sem)
    end
 end
 
