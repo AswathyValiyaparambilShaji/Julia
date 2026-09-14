@@ -19,18 +19,7 @@ t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
 t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
 wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
 wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
-nt_chunk = 72
-n_chunks = div(nt, nt_chunk)
 
-ring_steps = nt_chunk
-t_safe_start = ring_steps + 1              # first valid step (1801)
-t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
-
-
-# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
-safe_chunks = [c for c in 1:n_chunks
-               if (c-1)*nt_chunk + 1 >= t_safe_start &&
-                  c*nt_chunk          <= t_safe_end]
 # --- Domain & grid ---
 NX, NY = 384, 336
 minlat, maxlat = -24.5, -18.5
@@ -51,6 +40,18 @@ ts = 72
 nt_avg = div(nt, ts)
 nt_chunk = 72
 n_chunks = div(nt,nt_chunk)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 # --- Thickness & constants ---
 thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
                 raw = read(io,  NZ * sizeof(Float32))
