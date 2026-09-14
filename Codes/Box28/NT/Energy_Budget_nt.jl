@@ -29,6 +29,17 @@ nt = 558
 ts  = 72                     # timesteps per 3-day period (3*24)
 nt_avg = div(nt, ts)         # number of 3-day periods (same as nt3)
 nt3 = div(nt, 3*24)
+nt_chunk = 72
+n_chunks = div(nt, nt_chunk)
+ring_steps = nt_chunk
+t_safe_start = ring_steps + 1              # first valid step (1801)
+t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
+
+
+# Safe 3-day chunks: only keep chunks that fall entirely within the safe range
+safe_chunks = [c for c in 1:n_chunks
+               if (c-1)*nt_chunk + 1 >= t_safe_start &&
+                  c*nt_chunk          <= t_safe_end]
 NZ = 173
     # --- Thickness & constants ---
     thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
@@ -136,7 +147,7 @@ NZ = 173
 
 
             # Time average the WPI
-            wpi_mean = mean(wpi_tile, dims=3)[:, :, 1]
+        wpi_mean = mean(wpi_tile[:, :, t_safe_start:t_safe_end], dims=3)[:, :, 1]
 
 
             # --- Tile positions in global grid ---
