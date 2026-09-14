@@ -102,7 +102,7 @@ Threads.@threads for (xn, yn) in tiles
             reshape(reinterpret(Float32, read(io, nx*ny*nz*nt*sizeof(Float32))), nx, ny, nz, nt)
         end)
         wcA   = sum(fw .* DRFfull, dims=3) ./ depth
-        wp_3d = fw .- wcA
+        wp_3d = fw 
         wp_3d[repeat(mask3D, 1, 1, 1, nt)] .= 0.0
         fw = nothing; wcA = nothing; GC.gc()
 
