@@ -6,23 +6,24 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["bp_box27b"]
+base = cfg["bp_box28"]
 base2 = (joinpath(base, "NT"))       
 
-# --- Domain & grid ---
-NX, NY = 1056, 1026 
-minlat, maxlat = -60.0, -48.0
-minlon, maxlon = 142.0208530805687, 163.9791469194313
+
+# --- Domain & grid of 27b ---
+NX, NY = 384, 336
+minlat, maxlat = -24.5, -18.5
+minlon, maxlon = 337.5, 345.4791122715405
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
 
 # --- Tile & time ---
 buf = 3
-tx, ty = 75, 73
+tx, ty = 54, 66
 nx = tx + 2*buf
 ny = ty + 2*buf
-nz = 170
+nz = 168
 kz = 1
 nt = 558
 
@@ -37,16 +38,17 @@ sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.81
 
-Conv_z = zeros(NX, NY)
+
+FDiv_z = zeros(NX, NY)
 
 
-Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
-    for yn in cfg["yn_start"]:cfg["yn_e27b"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
+    for yn in cfg["yn_start"]:cfg["yn_e28"]
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
-        fpath   = joinpath(base2, "Conv", "Conv_nt_$suffix2.bin")
+        fpath   = joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin")
 
 
-        C = Float64.(open(fpath, "r") do io
+        D = Float64.(open(fpath, "r") do io
             reshape(reinterpret(Float32, read(io, (nx-2)*(ny-2)*sizeof(Float32))), nx-2, ny-2)
         end)
 
@@ -57,23 +59,20 @@ Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
         ye = ys + ty + (2*buf) - 1
 
 
-        Conv_z[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
+        FDiv_z[xs+2:xe-2, ys+2:ye-2] .= D[2:end-1, 2:end-1]
     end
 end
 
 
-println("Conv_z range: ", extrema(Conv_z[Conv_z .!= 0]))
-
-
 fig = Figure(resolution=(1200, 500))
 ax  = Axis(fig[1,1],
-    title  = "Barotropic-to-Baroclinic Conversion  (W/m²)",
+    title  = "Flux Divergence ∇·F  (W/m²)",
     xlabel = "Longitude [°]",
     ylabel = "Latitude [°]")
 ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 
-hm = CairoMakie.heatmap!(ax, lon, lat, Conv_z;
+hm = CairoMakie.heatmap!(ax, lon, lat, FDiv_z;
     interpolate = false,
     colorrange  = (-0.050, 0.050),
     colormap    = :bwr)
@@ -85,8 +84,8 @@ display(fig)
 
 FIGDIR = cfg["fig_base_27b"]
 mkpath(FIGDIR)
-save(joinpath(FIGDIR, "Conv_NS_nt_v1.png"), fig)
-println("Figure saved: $(joinpath(FIGDIR, "Conv_NS_nt_v1.png"))")
+save(joinpath(FIGDIR, "FDiv_map_NS_nt_V1.png"), fig)
+println("Figure saved: $(joinpath(FIGDIR, "FDiv_map_nt_V1.png"))")
 
 
 

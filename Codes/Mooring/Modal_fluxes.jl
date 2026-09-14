@@ -19,19 +19,19 @@ timesteps_per_3days = 72
 
 NZ = 173
 # --- Thickness & constants ---
-thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
+
+g = 9.81
+
+mydir  = "/nobackup/avaliyap/V2/Moorings/"   # matches build_mooring_netcdf.jl's mydir
+ncfile = joinpath(mydir, "Moorings_88_timeseries.nc")
+ds = NCDataset(ncfile, "r")
+thk =(open(joinpath(mydir, "hFacC",  "delR.bin"), "r") do io
                 raw = read(io,  NZ * sizeof(Float32))
                 ntoh.(reshape(reinterpret(Float32, raw), NZ))
             end)
 
 DRF  = thk[1:NZ]
 sum(thk)
-g = 9.81
-
-mydir  = "/nobackup/avaliyap/V2/Moorings/"   # matches build_mooring_netcdf.jl's mydir
-ncfile = joinpath(mydir, "Moorings_88_timeseries.nc")
-ds = NCDataset(ncfile, "r")
-
 try
     
 lon = Array(ds["lon"])
