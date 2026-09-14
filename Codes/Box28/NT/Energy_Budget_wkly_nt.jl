@@ -7,8 +7,15 @@ using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
 base = cfg["bp_box28"]
-base2 = (joinpath(base, "NT"))       
-
+base2 = (joinpath(base, "NT")) 
+      
+t_origin   = DateTime(2023, 5, 1, 0, 0, 0)
+t_wk_start = DateTime(2023, 5, 4, 0, 0, 0)
+t_wk_end   = DateTime(2023, 5, 18, 18, 0, 0)
+wk_start   = Int(Dates.Hour(t_wk_start - t_origin).value) + 1
+wk_end     = Int(Dates.Hour(t_wk_end   - t_origin).value) + 1
+println(wk_end)
+println(wk_start)
 
 # --- Domain & grid of 27b ---
 NX, NY = 384, 336
