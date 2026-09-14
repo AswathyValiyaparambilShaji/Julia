@@ -41,7 +41,7 @@ DRF  = thk[1:nz]
 sum(thk)
 DRF3d = repeat(reshape(DRF, 1, 1, nz), nx, ny, 1)
 g = 9.81
-
+rho0 = 1027.5
 BP_full = fill(NaN, NX, NY)
 
 println("Computing area-averaged KE and PE for $nt3 3-day periods...")
