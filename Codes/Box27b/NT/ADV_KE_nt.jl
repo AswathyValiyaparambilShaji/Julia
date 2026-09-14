@@ -67,7 +67,8 @@ Threads.@threads for (xn, yn) in tiles
     Base.acquire(sem)
     try
 
-
+        suffix  = @sprintf("%02dx%02d_%d", xn, yn, buf)
+        println("Starting tile: $suffix")
 
         hFacC = read_bin(joinpath(base, "hFacC/hFacC_v2_$suffix.bin"), (nx, ny, nz))
         dx    = read_bin(joinpath(base, "DXC/DXC_v2_$suffix.bin"), (nx, ny))

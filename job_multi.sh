@@ -13,13 +13,13 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
 #echo "Job 2 submitted: $JOB2"
 
-JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/N2_3day_mean.jl $PBS)
-echo "Job 3 submitted: $JOB3"
+#JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/N2_3day_mean.jl $PBS)
+#echo "Job 3 submitted: $JOB3"
 
-JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/APE_nt.jl -W depend=afterok:$JOB3 $PBS)
-echo "Job 4 submitted: $JOB4"
+#JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/APE_nt.jl -W depend=afterok:$JOB3 $PBS)
+#echo "Job 4 submitted: $JOB4"
 
-JOB5=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Buoyancy_pd_nt.jl  -W depend=afterok:$JOB4 $PBS)
+JOB5=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Tendency_nt.jl $PBS)
 echo "Job 5 submitted: $JOB5"
 
 JOB6=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/ADV_KE_nt.jl -W depend=afterok:$JOB5 $PBS)
