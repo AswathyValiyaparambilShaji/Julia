@@ -2,6 +2,8 @@ using DSP, Statistics, Printf, LinearAlgebra, TOML, NCDatasets, Impute
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "FluxUtils.jl"))
 using .FluxUtils: bandpassfilter
 include(joinpath(@__DIR__, "..", "..", "..", "functions", "densjmd95.jl"))
+include(joinpath(@__DIR__, "..","..","..", "functions", "strum_liouville_noneqDZ_norm.jl"))
+
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
 cfg  = TOML.parsefile(config_file)
 base  = cfg["base_path"]
@@ -165,9 +167,7 @@ for p in 1:N_moor
     f_pt = 2 * 7.2921e-5 * sin(deg2rad(lat[p]))
     hfac_col  = hFacC_moor[p, :]
     ocean_idx = findall(hfac_col .> 0)
-    if length(ocean_idx) < min_ocean_cells
-        continue
-    end
+ 
     k_top = ocean_idx[1]
     ibot  = ocean_idx[end]
     n_cells = ibot - k_top + 1
@@ -189,7 +189,7 @@ for p in 1:N_moor
 
 
     k_sl, L_sl, C_sl, Cg_sl, Ce_sl, Weig_sl, Ueig_sl, Ueig2_sl =
-        sturm_liouville_noneqDZ_norm(zf_col, N2_faces, f_pt, om, 0)
+        strum_liouville_noneqDZ_norm(zf_col, N2_faces, f_pt, om, 0)
 
 
     # expect n_cells+1 Weig (faces) and n_cells Ueig (cells)
@@ -219,9 +219,7 @@ end
 for p in 1:N_moor
     hfac_col = hFacC_moor[p, :]
     ocean_idx = findall(hfac_col .> 0)
-    if length(ocean_idx) < min_ocean_cells
-        continue
-    end
+    
     k_top = ocean_idx[1]
     ibot  = ocean_idx[end]
     dz_col = (hfac_col .* DRF)[k_top:ibot]
@@ -260,9 +258,7 @@ println("Checking mode orthonormality (ueig_out)...")
 for p in 1:N_moor
     hfac_col = hFacC_moor[p, :]
     ocean_idx = findall(hfac_col .> 0)
-    if length(ocean_idx) < min_ocean_cells
-        continue
-    end
+    
     k_top = ocean_idx[1]
     ibot  = ocean_idx[end]
 
@@ -300,9 +296,7 @@ phat_out = fill(NaN, N_moor, nt, n_modes_keep)
 for p in 1:N_moor
    hfac_col = hFacC_moor[p, :]
    ocean_idx = findall(hfac_col .> 0)
-   if length(ocean_idx) < min_ocean_cells
-       continue
-   end
+ 
    k_top = ocean_idx[1]
    ibot  = ocean_idx[end]
    Phi_all = @view Ueig_out[p, k_top:ibot, :]
@@ -416,9 +410,7 @@ vflux_int_out = fill(NaN, N_moor, n_modes_keep)
 for p in 1:N_moor
    hfac_col = hFacC_moor[p, :]
    ocean_idx = findall(hfac_col .> 0)
-   if length(ocean_idx) < min_ocean_cells
-       continue
-   end
+  
    k_top = ocean_idx[1]
    ibot  = ocean_idx[end]
    dz_col = (hfac_col .* DRF)[k_top:ibot]

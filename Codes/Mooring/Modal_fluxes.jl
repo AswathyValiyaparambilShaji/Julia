@@ -2,6 +2,7 @@ using DSP, Statistics, Printf, LinearAlgebra, TOML, NCDatasets, Impute, CairoMak
 include(joinpath(@__DIR__, "..", "..",  "functions", "FluxUtils.jl"))
 using .FluxUtils: bandpassfilter
 include(joinpath(@__DIR__, "..", "..", "functions", "densjmd95.jl"))
+include(joinpath(@__DIR__, "..","..", "functions", "strum_liouville_noneqDZ_norm.jl"))
 
 
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..", "..", "..", "config", "run_debug.toml"))
