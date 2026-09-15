@@ -154,7 +154,7 @@ Threads.@threads for (xn, yn) in tiles
         for (i, ch) in enumerate(safe_chunks)
             t1 = (ch-1)*nt_chunk + 1
             t2 = ch*nt_chunk
-            Conv_3day[:, :, ch] = Float32.(dropdims(mean(c[:, :, t1:t2], dims=3), dims=3))
+            Conv_3day[:, :, i] = Float32.(dropdims(mean(c[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "Conv_3day", "Conv_3day_nt_$suffix2.bin"), "w") do io
             write(io, Conv_3day)

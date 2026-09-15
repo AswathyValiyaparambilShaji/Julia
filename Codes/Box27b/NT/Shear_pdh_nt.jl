@@ -145,7 +145,7 @@ Threads.@threads for (xn, yn) in tiles
         for c in 1:n_chunks
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            SP_H_3day[:, :, c] = Float32.(dropdims(mean(sp_h[:, :, t1:t2], dims=3), dims=3))
+            SP_H_3day[:, :, i] = Float32.(dropdims(mean(sp_h[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "SP_H_3day", "sp_h_3day_nt_$suffix.bin"), "w") do io
             write(io, SP_H_3day)

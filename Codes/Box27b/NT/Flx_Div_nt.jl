@@ -122,7 +122,7 @@ Threads.@threads for (xn, yn) in tiles
         for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            FDiv_3day[:, :, c] = Float32.(mean(flxD[:, :, t1:t2], dims=3)[:, :, 1])
+            FDiv_3day[:, :, i] = Float32.(mean(flxD[:, :, t1:t2], dims=3)[:, :, 1])
         end
         open(joinpath(base2, "FDiv_3day", "FDiv_3day_nt_$suffix2.bin"), "w") do io
             write(io, FDiv_3day)

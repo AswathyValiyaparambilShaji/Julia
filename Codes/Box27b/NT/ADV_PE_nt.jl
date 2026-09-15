@@ -172,7 +172,7 @@ Threads.@threads for (xn, yn) in tiles
         for (i,c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            U_PE_3day[:, :, c] = Float32.(dropdims(mean(U_PE[:, :, t1:t2], dims=3), dims=3))
+            U_PE_3day[:, :, i] = Float32.(dropdims(mean(U_PE[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "U_PE_3day", "u_pe_3day_nt_$suffix.bin"), "w") do io
             write(io, U_PE_3day)
