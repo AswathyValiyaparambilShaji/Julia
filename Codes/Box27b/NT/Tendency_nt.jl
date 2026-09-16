@@ -101,11 +101,12 @@ Threads.@threads for (xn, yn) in tiles
         end
 
 
-        TE_3day = zeros(Float32, nx, ny, n_chunks)
-        for c in 1:n_chunks
+        TE_3day = zeros(Float32, nx, ny, length(safe_chunks))
+        for (i, c) in enumerate(safe_chunks)
             t1 = (c-1)*nt_chunk + 1
             t2 = c*nt_chunk
-            TE_3day[:, :, i] = Float32.(dropdims(mean(dEdt_di[:, :, t1:t2], dims=3), dims=3))
+            TE_3day[:, :, i] = Float32.(dropdims(
+                mean(dEdt_di[:, :, t1:t2], dims=3), dims=3))
         end
         open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "w") do io
             write(io, TE_3day)
