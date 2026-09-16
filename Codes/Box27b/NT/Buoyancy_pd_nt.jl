@@ -54,11 +54,6 @@ thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
                 raw = read(io,  NZ * sizeof(Float32))
                 ntoh.(reshape(reinterpret(Float32, raw), NZ))
             end)
-# --- Thickness & constants ---
-thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
-                raw = read(io,  NZ * sizeof(Float32))
-                ntoh.(reshape(reinterpret(Float32, raw), NZ))
-            end)
 
 DRF  = thk[1:nz]
 sum(thk)
