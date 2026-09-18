@@ -64,6 +64,10 @@ println("\nOutput directory: $OUTDIR")
 # DIAGNOSTIC STORAGE - accumulate across all tiles
 # ============================================================================
 diag_records = []   # will store NamedTuple for each tile
+
+const MAX_CONCURRENT_TILES = 3   # tune: budget_GB / peak_GB_per_tile, with margin
+sem = Base.Semaphore(MAX_CONCURRENT_TILES)
+
 tiles = [(xn, yn) for xn in cfg["xn_start"]:cfg["xn_e27b"], yn in cfg["yn_start"]:cfg["yn_e27b"]]
 
 Threads.@threads for (xn, yn) in tiles
