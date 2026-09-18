@@ -6,26 +6,28 @@ include(joinpath(@__DIR__, "..","..","..", "functions", "FluxUtils.jl"))
 using .FluxUtils: read_bin, bandpassfilter
 config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__, "..","..","..", "config", "run_debug.toml"))
 cfg = TOML.parsefile(config_file)
-base = cfg["bp_box28"]
+base = cfg["bp_box27b"]
 base2 = (joinpath(base, "NT"))       
 
 
-# --- Domain & grid of 27b ---
-NX, NY = 384, 336
-minlat, maxlat = -24.5, -18.5
-minlon, maxlon = 337.5, 345.4791122715405
+# --- Domain & grid ---
+NX, NY = 1056, 1026
+minlat, maxlat = -60.0, -48.0
+minlon, maxlon = 142.0208530805687, 163.9791469194313
 lat = range(minlat, maxlat, length=NY)
 lon = range(minlon, maxlon, length=NX)
 NZ = 173
 
+
 # --- Tile & time ---
 buf = 3
-tx, ty = 54, 66
+tx, ty = 75, 73
 nx = tx + 2*buf
 ny = ty + 2*buf
-nz = 168
+nz = 170
 kz = 1
 nt = 558
+ts = 72
 
 # --- Thickness & constants ---
 thk =(open(joinpath(base, "hFacC",  "delR.bin"), "r") do io
@@ -42,8 +44,8 @@ g = 9.81
 FDiv_z = zeros(NX, NY)
 
 
-Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e28"]
-    for yn in cfg["yn_start"]:cfg["yn_e28"]
+Threads.@threads for xn in cfg["xn_start"]:cfg["xn_e27b"]
+    for yn in cfg["yn_start"]:cfg["yn_e27b"]
         suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
         fpath   = joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin")
 
