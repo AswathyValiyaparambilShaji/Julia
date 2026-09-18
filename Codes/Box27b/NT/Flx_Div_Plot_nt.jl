@@ -76,7 +76,7 @@ ax.limits[] = ((minimum(lon), maximum(lon)), (minimum(lat), maximum(lat)))
 
 hm = CairoMakie.heatmap!(ax, lon, lat, FDiv_z;
     interpolate = false,
-    colorrange  = (-0.050, 0.050),
+    colorrange  = (-0.020, 0.020),
     colormap    = :bwr)
 
 
