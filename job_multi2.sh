@@ -33,7 +33,7 @@ echo "Job 7 submitted: $JOB7"
 #JOB1=$(qsub -v JULIA_SCRIPT=$BASE/NIW/UVW_bpfilter.jl  $PBS)
 #echo "Job 1 submitted: $JOB1"
 
-JOB8=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/APE_Plot_nt.jl -W depend=afterok:$JOB7 $PBS)
+JOB8=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/APE_plot_nt.jl -W depend=afterok:$JOB7 $PBS)
 echo "Job 8 submitted: $JOB8"
 
 JOB9=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Energy_Budget_nt.jl -W depend=afterok:$JOB8 $PBS)
