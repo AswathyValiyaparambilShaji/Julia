@@ -51,7 +51,7 @@ t_safe_end   = nt - ring_steps             # last  valid step (nt-1800)
 
 
 # Safe 3-day chunks: only keep chunks that fall entirely within the safe range
-safe_chunks = [c for c in 1:n_chunks
+safe_chunks = [c for c in 2:n_chunks
                if (c-1)*nt_chunk + 1 >= t_safe_start &&
                   c*nt_chunk          <= t_safe_end]
 

@@ -7,26 +7,26 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 
 
 # Submit all jobs chained one after another
-#JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Conversion_nt.jl  $PBS)
-#echo "Job 1 submitted: $JOB1"
+JOB1=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Conversion_nt.jl  $PBS)
+echo "Job 1 submitted: $JOB1"
 
-#JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flx_Div_nt.jl -W depend=afterok:$JOB1  $PBS)
-#echo "Job 2 submitted: $JOB2"
+JOB2=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Flx_Div_nt.jl -W depend=afterok:$JOB1  $PBS)
+echo "Job 2 submitted: $JOB2"
 
 #JOB3=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/3day_mean/N2_3day_mean.jl $PBS)
 #echo "Job 3 submitted: $JOB3"
 
-#JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Buoyancy_pd_nt.jl -W depend=afterok:$JOB2 $PBS)
-#echo "Job 4 submitted: $JOB4"
+JOB4=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Buoyancy_pd_nt.jl -W depend=afterok:$JOB2 $PBS)
+echo "Job 4 submitted: $JOB4"
 
-#JOB5=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Tendency_nt.jl  $PBS)
-#echo "Job 5 submitted: $JOB5"
+JOB5=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Tendency_nt.jl -W depend=afterok:$JOB4 $PBS)
+echo "Job 5 submitted: $JOB5"
 
-#JOB6=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/ADV_KE_nt.jl -W depend=afterok:$JOB5 $PBS)
-#echo "Job 6 submitted: $JOB6"
+JOB6=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/ADV_KE_nt.jl -W depend=afterok:$JOB5 $PBS)
+echo "Job 6 submitted: $JOB6"
 
-#JOB7=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/ADV_PE_nt.jl -W depend=afterok:$JOB6 $PBS)
-#echo "Job 7 submitted: $JOB7"
+JOB7=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/ADV_PE_nt.jl -W depend=afterok:$JOB6 $PBS)
+echo "Job 7 submitted: $JOB7"
 
 
 # Submit all jobs chained one after another
@@ -42,7 +42,7 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m_run_j.pbs
 #JOB10=$(qsub -v JULIA_SCRIPT=$BASE/Budget/SM/ADV_PE_sm.jl -W depend=afterok:$JOB9 $PBS)
 #echo "Job 10 submitted: $JOB10"
 
-JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Shear_pdh_nt.jl  $PBS)
+JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Shear_pdh_nt.jl -W depend=afterok:$JOB7 $PBS)
 echo "Job 11 submitted: $JOB11"
 
 #JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
@@ -56,8 +56,8 @@ echo "Job 11 submitted: $JOB11"
 JOB15=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Shear_pdv_nt.jl -W depend=afterok:$JOB11 $PBS)
 echo "Job 15 submitted: $JOB15"
 
-#JOB16=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Flux_plot_nt.jl  $PBS)
-#echo "Job 16 submitted: $JOB16"
+JOB16=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Energy_budget_nt.jl -W depend=afterok:$JOB15 $PBS)
+echo "Job 16 submitted: $JOB16"
 # Add as many scripts as you need following the same pattern...
 
 
