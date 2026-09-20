@@ -8,8 +8,8 @@ using NCDatasets, Statistics, Printf
 
 # ---- EDIT THESE ----
 sites_dir = "/nobackupp27/dbwhitt/llc_4320/OUT/regions/moorings/sites/"
-outfile   = "/nobackupp27/avaliyap/V2/Moorings/Moorings_88_combined.nc"
-logfile   = "/nobackupp27/avaliyap/V2/Moorings/build_mooring_netcdf_v2_log.txt"
+outfile   = "/nobackupp/avaliyap/V2/Moorings/Moorings_88_combined.nc"
+logfile   = "/nobackupp/avaliyap/V2/Moorings/build_mooring_netcdf_v2_log.txt"
 # ---------------------
 
 
