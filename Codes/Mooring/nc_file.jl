@@ -11,7 +11,7 @@ using NCDatasets
 # ============================================================================
 
 
-ncfile  = length(ARGS) >= 1 ? ARGS[1] : "/path/to/one/mooring_file.nc"
+ncfile  = length(ARGS) >= 1 ? ARGS[1] : "/nobackupp27/dbwhitt/llc_4320/OUT/regions/moorings/sites/site_0001.nc"
 outfile = length(ARGS) >= 2 ? ARGS[2] : splitext(basename(ncfile))[1] * "_info.txt"
 
 
