@@ -15,7 +15,7 @@ export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
-julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Mooring/Model_Fluxes_v2.jl
+julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Mooring/Modal_Fluxes_v2.jl
 
 
 #julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Box28/NT/Flux_plot_nt.jl
