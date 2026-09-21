@@ -33,17 +33,14 @@ PBS=/home3/avaliyap/Documents/Julia_new/Julia/m2_run_j.pbs
 #JOB1=$(qsub -v JULIA_SCRIPT=$BASE/NIW/UVW_bpfilter.jl  $PBS)
 #echo "Job 1 submitted: $JOB1"
 
-JOB8=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Windinput_nt.jl  $PBS)
+JOB8=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Energy_budget_nt.jl  $PBS)
 echo "Job 8 submitted: $JOB8"
 
-JOB9=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Energy_budget_nt.jl -W depend=afterok:$JOB8 $PBS)
-echo "Job 9 submitted: $JOB9"
+JOB10=$(qsub -v JULIA_SCRIPT=$BASE/Mooring/Harmonic_KE_APE_v2.jl -W depend=afterok:$JOB8 $PBS)
+echo "Job 10 submitted: $JOB10"
 
-#JOB10=$(qsub -v JULIA_SCRIPT=$BASE/Box28/NT/Energy_Budget_wkly_nt.jl -W depend=afterok:$JOB9 $PBS)
-#echo "Job 10 submitted: $JOB10"
-
-JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Energy_line_plot_nt.jl -W depend=afterok:$JOB9  $PBS)
-echo "Job 11 submitted: $JOB11"
+#JOB11=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/Energy_line_plot_nt.jl -W depend=afterok:$JOB9  $PBS)
+#echo "Job 11 submitted: $JOB11"
 
 #JOB12=$(qsub -v JULIA_SCRIPT=$BASE/Box27b/NT/UVW_nt_filter.jl  $PBS)
 #echo "Job 12 submitted: $JOB12"

@@ -11,6 +11,7 @@ base_path_V2 = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/DataV2/"
 fig_base  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/Figures/"
 fig_base_28  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/Figures/Box28/"
 fig_base_27b  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Data/Figures/bp_box27b/"
+fig_base_m  ="/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Figure/"
 
 
 xn_start = 1
