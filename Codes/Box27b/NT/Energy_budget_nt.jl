@@ -78,64 +78,39 @@ NZ = 173
             suffix2 = @sprintf("%02dx%02d_%d", xn, yn, buf-2)
 
 
-            # --- Read Flux Divergence ---
-            fxD = Float64.(open(joinpath(base2, "FDiv", "FDiv_nt_$suffix2.bin"), "r") do io
-                nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx-2, ny-2)
-            end)
 
-
-            # --- Read Conversion ---
-            C = Float64.(open(joinpath(base2, "Conv", "Conv_nt_$suffix2.bin"), "r") do io
-                nbytes = (nx-2) * (ny-2) * sizeof(Float32)
-                raw_bytes = read(io, nbytes)
-                raw_data = reinterpret(Float32, raw_bytes)
-                reshape(raw_data, nx-2, ny-2)
-            end)
-
-
-            # --- Read KE Advection ---
-            u_ke_mean = Float64.(open(joinpath(base2, "U_KE", "u_ke_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-
-
-            # --- Read PE Advection ---
-            u_pe_mean = Float64.(open(joinpath(base2, "U_PE", "u_pe_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-
-
-            # --- Read Shear Production ---
-            sp_h_mean = Float64.(open(joinpath(base2, "SP_H", "sp_h_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-
-
-            # --- Read Energy Tendency ---
-            te_mean = Float64.(open(joinpath(base2, "TE_t", "te_t_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-
-
-            # --- Read Vertical Shear Production ---
-            sp_v_mean = Float64.(open(joinpath(base2, "SP_V", "sp_v_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
-
-
-            # --- Read Buoyancy Production ---
-            bp_mean = Float64.(open(joinpath(base2, "BP", "bp_nt_$suffix.bin"), "r") do io
-                nbytes = nx * ny * sizeof(Float32)
-                reshape(reinterpret(Float32, read(io, nbytes)), nx, ny)
-            end)
+        fxD = Float64.(open(joinpath(base2, "FDiv_3day", "FDiv_3day_nt_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
+        end)
+        C = Float64.(open(joinpath(base2, "Conv_3day", "Conv_3day_nt_$(suffix2).bin"), "r") do io
+            nbytes = (nx-2)*(ny-2)*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx-2, ny-2, nt3-2)
+        end)
+        u_ke_3day = Float64.(open(joinpath(base2, "U_KE_3day", "u_ke_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        u_pe_3day = Float64.(open(joinpath(base2, "U_PE_3day", "u_pe_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        sp_h_3day = Float64.(open(joinpath(base2, "SP_H_3day", "sp_h_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        sp_v_3day = Float64.(open(joinpath(base2, "SP_V_3day", "sp_v_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        bp_3day = Float64.(open(joinpath(base2, "BP_3day", "bp_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
+        te_3day = Float64.(open(joinpath(base2, "TE_t_3day", "te_t_3day_nt_$suffix.bin"), "r") do io
+            nbytes = nx*ny*nt3*sizeof(Float32)
+            reshape(reinterpret(Float32, read(io, nbytes)), nx, ny, nt3-2)
+        end)
 
 
             # --- Read Wind Power Input (with time dimension) ---
@@ -150,16 +125,24 @@ NZ = 173
             # Time average the WPI
         wpi_mean = mean(wpi_tile[:, :, t_safe_start:t_safe_end], dims=3)[:, :, 1]
 
+        Cc_mean = mean(C, dims = 3)
+        fxDd = mean(fxD, dims =3)
+        u_ke_mean = mean(u_ke_3day, dims=3)
+        u_pe_mean= mean(u_pe_3day,dims=3)
+        sp_h_mean= mean(sp_h_3day,dims=3)
+        sp_v_mean= mean(sp_v_3day,dims=3)
+        bp_mean= mean(bp_3day,dims=3)
+        te_mean= mean(te_3day,dims=3)
 
-            # --- Tile positions in global grid ---
+        # --- Tile positions in global grid ---
             xs = (xn - 1) * tx + 1
             xe = xs + tx + (2 * buf) - 1
             ys = (yn - 1) * ty + 1
             ye = ys + ty + (2 * buf) - 1
 
 
-            Conv[xs+2:xe-2, ys+2:ye-2] .= C[2:end-1, 2:end-1]
-            FDiv[xs+2:xe-2, ys+2:ye-2] .= fxD[2:end-1, 2:end-1]
+            Conv[xs+2:xe-2, ys+2:ye-2] .= Cc_mean[2:end-1, 2:end-1]
+            FDiv[xs+2:xe-2, ys+2:ye-2] .= fxDd[2:end-1, 2:end-1]
 
 
             U_KE_full[xs+2:xe-2,    ys+2:ye-2] .= u_ke_mean[buf:nx-buf+1, buf:ny-buf+1]
@@ -341,10 +324,10 @@ NZ = 173
 
     # Save figure
     FIGDIR = cfg["fig_base_27b"]
-    save(joinpath(FIGDIR, "EnergyBudget_NS_nt_V1.png"), fig)
+    save(joinpath(FIGDIR, "EnergyBudget_NS_nt_V2.png"), fig)
 
 
-    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_NS_nt_V1.png "))")
+    println("\nFigure saved: $(joinpath(FIGDIR, "EnergyBudget_NS_nt_V2.png "))")
 
 
 
