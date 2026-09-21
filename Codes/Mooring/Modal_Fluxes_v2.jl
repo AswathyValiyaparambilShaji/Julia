@@ -10,7 +10,7 @@ cfg    = TOML.parsefile(config_file)
 FIGDIR = cfg["fig_base_m"]
 
 
-logfile = joinpath(FIGDIR, "run_log.txt")
+logfile = joinpath(FIGDIR, "run_log_v2.txt")
 logio = open(logfile, "w")
 redirect_stdout(logio)
 redirect_stderr(logio)   # also captures @warn and error messages
@@ -481,7 +481,7 @@ println("Modal flux calculation complete for all $N_moor mooring points.")
 # ============================================================================
 # SAVE: mode 1 & mode 2 fluxes with mooring lat/lon to NetCDF
 # ============================================================================
-flux_outfile = joinpath(mydir, "Mooring_modal_fluxes.nc")
+flux_outfile = joinpath(mydir, "Mooring_modal_fluxes_v2.nc")
 dsflux = NCDataset(flux_outfile, "c")
 
 
