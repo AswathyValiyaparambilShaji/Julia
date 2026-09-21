@@ -109,7 +109,7 @@ using CairoMakie
 
 
 FIGDIR        = cfg["fig_base_27b"]
-HEAT_CBAR_MAX = 1
+HEAT_CBAR_MAX = 8
 QUIVER_STEP   = 20
 ARROW_SCALEUP = 5.0
 DO_TRANSPOSE  = false
