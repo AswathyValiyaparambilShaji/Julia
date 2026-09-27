@@ -111,7 +111,7 @@ println("Duplicates removed: $(length(all_points) - length(unique_points))")
 # 6) Write the unique moorings to CSV
 #    Columns: mooring_id, lat, lon, first_source, first_source_index, matched_from
 # ════════════════════════════════════════════════════════════════════════
-outpath = "unique_mooring_locations.csv"
+outpath = "mnt/data/aswathy/MITgcm_NAS/Moorings/unique_mooring_locations_v2.csv"
 
 
 open(outpath, "w") do io

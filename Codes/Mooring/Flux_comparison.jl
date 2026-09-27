@@ -1,40 +1,3 @@
-# ============================================================================
-# Compare MITgcm modal baroclinic fluxes (88 mooring-colocated stations,
-# saved on the HPC to Mooring_modal_fluxes.nc) against observed mooring
-# fluxes from three .mat datasets (ALL, ALL_OLD, IWAP), for mode 1 and
-# mode 2, by magnitude and by direction.
-#
-# MATCHING: each of the model's stations is matched by lat/lon against all
-# three .mat mooring datasets, tried in priority order IWAP > ALL > ALL_OLD:
-#   1) IWAP first, because it's the dataset that triggers the 60 deg
-#      rotation below.
-#   2) ALL next. ALL is treated as the up-to-date version of ALL_OLD (same
-#      naming, "OLD" suffix implies superseded), so if a model station is
-#      within tolerance of BOTH ALL and ALL_OLD at the same location, ALL's
-#      flux is what gets plotted -- ALL_OLD is not used for that station,
-#      and no averaging/blending of the two happens.
-#   3) ALL_OLD is only used as a fallback, for a station that has no IWAP
-#      or ALL mooring nearby but does have an ALL_OLD one.
-# If you'd rather prefer ALL_OLD over ALL for overlapping locations, or see
-# both plotted side by side, tell me and I'll change the priority order --
-# right now it's IWAP > ALL > ALL_OLD, in that order, with no blending.
-# Every ambiguous case (a station within tolerance of more than one
-# dataset) is also printed at runtime so you can see exactly which stations
-# it affected and which dataset won.
-#
-# LABELING: a station matched to IWAP is labeled "IWAP<n>", to ALL is
-# labeled "MP<n>", and to ALL_OLD (fallback only) is labeled "OLD<n>" --
-# <n> is that mooring's own index in its source file (not the model
-# station number), so the same name identifies the same physical mooring
-# on both the bar charts and the position map.
-#
-# ROTATION: per Zhao et al. (2010, p.3) / your existing 4-point script, a
-# 60 deg rotation is needed to align the MITgcm and IWAP coordinate frames.
-# As you specified: the MODEL flux (not the observed/mooring flux) is what
-# gets rotated here, and ONLY for stations matched to an IWAP mooring.
-# Stations matched to ALL or ALL_OLD are compared unrotated on both sides.
-# Observed (mooring) fluxes are NEVER rotated, in any of the three datasets.
-# ============================================================================
 
 
 using NCDatasets, MAT, Statistics, CairoMakie, GeoMakie, GeoMakie.GeoJSON, Printf
@@ -258,7 +221,7 @@ end
 # identifies the same physical mooring on both the bar chart and the map.
 function station_label(m::MatchInfo)
     m.dataset == :IWAP    && return "IWAP$(m.idx)"
-    m.dataset == :ALL     && return "MP$(m.idx)"
+    m.dataset == :ALL     && return "M$(m.idx)"
     m.dataset == :ALL_OLD && return "OLD$(m.idx)"
     return "?"
 end
