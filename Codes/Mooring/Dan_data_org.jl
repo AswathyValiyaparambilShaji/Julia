@@ -9,7 +9,7 @@ using NCDatasets, Statistics
 
 sites_dir    = "/nobackupp27/dbwhitt/llc_4320/OUT/regions/moorings/sites/"
 outfile      = "/nobackup/avaliyap/V2/Moorings/Moorings_88_combined_v2n.nc"
-logfile      = "/nobackup/avaliyap/V2/Moorings/build_mooring_netcdf_v2_logn.txt"
+logfile      = "/nobackup/avaliyap/V2/Moorings/build_mooring_netcdf_v2n_log.txt"
 wanted_sites = 1:88
 
 
@@ -43,10 +43,10 @@ function load_site(f)
     Sa = Salt[2, 2, :, :]
 
 
-    # missing snapshots and dry levels -> NaN
+    # missing snapshots and dry levels -> 0 (use 'have' and 'wet' to exclude them)
     for A in (U_east, V_north, T, Sa)
-        A[:, s.have .== 0] .= NaN
-        A[s.wet .== 0, :]  .= NaN
+        A[:, s.have .== 0] .= 0
+        A[s.wet .== 0, :]  .= 0
     end
     return merge(s, (U_east = U_east, V_north = V_north, Theta = T, Salt = Sa))
 end
@@ -69,8 +69,8 @@ nz, nt = length(s1.RC), length(s1.time)
 lon = zeros(N); lat = zeros(N); CS = zeros(N); SN = zeros(N); depth = zeros(N)
 face = zeros(Int32, N); site_id = zeros(Int32, N)
 wet = zeros(Int32, N, nz); hFacC = zeros(N, nz); have = zeros(Int32, nt, N)
-U_east = fill(NaN32, nt, N, nz); V_north = fill(NaN32, nt, N, nz)
-Theta  = fill(NaN32, nt, N, nz); Salt    = fill(NaN32, nt, N, nz)
+U_east = zeros(Float32, nt, N, nz); V_north = zeros(Float32, nt, N, nz)
+Theta  = zeros(Float32, nt, N, nz); Salt    = zeros(Float32, nt, N, nz)
 
 
 for (p, f) in enumerate(files)
@@ -126,7 +126,5 @@ end
 
 println(logio, "Saved -> $outfile")
 close(logio)
-
-
 
 
