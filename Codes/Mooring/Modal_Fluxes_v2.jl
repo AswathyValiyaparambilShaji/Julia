@@ -19,7 +19,7 @@ T1, T2, delt, N = 9.0, 15.0, 1.0, 4
 timesteps_per_3days = 72
 
 mydir        =  "/nobackup/avaliyap/V2/Moorings/"
-ncfile = joinpath(mydir, "Moorings_88_combined_v2.nc")  # <-- combined 88-site file from build_mooring_netcdf_v2.jl (wanted_sites = 1:88)
+ncfile = joinpath(mydir, "Moorings_88_combined_v2n.nc")  # <-- combined 88-site file from build_mooring_netcdf_v2.jl (wanted_sites = 1:88)
 N_moor_expected = 88                                  # safety check: must match wanted_sites in the builder
 ds = NCDataset(ncfile, "r")
 
@@ -366,7 +366,7 @@ println("Modal flux calculation complete for all $N_moor mooring points.")
 # ============================================================================
 # SAVE: mode 1 & mode 2 fluxes with mooring lat/lon to NetCDF
 # ============================================================================
-flux_outfile = joinpath(mydir, "Mooring_modal_fluxes_v2.nc")
+flux_outfile = joinpath(mydir, "Mooring_modal_fluxes_v2n.nc")
 dsflux = NCDataset(flux_outfile, "c")
 
 defDim(dsflux, "station", N_moor)

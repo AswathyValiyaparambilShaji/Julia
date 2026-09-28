@@ -19,7 +19,7 @@ using NCDatasets, MAT, Statistics, CairoMakie, GeoMakie, Printf, LinearAlgebra
 # ----------------------------------------------------------------------------
 # 0) PATHS & SETTINGS -- EDIT THESE
 # ----------------------------------------------------------------------------
-model_flux_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes.nc"
+model_flux_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2.nc"
 file1path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
 file3path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
 
@@ -272,7 +272,7 @@ else
              join(label_of.(leftover), ", ")
    end
 end
-push!(regions, ("IWAP", "IWAP (mooring rotated 60°)", p_iwap))
+push!(regions, ("IWAP", "IWAP ", p_iwap))
 
 
 println("\nRegion membership:")
@@ -425,8 +425,8 @@ display(fig_ov)
 
 
 
-save(joinpath(FIGDIR, "Regions_overview_map.png"), fig_ov)
-println("\nSaved: ", joinpath(FIGDIR, "Regions_overview_map.png"))
+save(joinpath(FIGDIR, "Regions_overview_map_v2.png"), fig_ov)
+println("\nSaved: ", joinpath(FIGDIR, "Regions_overview_map_v2.png"))
 
 
 
@@ -624,7 +624,7 @@ for (short, title, g0) in regions, mode in 1:2
 
 
   display(fig)
-  outpng = joinpath(FIGDIR, "$(short)_mode$(mode).png")
+  outpng = joinpath(FIGDIR, "$(short)_mode$(mode)_v2.png")
   save(outpng, fig)
   println("Saved: $outpng")
 end
