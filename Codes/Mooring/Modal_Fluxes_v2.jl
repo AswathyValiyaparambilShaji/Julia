@@ -8,7 +8,7 @@ config_file = get(ENV, "JULIA_CONFIG", joinpath(@__DIR__,  "..", "..", "config",
 cfg    = TOML.parsefile(config_file)
 FIGDIR = cfg["fig_base_m"]
 
-logfile = joinpath(FIGDIR, "run_log_v2.txt")
+logfile = joinpath(FIGDIR, "run_log_v2n.txt")
 logio = open(logfile, "w")
 redirect_stdout(logio)
 redirect_stderr(logio)   # also captures @warn and error messages

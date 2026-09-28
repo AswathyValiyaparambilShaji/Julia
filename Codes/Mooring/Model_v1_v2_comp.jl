@@ -28,7 +28,7 @@ using NCDatasets, MAT, Statistics, CairoMakie, GeoMakie, Printf, LinearAlgebra
 # ----------------------------------------------------------------------------
 # 0) PATHS & SETTINGS -- EDIT THESE
 # ----------------------------------------------------------------------------
-model_v1_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes.nc"
+model_v1_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2n.nc"
 model_v2_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2.nc"
 
 
