@@ -1,0 +1,28 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# PBS batch job for plot_M2_global.jl
+# Submit from the folder that contains the .jl file:   qsub run_plot_M2.pbs
+# Check status:   qstat -u $USER
+# When finished, look at:
+#   figures/plot_M2_global.log   <- progress, numbers to check, any error
+#   figures/*.png                <- the plots
+#   plot_M2.out                  <- everything else PBS captured (backup)
+# ---------------------------------------------------------------------------
+#PBS -N plot_M2
+#PBS -q devel
+#PBS -l select=1:ncpus=40:model=cas_ait
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o plot_M2.out
+
+
+cd $PBS_O_WORKDIR
+
+
+# If Julia is a module on your system, load it here (check with: module avail julia)
+# module load julia
+
+
+julia -t 40 plot_M2_global.jl
+
+

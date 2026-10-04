@@ -635,3 +635,125 @@ println("\nDone.")
 
 
 
+
+# ----------------------------------------------------------------------------
+# 11) DIRECTION SCATTER -- SHIFTED POINTS ONLY (each point drawn once)
+#     Every point is placed at the ±360° shift that lies closest to the 1:1
+#     line, as long as it stays inside the extended axes (-DIR_EXT..360+DIR_EXT).
+#     Points that were shifted get a thick black outline.
+#     Re-uses DIR_EXT (section 10) and DIR_TOL, wrapdiff (section 9).
+# ----------------------------------------------------------------------------
+
+# like scatter_data, but directions only, plus mooring labels
+function dir_data_lab(g, mode)
+    muv = [model_uv(p, mode) for p in g]; ouv = [obs_uv(p, mode) for p in g]
+    dm  = [direction360(u...) for u in muv]; dob = [direction360(u...) for u in ouv]
+    ok  = isfinite.(dm) .& isfinite.(dob) .&
+          [hypot(u...) > 0 for u in muv] .& [hypot(u...) > 0 for u in ouv]
+    return dm[ok], dob[ok], label_of.(g[ok])
+end
+
+# shift each (x, y) by ±360° to the position closest to 1:1 within the limits
+function shift_to_diag(x, y; lo = -DIR_EXT, hi = 360 + DIR_EXT)
+    bx = copy(x); by = copy(y); moved = falses(length(x))
+    for k in eachindex(x)
+        bestd = abs(y[k] - x[k])
+        for sx in (-360, 0, 360), sy in (-360, 0, 360)
+            xg = x[k] + sx; yg = y[k] + sy
+            (lo <= xg <= hi && lo <= yg <= hi) || continue
+            d = abs(yg - xg)
+            if d < bestd
+                bestd = d; bx[k] = xg; by[k] = yg; moved[k] = (sx != 0 || sy != 0)
+            end
+        end
+    end
+    return bx, by, moved
+end
+
+fig_sh = Figure(figure_padding = 14)
+Label(fig_sh[1, 1:2], "Flux direction: model vs mooring (points shifted ±360° toward 1:1)",
+      fontsize = 22, font = :bold)
+
+lo_s, hi_s = -DIR_EXT, 360 + DIR_EXT
+
+for (col, mode) in enumerate(1:2)
+    ax_s = Axis(fig_sh[2, col];
+                xlabel = "Mooring direction (°)", ylabel = "Model direction (°)",
+                title = "Mode $mode", aspect = 1,
+                xticks = 0:90:360, yticks = 0:90:360,
+                limits = (lo_s, hi_s, lo_s, hi_s))
+
+    vspan!(ax_s, lo_s, 0;   color = (:gray, 0.10))
+    vspan!(ax_s, 360, hi_s; color = (:gray, 0.10))
+    hspan!(ax_s, lo_s, 0;   color = (:gray, 0.10))
+    hspan!(ax_s, 360, hi_s; color = (:gray, 0.10))
+    band!(ax_s, [lo_s, hi_s], [lo_s - DIR_TOL, hi_s - DIR_TOL],
+          [lo_s + DIR_TOL, hi_s + DIR_TOL]; color = (:gray, 0.15))
+    lines!(ax_s, [lo_s, hi_s], [lo_s, hi_s]; color = :black, linewidth = 1.2)
+    lines!(ax_s, [0, 360, 360, 0, 0], [0, 0, 360, 360, 0];
+           color = :gray40, linestyle = :dash, linewidth = 1)
+
+    n_moved = 0; n_tot = 0
+    for r in nonempty
+        short, title, g = regions[r]
+        dm, dob, labs = dir_data_lab(g, mode)
+        isempty(dm) && continue
+        c  = reg_cols[mod1(r, length(reg_cols))]
+        mk = short == "IWAP" ? :diamond : :circle
+        bx, by, moved = shift_to_diag(dob, dm)
+
+        # unshifted points
+        keep = .!moved
+        any(keep) && scatter!(ax_s, bx[keep], by[keep]; color = c, marker = mk,
+                              markersize = 11, strokecolor = :black, strokewidth = 0.5)
+        # shifted points: thick black outline
+        any(moved) && scatter!(ax_s, bx[moved], by[moved]; color = c, marker = mk,
+                               markersize = 12, strokecolor = :black, strokewidth = 2.0)
+
+        for k in findall(moved)
+            println(@sprintf("  mode %d  %-8s obs=%6.1f°  model=%6.1f°  -> plotted at (%6.1f, %6.1f)",
+                             mode, labs[k], dob[k], dm[k], bx[k], by[k]))
+        end
+        n_moved += count(moved); n_tot += length(dm)
+    end
+    println("Mode $mode: $n_moved of $n_tot points shifted toward the 1:1 line")
+
+    # statistics (true angular difference -- unchanged by shifting)
+    allg = reduce(vcat, [regions[r][3] for r in nonempty]; init = Int[])
+    DMs, DOs, _ = dir_data_lab(allg, mode)
+    if length(DMs) > 1
+        dth = abs.(wrapdiff.(DMs, DOs))
+        text!(ax_s, 0.03, 0.97; space = :relative, align = (:left, :top), fontsize = 12,
+              text = @sprintf("N = %d  (%d shifted)\nmean |Δθ| = %.1f°\nwithin ±%d°: %.0f%%",
+                              length(dth), n_moved, mean(dth), round(Int, DIR_TOL),
+                              100 * mean(dth .<= DIR_TOL)))
+    end
+
+    panel_label!(fig_sh[2, col], col == 1 ? "(a)" : "(b)")
+end
+
+# legend
+leg_s = Any[MarkerElement(color = reg_cols[mod1(r, length(reg_cols))],
+                          marker = regions[r][1] == "IWAP" ? :diamond : :circle,
+                          markersize = 11, strokecolor = :black, strokewidth = 0.5)
+            for r in nonempty]
+lab_s = [strip(regions[r][2]) * (regions[r][1] == "IWAP" ? " (obs rotated 60°)" : "")
+         for r in nonempty]
+push!(leg_s, MarkerElement(color = :white, marker = :circle, markersize = 12,
+                           strokecolor = :black, strokewidth = 2.0))
+push!(lab_s, "shifted by ±360°")
+push!(leg_s, LineElement(color = :black));        push!(lab_s, "1:1")
+push!(leg_s, PolyElement(color = (:gray, 0.15))); push!(lab_s, "±$(round(Int, DIR_TOL))°")
+Legend(fig_sh[3, 1:2], leg_s, lab_s; orientation = :horizontal, nbanks = 3,
+       tellwidth = false, framevisible = false)
+
+colsize!(fig_sh.layout, 1, Fixed(500)); colsize!(fig_sh.layout, 2, Fixed(500))
+rowsize!(fig_sh.layout, 2, Fixed(500))
+colgap!(fig_sh.layout, 40); rowgap!(fig_sh.layout, 12)
+resize_to_layout!(fig_sh)
+display(fig_sh)
+
+sh_png = joinpath(FIGDIR, "Scatter_direction_shifted_modes12.png")
+save(sh_png, fig_sh)
+println("Saved: $sh_png")
+

@@ -1,8 +1,9 @@
 #!/bin/bash
-#PBS -N niw_filter
-#PBS -q long
+#PBS -N M2_read
+#PBS -q devel
 #PBS -l select=1:ncpus=128:mem=400GB:model=mil_ait
-#PBS -l walltime=5:00:00
+#PBS -l walltime=3:00:00
+#PBS -j oe
 #PBS -o /nobackup/avaliyap/logs/output.out
 #PBS -e /nobackup/avaliyap/logs/output.err
 
@@ -15,7 +16,7 @@ export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
-julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Mooring/Modal_Fluxes_v2.jl
+julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Harmonic_LLC4320/M2_plot_read.jl
 
 
 #julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Box28/NT/Flux_plot_nt.jl

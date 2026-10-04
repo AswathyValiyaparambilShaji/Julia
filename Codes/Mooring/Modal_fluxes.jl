@@ -46,30 +46,17 @@ try
 lon = Array(ds["lon"])
 lat = Array(ds["lat"])
 
-
-
-
 # written as (time, station, depth); pipeline below needs (station, depth, time)
 permute_to_std(x) = permutedims(Array(x), (2, 3, 1))
-
-
-
-
 U     = Float64.(permute_to_std(ds["U_east"]))
 V     = Float64.(permute_to_std(ds["V_north"]))
 Salt  = Float64.(permute_to_std(ds["Salt"]))
 Theta = Float64.(permute_to_std(ds["Theta"]))
 hFacC = Float64.(Array(ds["hFacC"]))   # (station, depth) -- already given, no reconstruction
 
-
-
-
 close(ds)
 N_moor, nz, nt = size(U)
 println("Loaded $N_moor mooring points, $nz levels, $nt timesteps.")
-
-
-
 
 # ============================================================================
 # STEP 0 (NEW): CHECK MOORING LOCATIONS BEFORE DOING ANYTHING EXPENSIVE
@@ -87,15 +74,9 @@ save(loc_png, fig0)
 println("Saved mooring location check -> $loc_png")
 println("Review this BEFORE trusting the flux results below.")
 
-
-
-
 hFacC_moor = hFacC
 mask2D = hFacC_moor .== 0
 DRFfull = hFacC_moor .* reshape(DRF, 1, nz)
-
-
-
 
 # ============================================================================
 # DEPTH / PRESSURE PROXY & DENSITY (densjmd95) AT MOORING POINTS
@@ -111,18 +92,12 @@ for t in 1:nt
    rho[:, :, t] = rho1
 end
 
-
-
-
 # ============================================================================
 # BANDPASS FILTER U, V, RHO (time is last dim)
 # ============================================================================
 fu = bandpassfilter(U,   T1, T2, delt, N, nt)
 fv = bandpassfilter(V,   T1, T2, delt, N, nt)
 fr = bandpassfilter(rho, T1, T2, delt, N, nt)
-
-
-
 
 # ============================================================================
 # BC PRESSURE PERTURBATION
@@ -132,18 +107,12 @@ DRFfull_r = reshape(DRFfull, N_moor, nz, 1)
 depth_r   = reshape(depth,   N_moor, 1, 1)
 mask3D = repeat(reshape(mask2D, N_moor, nz, 1), 1, 1, nt)
 
-
-
-
 pres  = g .* cumsum(fr .* DRFfull_r, dims=2)
 pfz   = cat(zeros(N_moor, 1, nt), pres; dims=2)
 pc_3d = 0.5 .* (pfz[:, 1:end-1, :] .+ pfz[:, 2:end, :])
 pa    = sum(pc_3d .* DRFfull_r, dims=2) ./ depth_r
 pp_3d = pc_3d .- pa
 pp_3d[mask3D] .= 0
-
-
-
 
 # ============================================================================
 # SANITY CHECK

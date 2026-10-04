@@ -19,7 +19,7 @@ using NCDatasets, MAT, Statistics, CairoMakie, GeoMakie, Printf, LinearAlgebra
 # ----------------------------------------------------------------------------
 # 0) PATHS & SETTINGS -- EDIT THESE
 # ----------------------------------------------------------------------------
-model_flux_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2.nc"
+model_flux_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2n.nc"
 file1path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
 file3path = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
 
@@ -632,6 +632,243 @@ end
 
 println("\nDone.")
 
+
+
+#=
+# ----------------------------------------------------------------------------
+# 9) SCATTER PLOTS: model vs mooring |F| and direction, modes 1 & 2
+#    Rows = mode 1 / mode 2; columns = magnitude / direction.
+#    Points are coloured by region (same colours as the overview map).
+# ----------------------------------------------------------------------------
+SCATTER_LOG = true      # log-log axes for |F| (fluxes span orders of magnitude)
+DIR_TOL     = 45.0      # half-width (deg) of the shaded "good agreement" band
+
+wrapdiff(a, b) = mod(a - b + 180, 360) - 180    # a - b wrapped to [-180, 180)
+
+# valid model/obs pairs for a list of mooring entries
+function scatter_data(g, mode)
+    muv = [model_uv(p, mode) for p in g]; ouv = [obs_uv(p, mode) for p in g]
+    mm  = [hypot(u...) for u in muv];      mo  = [hypot(u...) for u in ouv]
+    dm  = [direction360(u...) for u in muv]; dob = [direction360(u...) for u in ouv]
+    ok  = isfinite.(mm) .& isfinite.(mo)
+    SCATTER_LOG && (ok .&= (mm .> 0) .& (mo .> 0))
+    return mm[ok], mo[ok], dm[ok], dob[ok]
+end
+
+fig_sc = Figure(figure_padding = 14)
+Label(fig_sc[1, 1:2], "Model (MITgcm) vs mooring modal energy flux",
+      fontsize = 24, font = :bold)
+
+plabels = ["(a)" "(b)"; "(c)" "(d)"]
+
+for (row, mode) in enumerate(1:2)
+    # ---- pooled data (all regions) for limits and statistics ----
+    allg = reduce(vcat, [regions[r][3] for r in nonempty]; init = Int[])
+    MM, MO, DM, DO = scatter_data(allg, mode)
+    N = length(MM)
+
+    # ================= magnitude panel =================
+    ax_m = Axis(fig_sc[row + 1, 1];
+                xlabel = "Mooring |F| (kW/m)", ylabel = "Model |F| (kW/m)",
+                title = "Mode $mode — magnitude", aspect = 1,
+                xscale = SCATTER_LOG ? log10 : identity,
+                yscale = SCATTER_LOG ? log10 : identity)
+    if N > 0
+        v = vcat(MM, MO)
+        lo = SCATTER_LOG ? minimum(v) / 1.5 : 0.0
+        hi = SCATTER_LOG ? maximum(v) * 1.5 : 1.05 * maximum(v)
+        lines!(ax_m, [lo, hi], [lo, hi]; color = :black, linewidth = 1.2)            # 1:1
+        lines!(ax_m, [lo, hi], 2 .* [lo, hi]; color = :gray50, linestyle = :dot)     # x2
+        lines!(ax_m, [lo, hi], 0.5 .* [lo, hi]; color = :gray50, linestyle = :dot)   # x0.5
+        limits!(ax_m, lo, hi, lo, hi)
+    end
+
+    # ================= direction panel =================
+    # Model direction is unwrapped to lie within ±180° of the mooring direction,
+    # so e.g. obs 355° / model 5° plots next to the 1:1 line instead of in a corner.
+    ax_d = Axis(fig_sc[row + 1, 2];
+                xlabel = "Mooring direction (°)",
+                ylabel = "Model direction (°, unwrapped to obs ± 180°)",
+                title = "Mode $mode — direction", aspect = 1,
+                xticks = 0:90:360, yticks = -180:90:540,
+                limits = (0, 360, -180, 540))
+    band!(ax_d, [0.0, 360.0], [-DIR_TOL, 360 - DIR_TOL], [DIR_TOL, 360 + DIR_TOL];
+          color = (:gray, 0.15))
+    lines!(ax_d, [0, 360], [0, 360]; color = :black, linewidth = 1.2)
+
+    # ---- points, coloured by region ----
+    for r in nonempty
+        short, title, g = regions[r]
+        mm, mo, dm, dob = scatter_data(g, mode)
+        isempty(mm) && continue
+        c   = reg_cols[mod1(r, length(reg_cols))]
+        mk  = short == "IWAP" ? :diamond : :circle
+        kw  = (color = c, marker = mk, markersize = 11, strokecolor = :black, strokewidth = 0.5)
+        scatter!(ax_m, mo, mm; kw...)
+        scatter!(ax_d, dob, dob .+ wrapdiff.(dm, dob); kw...)
+    end
+
+    # ---- statistics ----
+    if N > 1
+        r_mag  = SCATTER_LOG ? cor(log10.(MO), log10.(MM)) : cor(MO, MM)
+        ratio  = median(MM ./ MO)
+        rmse   = sqrt(mean((MM .- MO) .^ 2))
+        dth    = abs.(wrapdiff.(DM, DO))
+        txt_m  = @sprintf("N = %d\nr%s = %.2f\nmedian model/obs = %.2f\nRMSE = %.2f kW/m",
+                          N, SCATTER_LOG ? "(log)" : "", r_mag, ratio, rmse)
+        txt_d  = @sprintf("N = %d\nmean |Δθ| = %.1f°\nwithin ±%d°: %.0f%%",
+                          N, mean(dth), round(Int, DIR_TOL), 100 * mean(dth .<= DIR_TOL))
+        text!(ax_m, 0.03, 0.97; text = txt_m, space = :relative,
+              align = (:left, :top), fontsize = 12)
+        text!(ax_d, 0.03, 0.97; text = txt_d, space = :relative,
+              align = (:left, :top), fontsize = 12)
+        println("\nScatter mode $mode:  ", replace(txt_m, "\n" => ",  "),
+                "  |  ", replace(txt_d, "\n" => ",  "))
+    end
+
+    panel_label!(fig_sc[row + 1, 1], plabels[row, 1])
+    panel_label!(fig_sc[row + 1, 2], plabels[row, 2])
+end
+
+# ---- shared legend (regions) ----
+leg_el = Any[MarkerElement(color = reg_cols[mod1(r, length(reg_cols))],
+                        marker = regions[r][1] == "IWAP" ? :diamond : :circle,
+                        markersize = 11, strokecolor = :black, strokewidth = 0.5)
+          for r in nonempty]
+leg_lab = [strip(regions[r][2]) * (regions[r][1] == "IWAP" ? " (obs rotated 60°)" : "")
+           for r in nonempty]
+push!(leg_el, LineElement(color = :black));                      push!(leg_lab, "1:1")
+push!(leg_el, LineElement(color = :gray50, linestyle = :dot));   push!(leg_lab, "factor 2")
+push!(leg_el, PolyElement(color = (:gray, 0.15)));               push!(leg_lab, "±$(round(Int, DIR_TOL))°")
+Legend(fig_sc[4, 1:2], leg_el, leg_lab; orientation = :horizontal, nbanks = 3,
+       tellwidth = false, framevisible = false)
+
+colsize!(fig_sc.layout, 1, Fixed(480)); colsize!(fig_sc.layout, 2, Fixed(480))
+rowsize!(fig_sc.layout, 2, Fixed(480)); rowsize!(fig_sc.layout, 3, Fixed(480))
+colgap!(fig_sc.layout, 40); rowgap!(fig_sc.layout, 12)
+resize_to_layout!(fig_sc)
+display(fig_sc)
+
+sc_png = joinpath(FIGDIR, "Scatter_model_vs_mooring_modes12.png")
+save(sc_png, fig_sc)
+println("Saved: $sc_png")
+=#
+
+# ----------------------------------------------------------------------------
+# 9) SCATTER PLOTS: model vs mooring |F| and direction, modes 1 & 2
+#    Rows = mode 1 / mode 2; columns = magnitude / direction.
+#    Directions are plotted as raw 0-360 deg values (no unwrapping).
+#    Points are coloured by region (same colours as the overview map).
+# ----------------------------------------------------------------------------
+SCATTER_LOG = true      # log-log axes for |F|
+DIR_TOL     = 45.0      # half-width (deg) of the shaded band around 1:1
+
+wrapdiff(a, b) = mod(a - b + 180, 360) - 180    # used only for the statistics
+
+# valid model/obs pairs for a list of mooring entries
+function scatter_data(g, mode)
+    muv = [model_uv(p, mode) for p in g]; ouv = [obs_uv(p, mode) for p in g]
+    mm  = [hypot(u...) for u in muv];        mo  = [hypot(u...) for u in ouv]
+    dm  = [direction360(u...) for u in muv]; dob = [direction360(u...) for u in ouv]
+    ok  = isfinite.(mm) .& isfinite.(mo)
+    SCATTER_LOG && (ok .&= (mm .> 0) .& (mo .> 0))
+    return mm[ok], mo[ok], dm[ok], dob[ok]
+end
+
+fig_sc = Figure(figure_padding = 14)
+Label(fig_sc[1, 1:2], "Model (MITgcm) vs mooring modal energy flux",
+      fontsize = 24, font = :bold)
+
+plabels = ["(a)" "(b)"; "(c)" "(d)"]
+
+for (row, mode) in enumerate(1:2)
+    # ---- pooled data (all regions) for limits and statistics ----
+    allg = reduce(vcat, [regions[r][3] for r in nonempty]; init = Int[])
+    MM, MO, DM, DO = scatter_data(allg, mode)
+    N = length(MM)
+
+    # ================= magnitude panel =================
+    ax_m = Axis(fig_sc[row + 1, 1];
+                xlabel = "Mooring |F| (kW/m)", ylabel = "Model |F| (kW/m)",
+                title = "Mode $mode — magnitude", aspect = 1,
+                xscale = SCATTER_LOG ? log10 : identity,
+                yscale = SCATTER_LOG ? log10 : identity)
+    if N > 0
+        v  = vcat(MM, MO)
+        lo = SCATTER_LOG ? minimum(v) / 1.5 : 0.0
+        hi = SCATTER_LOG ? maximum(v) * 1.5 : 1.05 * maximum(v)
+        lines!(ax_m, [lo, hi], [lo, hi]; color = :black, linewidth = 1.2)            # 1:1
+        lines!(ax_m, [lo, hi], 2 .* [lo, hi]; color = :gray50, linestyle = :dot)     # x2
+        lines!(ax_m, [lo, hi], 0.5 .* [lo, hi]; color = :gray50, linestyle = :dot)   # x0.5
+        limits!(ax_m, lo, hi, lo, hi)
+    end
+
+    # ================= direction panel (raw 0-360, no wrapping) =================
+    ax_d = Axis(fig_sc[row + 1, 2];
+                xlabel = "Mooring direction (°)", ylabel = "Model direction (°)",
+                title = "Mode $mode — direction", aspect = 1,
+                xticks = 0:90:360, yticks = 0:90:360,
+                limits = (0, 360, 0, 360))
+    band!(ax_d, [0.0, 360.0], [-DIR_TOL, 360 - DIR_TOL], [DIR_TOL, 360 + DIR_TOL];
+          color = (:gray, 0.15))
+    lines!(ax_d, [0, 360], [0, 360]; color = :black, linewidth = 1.2)
+
+    # ---- points, coloured by region ----
+    for r in nonempty
+        short, title, g = regions[r]
+        mm, mo, dm, dob = scatter_data(g, mode)
+        isempty(mm) && continue
+        c  = reg_cols[mod1(r, length(reg_cols))]
+        mk = short == "IWAP" ? :diamond : :circle
+        kw = (color = c, marker = mk, markersize = 11, strokecolor = :black, strokewidth = 0.5)
+        scatter!(ax_m, mo, mm; kw...)
+        scatter!(ax_d, dob, dm; kw...)          # raw directions
+    end
+
+    # ---- statistics (direction error still uses the true angular difference) ----
+    if N > 1
+        r_mag = SCATTER_LOG ? cor(log10.(MO), log10.(MM)) : cor(MO, MM)
+        ratio = median(MM ./ MO)
+        rmse  = sqrt(mean((MM .- MO) .^ 2))
+        dth   = abs.(wrapdiff.(DM, DO))
+        txt_m = @sprintf("N = %d\nr%s = %.2f\nmedian model/obs = %.2f\nRMSE = %.2f kW/m",
+                         N, SCATTER_LOG ? "(log)" : "", r_mag, ratio, rmse)
+        txt_d = @sprintf("N = %d\nmean |Δθ| = %.1f°\nwithin ±%d°: %.0f%%",
+                         N, mean(dth), round(Int, DIR_TOL), 100 * mean(dth .<= DIR_TOL))
+        text!(ax_m, 0.03, 0.97; text = txt_m, space = :relative,
+              align = (:left, :top), fontsize = 12)
+        text!(ax_d, 0.03, 0.97; text = txt_d, space = :relative,
+              align = (:left, :top), fontsize = 12)
+        println("\nScatter mode $mode:  ", replace(txt_m, "\n" => ",  "),
+                "  |  ", replace(txt_d, "\n" => ",  "))
+    end
+
+    panel_label!(fig_sc[row + 1, 1], plabels[row, 1])
+    panel_label!(fig_sc[row + 1, 2], plabels[row, 2])
+end
+
+# ---- shared legend (regions) ----
+leg_el = Any[MarkerElement(color = reg_cols[mod1(r, length(reg_cols))],
+                           marker = regions[r][1] == "IWAP" ? :diamond : :circle,
+                           markersize = 11, strokecolor = :black, strokewidth = 0.5)
+             for r in nonempty]
+leg_lab = [strip(regions[r][2]) * (regions[r][1] == "IWAP" ? " (obs rotated 60°)" : "")
+           for r in nonempty]
+push!(leg_el, LineElement(color = :black));                      push!(leg_lab, "1:1")
+push!(leg_el, LineElement(color = :gray50, linestyle = :dot));   push!(leg_lab, "factor 2")
+push!(leg_el, PolyElement(color = (:gray, 0.15)));               push!(leg_lab, "±$(round(Int, DIR_TOL))°")
+Legend(fig_sc[4, 1:2], leg_el, leg_lab; orientation = :horizontal, nbanks = 3,
+       tellwidth = false, framevisible = false)
+
+colsize!(fig_sc.layout, 1, Fixed(480)); colsize!(fig_sc.layout, 2, Fixed(480))
+rowsize!(fig_sc.layout, 2, Fixed(480)); rowsize!(fig_sc.layout, 3, Fixed(480))
+colgap!(fig_sc.layout, 40); rowgap!(fig_sc.layout, 12)
+resize_to_layout!(fig_sc)
+display(fig_sc)
+
+sc_png = joinpath(FIGDIR, "Scatter_model_vs_mooring_modes12.png")
+save(sc_png, fig_sc)
+println("Saved: $sc_png")
 
 
 
