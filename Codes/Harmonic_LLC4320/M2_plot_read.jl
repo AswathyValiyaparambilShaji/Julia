@@ -331,7 +331,7 @@ function main()
                  linewidth = θ == 0 ? 2.0 : 0.8)
     end
     Colorbar(fig[1, 2], hm; label = "Amplitude (cm)")
-    f1 = joinpath(FIGDIR, "M2_amp_cophase_global.png")
+    f1 = joinpath(FIGDIR, "M2_amp_cophase_global_v1.png")
     save(f1, fig; px_per_unit = 2)
     logmsg("  saved ", f1)
 
