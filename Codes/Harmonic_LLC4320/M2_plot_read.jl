@@ -116,14 +116,7 @@ end
 # ----------------------------------------------------------------------------
 # 2. Cutting the file into facets and stitching a global lon x lat map
 # ----------------------------------------------------------------------------
-"""
-Columns of the compact array:
-    1      : 3nx   facet 1 (faces 1–3)   nx × 3nx, already lon × lat
-    3nx+1  : 6nx   facet 2 (faces 4–6)   nx × 3nx, already lon × lat
-    6nx+1  : 7nx   facet 3 (face 7)      Arctic cap -> not used here
-    7nx+1  : 10nx  facet 4 (faces 8–10)  stored sideways: reshape to 3nx × nx
-    10nx+1 : 13nx  facet 5 (faces 11–13) stored sideways: reshape to 3nx × nx
-"""
+
 function llc_facets(A; nx = size(A, 1))
     f1 = A[:, 1:3nx]
     f2 = A[:, 3nx+1:6nx]
