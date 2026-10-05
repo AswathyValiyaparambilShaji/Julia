@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N M2_read
-#PBS -q devel
+#PBS -q normal
 #PBS -l select=1:ncpus=128:mem=400GB:model=mil_ait
 #PBS -l walltime=3:00:00
 #PBS -j oe
