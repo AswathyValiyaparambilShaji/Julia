@@ -234,8 +234,12 @@ block_mean(v::AbstractVector, f::Int) = [mean(v[(k-1)*f+1:k*f]) for k in 1:lengt
 
 
 "Amplitude map, white (0) -> dark (cmax), land grey. Reusable for mooring maps."
-amp_map!(ax, x, y, A_cm, cmax) =
+#=amp_map!(ax, x, y, A_cm, cmax) =
     heatmap!(ax, x, y, A_cm; colormap = CMAP_AMP, colorrange = (0, cmax),
+             highclip = AMP_COLORS[end], nan_color = LAND_COLOR, rasterize = true)
+             =#
+amp_map!(ax, x, y, A_cm, cmax) =
+    heatmap!(ax, x, y, A_cm; colormap = :magma, colorrange = (0, cmax),
              highclip = AMP_COLORS[end], nan_color = LAND_COLOR, rasterize = true)
 
 
@@ -386,7 +390,7 @@ function main()
     hm = amp_map!(ax, lon_i, lat_i, 100 .* Ait_img, IT_MAX)
     moorings!(ax)
     Colorbar(fig[1, 2], hm; label = "Amplitude (cm)")
-    f = joinpath(OUTDIR, "$(CON)_IT_amp_global_$(TAG).png"); save(f, fig; px_per_unit = 2)
+    f = joinpath(OUTDIR, "$(CON)_IT_amp_global_v1_$(TAG).png"); save(f, fig; px_per_unit = 2)
     logmsg("  saved ", f)
 
 

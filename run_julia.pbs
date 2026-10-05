@@ -16,7 +16,7 @@ export JULIA_NUM_THREADS=128
 
 
 JULIA_CONFIG=/home3/avaliyap/Documents/Julia_new/Julia/config/run_hpc.toml \
-julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Harmonic_LLC4320/M2_plot_read.jl
+julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Harmonic_LLC4320/M2_internaltide.jl
 
 
 #julia /home3/avaliyap/Documents/Julia_new/Julia/Codes/Box28/NT/Flux_plot_nt.jl
