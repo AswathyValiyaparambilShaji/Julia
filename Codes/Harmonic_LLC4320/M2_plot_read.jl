@@ -41,8 +41,8 @@ using Base.Threads, Statistics, Printf, Dates, Logging
 # full error message if it crashes) is written to   figures/plot_M2_global.log
 # so you don't need to read the terminal. Open it with  `less`/`cat`, or copy it
 # to your laptop, after the run.
+mkpath("/nobackup/avaliyap/Figure/Harmonic_LLC4320/")
 const FIGDIR_ = "/nobackup/avaliyap/Figure/Harmonic_LLC4320/"
-mkpath(FIGDIR_)
 const LOGFILE = joinpath(FIGDIR_, "plot_M2_global.log")
 const LOGIO   = open(LOGFILE, "w")
 
