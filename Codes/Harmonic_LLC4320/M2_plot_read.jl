@@ -315,7 +315,7 @@ function main()
     logmsg("STEP 4/5  figure 1: amplitude + co-phase lines every ", DPHI, " deg")
     fig = Figure(size = (1800, 900), fontsize = 18)
     ax = Axis(fig[1, 1]; xlabel = "Longitude (°)", ylabel = "Latitude (°)",
-              title = @sprintf("llc4320_v2 M2 SSH amplitude, co-phase lines every %.0f° ",PHI),
+              title = @sprintf("llc4320_v2 M2 SSH amplitude, co-phase lines every %.0f° ",DPHI),
               limits = (-180, 180, ylims...), xticks = -180:60:180, yticks = -60:30:60)
     hm = heatmap!(ax, lon_img, lat_img, 100 .* A_img; colormap = :viridis,
                   colorrange = (0, AMP_MAX), highclip = :yellow, nan_color = :gray80,
