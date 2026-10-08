@@ -57,7 +57,7 @@ const DEPTHFILE = joinpath(GRIDDIR, "Depth.data")     # land = depth 0 (if missi
 
 # filter: wavelengths LONGER than LAMBDA_C are removed (go to Z_bt).
 # The split is gradual: at exactly LAMBDA_C, half the amplitude goes each way.
-const LAMBDA_C  = 150e3     # [m]
+const LAMBDA_C  = 300e3     # [m]
 const TRUNCATE  = 4.0       # kernel cut at ±4σ (as in gaussfilt.jl)
 
 
