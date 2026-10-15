@@ -1,27 +1,26 @@
 #=
-plot_IT_moorings_fluxes.jl
+IT_fluxes_simple.jl
 -----------------------------------------------------------------------------
-Internal-tide SSH amplitude (Gaussian high-pass, from M2_internal_tide.jl)
-with mooring locations and semidiurnal modal energy-flux vectors on top.
+M2 internal-tide SSH amplitude with model (red) and mooring (blue) modal
+energy-flux arrows on top.
 
 
-Figures (one set per mode in MODES):
-  1. IT_global_moorings_<TAG>.png
-       global M2 internal-tide amplitude, ALL moorings (circles), IWAP moorings
-       (stars), and the boxes R1..Rn that the regional panels show
-  2. IT_flux_regions_mode<m>_<TAG>.png
-       one figure, one subplot per ALL region (6 by default):
-       IT amplitude background + model (red) and mooring (blue) flux vectors
-  3. IT_flux_IWAP_<TAG>.png
-       same idea for the IWAP moorings, one subplot per mode
+  Figure 1  global internal-tide amplitude, moorings, region boxes
+  Figure 2  one panel per region (ALL moorings), one figure per mode
+  Figure 3  IWAP moorings, one panel per mode
 
 
-The IT field is read straight from the NetCDF in pieces, so the full
-17280 x 12960 array is never held in memory:
-  - global map  : block-averaged F_GLOBAL x F_GLOBAL (default 4 -> 4320 x 3240)
-  - regional map: full 1/48° resolution, block-averaged only if a panel would
-                  have more than MAX_PTS_REG points along one side
-Land (NaN in the file) is drawn grey, so no coastline package is needed.
+Regions, boxes and arrows follow the model-mooring regional comparison script:
+  * every arrow starts at the MODEL STATION position of its mooring
+  * moorings at the same site (e.g. M2 and M7) share one model station, so the
+    red model arrow is drawn ONCE per station; each mooring keeps its own blue arrow
+  * panel limits = moorings + 20 % padding (at least 1 deg), stretched to the
+    panel shape, so the map fills the panel (no white space)
+
+
+No "$" string interpolation is used anywhere, so the text cannot get
+garbled when the code is copied.
+Run the whole file top to bottom.
 -----------------------------------------------------------------------------
 =#
 
@@ -29,224 +28,162 @@ Land (NaN in the file) is drawn grey, so no coastline package is needed.
 using NCDatasets, MAT, Statistics, CairoMakie, Printf, LinearAlgebra
 
 
-# ============================ 0) PATHS & SETTINGS ============================
-IT_NCFILE         = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/M2_internal_tide_L150km.nc"  # <- EDIT
-model_flux_ncfile = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2n.nc"
-file1path         = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
-file3path         = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
-
-
-FIGDIR = "/home/aswathy/mnt/data/aswathy/Mooring_Data/IT_flux_figs/"
+# =============================== SETTINGS ===================================
+IT_FILE    = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/M2_internal_tide_L150km.nc"
+MODEL_FILE = "/home/aswathy/mnt/data/aswathy/MITgcm_NAS/Moorings/Mooring_modal_fluxes_v2n.nc"
+ALL_FILE   = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL.mat"
+IWAP_FILE  = "/home/aswathy/mnt/data/aswathy/Mooring_Data/Flux_mooring_timeseries_ALL_IWAP.mat"
+FIGDIR     = "/home/aswathy/mnt/data/aswathy/Mooring_Data/IT_flux_figs/"
 mkpath(FIGDIR)
 
 
-IT_VAR = "amp_it"       # variable plotted in the background ("amp_it", "amp_bt", "amp_tot")
-TAG    = "L150km"       # only used in figure names
+IT_VAR   = "amp_it"   # background field: "amp_it", "amp_bt" or "amp_tot"
+TAG      = "L150km"   # added to the figure file names
+MODES    = (1, 2)     # flux modes to plot
+TOL      = 0.05       # max distance (deg) between a mooring and its model station
+ROT_IWAP = 60.0       # rotate the IWAP mooring fluxes by this many degrees
+CMAX     = 5.0        # colour limit of the background [cm]
 
 
-MATCH_TOL_DEG = 0.05    # lat/lon matching tolerance (degrees)
-THETA_ROT     = pi / 3  # 60 deg rotation of the IWAP MOORING fluxes (model not rotated)
+# ---- regions ----
+REGION_MODE = :auto   # :auto   -> k-means grouping of the ALL moorings (as in the comparison script)
+                      # :manual -> use REGION_BOXES below
+N_REGIONS   = 6       # number of groups in :auto mode
+BOX_PAD     = 1.5     # padding (deg) of the boxes on the global map
+MIN_PAD     = 0.5     # box padding is shrunk (not below this) where boxes would overlap
 
 
-N_REGIONS   = 6         # number of regions for the ALL-matched stations
-REGION_MODE = :auto     # :auto -> k-means of station positions, :manual -> REGION_BOXES
-REGION_BOXES = [        # only for :manual; name => (lonmin, lonmax, latmin, latmax), lon -180..180
-    "Region 1" => (-180.0, -150.0,  10.0,  30.0),
-    "Region 2" => ( 110.0,  125.0,  15.0,  25.0),
-    "Region 3" => (-80.0,  -60.0,   20.0,  45.0),
-    "Region 4" => (-40.0,  -10.0,   30.0,  60.0),
-    "Region 5" => ( 130.0,  150.0,  20.0,  40.0),
-    "Region 6" => ( 40.0,   80.0,  -10.0,  25.0),
+# only used when REGION_MODE = :manual; name => (lon_min, lon_max, lat_min, lat_max), lon -180..180
+REGION_BOXES = [
+    "Region 1" => (-180.0, -150.0,  10.0, 30.0),
+    "Region 2" => ( 110.0,  125.0,  15.0, 25.0),
 ]
 
 
-MODES = (1, 2)          # flux modes to plot
+# ---- panel size (px) ----
+MAP_W = 560
+MAP_H = 460
 
 
-# ---- background field ----
-F_GLOBAL      = 4       # block average for the global map (1 = every grid point, very slow)
-MAX_PTS_REG   = 1500    # max points along one side of a regional panel
-IT_MAX_GLOBAL = 5.0     # colour limit, global map [cm]
-IT_MAX_REG    = 5.0     # colour limit, regional panels [cm] (shared by all panels)
+# ---- colours ----
+DARK_RED  = RGBf(0.169, 0.000, 0.020)
+CMAP_REG  = cgrad([RGBf(1.000, 1.000, 1.000), RGBf(0.996, 0.910, 0.784), RGBf(0.992, 0.733, 0.518),
+                   RGBf(0.890, 0.290, 0.200), RGBf(0.600, 0.000, 0.051), DARK_RED])
+LAND      = :gray55
+COL_MODEL = :crimson
+COL_OBS   = :royalblue3
+# =============================================================================
 
 
-AMP_COLORS = [RGBf(1.000, 1.000, 1.000), RGBf(0.996, 0.910, 0.784), RGBf(0.992, 0.733, 0.518),
-              RGBf(0.890, 0.290, 0.200), RGBf(0.600, 0.000, 0.051), RGBf(0.169, 0.000, 0.020)]
-CMAP_GLOBAL = :magma
-CMAP_REG    = cgrad(AMP_COLORS)      # light background so the arrows stay visible
-LAND_COLOR  = :gray55
-
-
-# ---- regional panels ----
-REG_PAD_DEG  = 2.0      # minimum padding (deg) around the moorings of a region
-PANEL_ASPECT = 1.3      # lon/lat ratio of each regional panel (all panels same shape)
-ARROW_FRAC   = 0.25     # longest arrow = this fraction of the panel's shorter side
-COL_MODEL    = :crimson
-COL_OBS      = :royalblue3
-# ==============================================================================
-
-
-letters = 'a':'z'
-fmt_lat(y) = @sprintf("%.1f°%s", abs(y), y >= 0 ? "N" : "S")
-fmt_lon(x) = @sprintf("%.1f°%s", abs(x), x >= 0 ? "E" : "W")
 
 
 # ----------------------------------------------------------------------------
-# 1) INTERNAL-TIDE FIELD (read in pieces from the NetCDF)
+# 1) MODEL FLUXES (one row per model station, one column per mode)
 # ----------------------------------------------------------------------------
-ds_it  = NCDataset(IT_NCFILE, "r")
-LON_IT = Float64.(collect(ds_it["lon"][:]))      # -180..180, increasing
-LAT_IT = Float64.(collect(ds_it["lat"][:]))      # increasing
-VAR_IT = variable(ds_it, IT_VAR)                 # raw variable: NaN on land, no Missing
-println("IT field: ", IT_VAR, "  ", size(VAR_IT), "  lon ", LON_IT[1], "..", LON_IT[end],
-        "  lat ", round(LAT_IT[1], digits = 2), "..", round(LAT_IT[end], digits = 2))
+ds   = NCDataset(MODEL_FILE)
+mlat = Float64.(Array(ds["lat"]))
+mlon = mod.(Float64.(Array(ds["lon"])) .+ 180, 360) .- 180          # -180..180
+mFu  = hcat(Float64.(Array(ds["Fu_mode1"])), Float64.(Array(ds["Fu_mode2"])))
+mFv  = hcat(Float64.(Array(ds["Fv_mode1"])), Float64.(Array(ds["Fv_mode2"])))
+close(ds)
+println("Model stations: ", length(mlat))
 
 
-"NaN-aware f×f block mean (block kept if at least half of it is ocean)."
-function blockmean_nan(A::AbstractMatrix, f::Int)
-    f == 1 && return Float32.(A)
-    m1, m2 = size(A) .÷ f
-    out = fill(NaN32, m1, m2)
-    Threads.@threads for J in 1:m2
-        for I in 1:m1
-            s = 0.0f0; w = 0
-            @inbounds for j in (J-1)*f+1:J*f, i in (I-1)*f+1:I*f
-                a = Float32(A[i, j])
-                if isfinite(a); s += a; w += 1; end
-            end
-            out[I, J] = 2w >= f * f ? s / w : NaN32
-        end
+
+
+# ----------------------------------------------------------------------------
+# 2) MOORING FLUXES
+# ----------------------------------------------------------------------------
+function time_mean(A)                      # (mooring, mode, time) -> NaN-aware time mean
+    out = fill(NaN, size(A, 1), size(A, 2))
+    for i in axes(A, 1), j in axes(A, 2)
+        v = filter(!isnan, A[i, j, :])
+        isempty(v) || (out[i, j] = mean(v))
     end
     return out
 end
-bm_vec(v, f) = f == 1 ? v : [mean(@view v[(k-1)*f+1:k*f]) for k in 1:length(v)÷f]
 
 
-"Global field [cm], block averaged f×f, read in latitude strips."
-function read_it_global(f)
-    n1, n2 = size(VAR_IT)
-    m1, m2 = n1 ÷ f, n2 ÷ f
-    rows = f * max(1, 1620 ÷ f)                  # lat rows per read, multiple of f
-    out = Matrix{Float32}(undef, m1, m2)
-    for j0 in 1:rows:m2*f
-        j1 = min(j0 + rows - 1, m2 * f)
-        A = VAR_IT[1:m1*f, j0:j1]
-        out[:, (j0-1)÷f+1:j1÷f] = blockmean_nan(A, f)
-    end
-    return 100 .* out, bm_vec(LON_IT, f), bm_vec(LAT_IT, f)
-end
-
-
-"Regional field [cm] inside (x0, x1, y0, y1), full resolution unless too large."
-function read_it_region(x0, x1, y0, y1)
-    I = searchsortedfirst(LON_IT, x0):searchsortedlast(LON_IT, x1)
-    J = searchsortedfirst(LAT_IT, y0):searchsortedlast(LAT_IT, y1)
-    (isempty(I) || isempty(J)) && return Matrix{Float32}(undef, 0, 0), Float64[], Float64[]
-    f = max(1, cld(max(length(I), length(J)), MAX_PTS_REG))
-    A = blockmean_nan(VAR_IT[I, J], f)
-    return 100 .* A, bm_vec(LON_IT[I], f), bm_vec(LAT_IT[J], f)
-end
-
-
-# ----------------------------------------------------------------------------
-# 2) MODEL FLUXES AND MOORINGS (same as the mooring comparison script)
-# ----------------------------------------------------------------------------
-ds = NCDataset(model_flux_ncfile, "r")
-lon_m = Float64.(Array(ds["lon"])); lat_m = Float64.(Array(ds["lat"]))
-Fu1_m = Float64.(Array(ds["Fu_mode1"])); Fv1_m = Float64.(Array(ds["Fv_mode1"]))
-Fu2_m = Float64.(Array(ds["Fu_mode2"])); Fv2_m = Float64.(Array(ds["Fv_mode2"]))
-close(ds)
-println("Loaded $(length(lat_m)) model stations")
-
-
-function load_mooring_mat(path)
-    f = matopen(path)
-    lato = vec(read(f, "lato")); lono = vec(read(f, "lono"))
-    Fuo = read(f, "Fuo");        Fvo = read(f, "Fvo")
+function load_moorings(path)
+    f   = matopen(path)
+    lat = Float64.(vec(read(f, "lato")))
+    lon = Float64.(vec(read(f, "lono")))
+    Fu  = Float64.(read(f, "Fuo"))
+    Fv  = Float64.(read(f, "Fvo"))
     close(f)
-    if ndims(Fuo) == 3                     # (mooring, mode, time) -> NaN-aware time mean
-        n1, n2, _ = size(Fuo)
-        Fu2 = fill(NaN, n1, n2); Fv2 = fill(NaN, n1, n2)
-        for i in 1:n1, j in 1:n2
-            vu = filter(!isnan, @view Fuo[i, j, :]); vv = filter(!isnan, @view Fvo[i, j, :])
-            Fu2[i, j] = isempty(vu) ? NaN : mean(vu)
-            Fv2[i, j] = isempty(vv) ? NaN : mean(vv)
-        end
-        Fuo, Fvo = Fu2, Fv2
+    if ndims(Fu) == 3
+        Fu, Fv = time_mean(Fu), time_mean(Fv)
     end
-    return Float64.(lato), Float64.(lono), Float64.(Fuo), Float64.(Fvo)
+    return lat, lon, Fu, Fv
 end
 
 
-lato1, lono1, Fuo1, Fvo1 = load_mooring_mat(file1path)   # ALL
-lato3, lono3, Fuo3, Fvo3 = load_mooring_mat(file3path)   # IWAP
-Fuo3, Fvo3 = cos(THETA_ROT) .* Fuo3 .- sin(THETA_ROT) .* Fvo3,
-             sin(THETA_ROT) .* Fuo3 .+ cos(THETA_ROT) .* Fvo3
-println("ALL: $(length(lato1)) moorings,  IWAP: $(length(lato3)) moorings")
+lat_a, lon_a, Fu_a, Fv_a = load_moorings(ALL_FILE)
+lat_i, lon_i, Fu_i, Fv_i = load_moorings(IWAP_FILE)
 
 
-lon_m360 = mod.(lon_m, 360)
-function nearest_station(lat0, lon0; tol = MATCH_TOL_DEG)
-    d2 = (lat_m .- lat0) .^ 2 .+ (lon_m360 .- mod(lon0, 360)) .^ 2
-    j = argmin(d2)
-    return sqrt(d2[j]) <= tol ? j : nothing
-end
+# rotate the IWAP mooring fluxes (the model is not rotated)
+c, s = cosd(ROT_IWAP), sind(ROT_IWAP)
+Fu_i, Fv_i = c .* Fu_i .- s .* Fv_i, s .* Fu_i .+ c .* Fv_i
 
 
-struct MatchInfo
-    dataset::Symbol   # :IWAP or :ALL
-    idx::Int          # mooring number in that .mat file
-end
 
 
-entry_station = Int[]; matches = MatchInfo[]
-for (dsname, lats, lons) in ((:IWAP, lato3, lono3), (:ALL, lato1, lono1))
-    for i in eachindex(lats)
-        p = nearest_station(lats[i], lons[i])
-        if p === nothing
-            println("  dsname#i (lat=(lats[i]),lon=(lons[i])): no model station within tolerance -> skipped")
+# ----------------------------------------------------------------------------
+# 3) PAIR EACH MOORING WITH ITS MODEL STATION
+#    Each entry of `sites` is one mooring. lon/lat are the MODEL STATION
+#    position (as in the comparison script); `station` is the station number,
+#    shared by moorings at the same site.
+# ----------------------------------------------------------------------------
+sites = NamedTuple[]
+
+
+function add_sites!(group, prefix, lat, lon, Fu, Fv)
+    for i in eachindex(lat)
+        d = hypot.(mlat .- lat[i], mod.(mlon, 360) .- mod(lon[i], 360))
+        j = argmin(d)
+        if d[j] > TOL
+            println("  ", prefix, i, ": no model station within ", TOL, " deg -> skipped")
             continue
         end
-        push!(entry_station, p); push!(matches, MatchInfo(dsname, i))
-    end
-end
-lat_m = lat_m[entry_station];  lon_m = lon_m[entry_station]
-Fu1_m = Fu1_m[entry_station];  Fv1_m = Fv1_m[entry_station]
-Fu2_m = Fu2_m[entry_station];  Fv2_m = Fv2_m[entry_station]
-N_model = length(matches)
-
-
-p_iwap = [p for p in 1:N_model if matches[p].dataset == :IWAP]
-p_all  = [p for p in 1:N_model if matches[p].dataset == :ALL]
-println("Moorings matched: IWAP $(length(p_iwap)) / $(length(lato3)),  ALL $(length(p_all)) / $(length(lato1))")
-
-
-function label_of(p)
-    m = matches[p]
-    if m.dataset == :IWAP
-        return string("IWAP", m.idx)
-    else
-        return string("M", m.idx)
+        push!(sites, (group = group, label = string(prefix, i), station = j,
+                      lon = mlon[j], lat = mlat[j],
+                      obs_u = Fu[i, :], obs_v = Fv[i, :],
+                      mod_u = mFu[j, :], mod_v = mFv[j, :]))
     end
 end
 
 
+add_sites!(:IWAP, "IWAP", lat_i, lon_i, Fu_i, Fv_i)
+add_sites!(:ALL,  "M",    lat_a, lon_a, Fu_a, Fv_a)
 
 
-model_uv(p, mode) = mode == 1 ? (Fu1_m[p], Fv1_m[p]) : (Fu2_m[p], Fv2_m[p])
-function obs_uv(p, mode)
-    m = matches[p]
-    m.dataset == :IWAP && return Fuo3[m.idx, mode], Fvo3[m.idx, mode]
-    return Fuo1[m.idx, mode], Fvo1[m.idx, mode]
-end
+all_sites  = filter(p -> p.group == :ALL,  sites)
+iwap_sites = filter(p -> p.group == :IWAP, sites)
+println("Matched: ALL ", length(all_sites), " / ", length(lat_a),
+        ",  IWAP ", length(iwap_sites), " / ", length(lat_i))
 
 
-lon_m_geo = mod.(lon_m .+ 180, 360) .- 180     # -180..180
 
 
 # ----------------------------------------------------------------------------
-# 3) REGIONS (same k-means / manual logic as before)
+# 4) REGIONS (same method as the comparison script)
 # ----------------------------------------------------------------------------
+col(s, f)           = Float64[getfield(p, f) for p in s]
+fmt_lat(y)          = @sprintf("%.1f°%s", abs(y), y >= 0 ? "N" : "S")
+fmt_lon(x)          = @sprintf("%.1f°%s", abs(x), x >= 0 ? "E" : "W")
+inbox(x, y, b)      = b[1] <= x <= b[2] && b[3] <= y <= b[4]
+boxes_overlap(a, b) = !(a[2] < b[1] || b[2] < a[1] || a[4] < b[3] || b[4] < a[3])
+grow(b, d)          = (b[1] - d, b[2] + d, b[3] - d, b[4] + d)
+tight_box(s)        = (minimum(col(s, :lon)), maximum(col(s, :lon)),
+                       minimum(col(s, :lat)), maximum(col(s, :lat)))
+
+
+alon = col(all_sites, :lon)
+alat = col(all_sites, :lat)
+tbox(g) = (minimum(alon[g]), maximum(alon[g]), minimum(alat[g]), maximum(alat[g]))
+
+
 function kmeans_sphere(lat, lon, k; niter = 300)
     n = length(lat)
     X = hcat(cosd.(lat) .* cosd.(lon), cosd.(lat) .* sind.(lon), sind.(lat))
@@ -272,20 +209,17 @@ function kmeans_sphere(lat, lon, k; niter = 300)
 end
 
 
-tight_box(g) = (minimum(lon_m_geo[g]), maximum(lon_m_geo[g]), minimum(lat_m[g]), maximum(lat_m[g]))
-inbox(x, y, b) = b[1] <= x <= b[2] && b[3] <= y <= b[4]
-
-
+# a mooring lying inside another group's box is handed to that group
 function untangle_regions!(groups)
     moved = Set{Int}()
     while true
         changed = false
-        boxes = [tight_box(g) for g in groups]
+        boxes = [tbox(g) for g in groups]
         for a in eachindex(groups), p in copy(groups[a])
             (p in moved || length(groups[a]) == 1) && continue
-            hosts = [b for b in eachindex(groups) if b != a && inbox(lon_m_geo[p], lat_m[p], boxes[b])]
+            hosts = [b for b in eachindex(groups) if b != a && inbox(alon[p], alat[p], boxes[b])]
             isempty(hosts) && continue
-            dist(h) = hypot(lon_m_geo[p] - mean(lon_m_geo[groups[h]]), lat_m[p] - mean(lat_m[groups[h]]))
+            dist(h) = hypot(alon[p] - mean(alon[groups[h]]), alat[p] - mean(alat[groups[h]]))
             b = hosts[argmin(dist.(hosts))]
             filter!(!=(p), groups[a]); push!(groups[b], p); push!(moved, p)
             changed = true
@@ -297,38 +231,94 @@ function untangle_regions!(groups)
 end
 
 
-regions = Tuple{String, Vector{Int}}[]          # (title, mooring entries), ALL only
+# regions = list of (name, box drawn on the global map, moorings)
+regions = Tuple{String, NTuple{4, Float64}, Vector}[]
+
+
 if REGION_MODE == :auto
-    a = kmeans_sphere(lat_m[p_all], lon_m_geo[p_all], N_REGIONS)
-    groups = [p_all[a .== l] for l in 1:maximum(a)]
+    a = kmeans_sphere(alat, alon, N_REGIONS)
+    groups = [findall(==(l), a) for l in 1:maximum(a)]
     filter!(!isempty, groups); untangle_regions!(groups); filter!(!isempty, groups)
-    sort!(groups, by = g -> mean(lon_m_geo[g]))                  # west -> east
-    for g in groups
-        push!(regions, ("$(fmt_lat(mean(lat_m[g]))), $(fmt_lon(mean(lon_m_geo[g])))", g))
+    sort!(groups, by = g -> mean(alon[g]))                         # west -> east
+
+
+    # global-map boxes: tight + padding, padding shrunk where boxes would overlap
+    tb   = [tbox(g) for g in groups]
+    pads = fill(Float64(BOX_PAD), length(tb))
+    for _ in 1:30
+        ok = true
+        for i in eachindex(tb), j in eachindex(tb)
+            i == j && continue
+            bi      = grow(tb[i], pads[i])
+            foreign = any(inbox(alon[p], alat[p], bi) && !inbox(alon[p], alat[p], tb[i]) for p in groups[j])
+            clash   = boxes_overlap(bi, grow(tb[j], pads[j])) && !boxes_overlap(tb[i], tb[j])
+            if (foreign || clash) && pads[i] > MIN_PAD
+                pads[i] = max(pads[i] / 2, MIN_PAD)
+                clash && (pads[j] = max(pads[j] / 2, MIN_PAD))
+                ok = false
+            end
+        end
+        ok && break
+    end
+    for (i, g) in enumerate(groups)
+        name = string(fmt_lat(mean(alat[g])), ", ", fmt_lon(mean(alon[g])))
+        push!(regions, (name, grow(tb[i], pads[i]), all_sites[g]))
     end
 else
-    for (name, (x0, x1, y0, y1)) in REGION_BOXES
-        g = [p for p in p_all if x0 <= lon_m_geo[p] <= x1 && y0 <= lat_m[p] <= y1]
-        isempty(g) ? (@warn "$name contains no matched moorings -- dropped") : push!(regions, (name, g))
+    for (name, b) in REGION_BOXES
+        s_in = filter(p -> inbox(p.lon, p.lat, b), all_sites)
+        isempty(s_in) ? println("  ", name, " contains no moorings -> dropped") :
+                        push!(regions, (name, Float64.(b), s_in))
     end
 end
+
+
 println("\nRegions:")
-for (r, (t, g)) in enumerate(regions)
-    println("  R$r  $t  -> $(length(g)) moorings: ", join(label_of.(g), ", "))
+for (k, (name, b, s_r)) in enumerate(regions)
+    println("  R", k, "  ", name, "  -> ", length(s_r), " moorings: ", join([p.label for p in s_r], ", "))
 end
 
 
+IWAP_BOX = isempty(iwap_sites) ? nothing : grow(tight_box(iwap_sites), BOX_PAD)
+
+
+
+
 # ----------------------------------------------------------------------------
-# 4) PLOTTING HELPERS
+# 5) INTERNAL-TIDE BACKGROUND (only the needed box is read)
 # ----------------------------------------------------------------------------
-function region_limits(ps; minpad = REG_PAD_DEG)
-    x = lon_m_geo[ps]; y = lat_m[ps]
+ds_it  = NCDataset(IT_FILE)
+it_lon = Float64.(ds_it["lon"][:])        # -180..180, increasing
+it_lat = Float64.(ds_it["lat"][:])
+it_var = variable(ds_it, IT_VAR)          # NaN on land
+
+
+function read_it(x0, x1, y0, y1; maxpts = 1500)
+    I = findall(x -> x0 <= x <= x1, it_lon)
+    J = findall(y -> y0 <= y <= y1, it_lat)
+    (isempty(I) || isempty(J)) && return Float64[], Float64[], zeros(Float32, 0, 0)
+    step = max(1, cld(max(length(I), length(J)), maxpts))
+    I = first(I):step:last(I)
+    J = first(J):step:last(J)
+    return it_lon[I], it_lat[J], 100 .* Float32.(it_var[I, J])
+end
+
+
+
+
+# ----------------------------------------------------------------------------
+# 6) PLOTTING HELPERS (arrows, limits and scaling as in the comparison script)
+# ----------------------------------------------------------------------------
+# panel limits: moorings + 20 % padding (min 1 deg)
+function region_limits(s; minpad = 1.0)
+    x = col(s, :lon); y = col(s, :lat)
     px = max(0.2 * (maximum(x) - minimum(x)), minpad)
     py = max(0.2 * (maximum(y) - minimum(y)), minpad)
     return (minimum(x) - px, maximum(x) + px, max(minimum(y) - py, -89.0), min(maximum(y) + py, 89.0))
 end
 
 
+# stretch the limits to the panel shape so the map fills the panel
 function fit_aspect(l, aspect)
     x0, x1, y0, y1 = l
     w = x1 - x0; h = y1 - y0
@@ -337,8 +327,11 @@ function fit_aspect(l, aspect)
     else
         e = (w / aspect - h) / 2; y0 -= e; y1 += e
     end
-    return (max(x0, -180.0), min(x1, 180.0), max(y0, -90.0), min(y1, 90.0))
+    return (x0, x1, y0, y1)
 end
+
+
+panel_limits(s) = fit_aspect(region_limits(s), MAP_W / MAP_H)
 
 
 # arrows as line segments (shaft + 2 head strokes), in lon/lat units
@@ -358,179 +351,175 @@ function arrow_xy(x, y, u, v, scale; headfrac = 0.3, headang = 25.0)
 end
 
 
-"Arrows with a white halo so they stay visible on any background colour."
-function draw_arrows!(ax, x, y, u, v, scale, color; lw = 2.4)
-    xs, ys = arrow_xy(x, y, u, v, scale)
-    isempty(xs) && return
-    lines!(ax, xs, ys; color = :white, linewidth = lw + 2.5)
-    lines!(ax, xs, ys; color = color, linewidth = lw)
-end
-
-
-function nice_ref(x)
+function nice_ref(x)                       # 1, 2 or 5 x 10^n
     x <= 0 && return 1.0
     e = floor(log10(x)); f = x / 10^e
     return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * 10^e
 end
 
 
-draw_box!(ax, b; kw...) = lines!(ax, [b[1], b[2], b[2], b[1], b[1]], [b[3], b[3], b[4], b[4], b[3]]; kw...)
+function draw_box!(ax, b, label, color)
+    lines!(ax, [b[1], b[2], b[2], b[1], b[1]], [b[3], b[3], b[4], b[4], b[3]];
+           color = color, linewidth = 1.5)
+    text!(ax, b[1], b[4]; text = label, color = color, font = :bold, fontsize = 15,
+          align = (:left, :bottom), offset = (2, 2))
+end
 
 
-"""
-One map panel: IT amplitude background, model + mooring flux vectors,
-mooring sites with labels, reference arrow. Each panel has its own arrow scale.
-"""
-function flux_panel!(pos, g, mode, lims; title = "")
-    gs = sort(g, by = p -> (lon_m_geo[p], lat_m[p], matches[p].idx))
-    x = lon_m_geo[gs]; y = lat_m[gs]; labs = label_of.(gs)
-    muv = model_uv.(gs, mode); ouv = obs_uv.(gs, mode)
-    mu = first.(muv); mv = last.(muv); ou = first.(ouv); ov = last.(ouv)
-
-
-    ax = Axis(pos; title = title, aspect = DataAspect(), limits = lims,
+# One map panel: background + one blue arrow per mooring + one red arrow per model station
+function flux_map!(pos, s, mode, lims; title = "")
+    ax = Axis(pos; title = title, width = MAP_W, height = MAP_H, limits = lims,
               xlabel = "Longitude (°)", ylabel = "Latitude (°)")
-    F, xr, yr = read_it_region(lims...)
-    isempty(F) || heatmap!(ax, xr, yr, F; colormap = CMAP_REG, colorrange = (0, IT_MAX_REG),
-                           highclip = AMP_COLORS[end], nan_color = LAND_COLOR, rasterize = true)
+    lon, lat, A = read_it(lims...)
+    isempty(A) || heatmap!(ax, lon, lat, A; colormap = CMAP_REG, colorrange = (0, CMAX),
+                           highclip = DARK_RED, nan_color = LAND, rasterize = true)
+    isempty(s) && return ax
 
 
-    allmag = filter(isfinite, vcat(hypot.(mu, mv), hypot.(ou, ov)))
-    maxmag = isempty(allmag) ? 1.0 : maximum(allmag)
-    span   = min(lims[2] - lims[1], lims[4] - lims[3])
-    scale  = ARROW_FRAC * span / maxmag
-    draw_arrows!(ax, x, y, ou, ov, scale, COL_OBS)
-    draw_arrows!(ax, x, y, mu, mv, scale, COL_MODEL)
+    # moorings (blue): one arrow each, from its model station
+    x  = col(s, :lon);  y  = col(s, :lat)
+    ou = Float64[p.obs_u[mode] for p in s];  ov = Float64[p.obs_v[mode] for p in s]
 
 
-    # one marker + label per site (e.g. "M2/M7")
-    ukeys = unique(collect(zip(x, y)))
-    ux = [k[1] for k in ukeys]; uy = [k[2] for k in ukeys]
-    ulabs = [join(labs[(x .== k[1]) .& (y .== k[2])], "/") for k in ukeys]
-    scatter!(ax, ux, uy; color = :black, markersize = 7, strokecolor = :white, strokewidth = 1)
-    text!(ax, ux, uy; text = ulabs, fontsize = 10, offset = (5, 5), color = :black,
-          glowwidth = 3, glowcolor = (:white, 0.85))
+    # model (red): one arrow per station, even if several moorings share it
+    st = unique(p -> p.station, s)
+    xm = col(st, :lon); ym = col(st, :lat)
+    mu = Float64[p.mod_u[mode] for p in st]; mv = Float64[p.mod_v[mode] for p in st]
+
+
+    # longest arrow = 25 % of the panel's shorter side
+    mags   = filter(isfinite, vcat(hypot.(mu, mv), hypot.(ou, ov)))
+    maxmag = isempty(mags) ? 1.0 : maximum(mags)
+    scale  = 0.25 * min(lims[2] - lims[1], lims[4] - lims[3]) / maxmag
+
+
+    xo, yo = arrow_xy(x, y, ou, ov, scale)
+    isempty(xo) || lines!(ax, xo, yo; color = COL_OBS, linewidth = 2.2)
+    xmo, ymo = arrow_xy(xm, ym, mu, mv, scale)
+    isempty(xmo) || lines!(ax, xmo, ymo; color = COL_MODEL, linewidth = 2.2)
+    scatter!(ax, xm, ym; color = :black, markersize = 5)
 
 
     # reference arrow (bottom-left)
     ref = nice_ref(0.5 * maxmag)
-    rx = lims[1] + 0.06 * (lims[2] - lims[1]); ry = lims[3] + 0.07 * (lims[4] - lims[3])
+    rx = lims[1] + 0.06 * (lims[2] - lims[1]); ry = lims[3] + 0.08 * (lims[4] - lims[3])
     rxs, rys = arrow_xy([rx], [ry], [ref], [0.0], scale)
-    lines!(ax, rxs, rys; color = :white, linewidth = 4.9)
-    lines!(ax, rxs, rys; color = :black, linewidth = 2.4)
-    text!(ax, rx, ry; text = @sprintf("%g kW/m", ref), fontsize = 11, offset = (0, 6),
-          glowwidth = 3, glowcolor = (:white, 0.85))
+    lines!(ax, rxs, rys; color = :black, linewidth = 2.2)
+    text!(ax, rx, ry; text = @sprintf("%g kW/m", ref), fontsize = 11, offset = (0, 6))
     return ax
 end
 
 
-flux_legend!(pos, mode_txt; iwap = false) = Legend(pos,
+add_legend!(pos, obs_note = "") = Legend(pos,
     [LineElement(color = COL_MODEL, linewidth = 3), LineElement(color = COL_OBS, linewidth = 3)],
-    ["Model (MITgcm) $mode_txt", "Mooring (obs)" * (iwap ? ", rotated 60°" : "")];
+    ["Model (MITgcm)", string("Mooring (obs)", obs_note)];
     orientation = :horizontal, framevisible = false, tellwidth = false)
 
 
-it_colorbar!(pos) = Colorbar(pos; colormap = CMAP_REG, limits = (0, IT_MAX_REG),
-                             highclip = AMP_COLORS[end], label = "M2 internal-tide SSH amplitude (cm)")
+add_colorbar!(pos) = Colorbar(pos; colormap = CMAP_REG, limits = (0, CMAX), highclip = DARK_RED,
+                              label = "M2 internal-tide SSH amplitude (cm)")
 
 
-# panel limits (also drawn as boxes on the global map)
-region_lims = [fit_aspect(region_limits(g), PANEL_ASPECT) for (_, g) in regions]
-iwap_lims   = isempty(p_iwap) ? nothing : region_limits(p_iwap)
 
 
 # ----------------------------------------------------------------------------
-# 5) FIGURE 1: global internal-tide map + moorings
+# 7) FIGURE 1: global map + moorings + region boxes
 # ----------------------------------------------------------------------------
-println("\nReading global IT field (block average (FGLOBAL)x(F_GLOBAL)) ...")
-Fg, xg, yg = read_it_global(F_GLOBAL)
+println("\nReading global field ...")
+glon, glat, G = read_it(-180, 180, -90, 90; maxpts = 4000)
+ylo, yhi = max(-80.0, glat[1]), glat[end]
+GW = 1500
 
 
-fig = Figure(size = (1800, 950), fontsize = 18)
-ax = Axis(fig[1, 1]; title = "M2 internal-tide SSH amplitude and mooring locations",
-          xlabel = "Longitude (°)", ylabel = "Latitude (°)", aspect = DataAspect(),
-          limits = (-180, 180, max(-80, yg[1]), yg[end]),
-          xticks = -180:60:180, yticks = -60:30:60)
-hm = heatmap!(ax, xg, yg, Fg; colormap = CMAP_GLOBAL, colorrange = (0, IT_MAX_GLOBAL),
-              highclip = :white, nan_color = LAND_COLOR, rasterize = true)
-for (r, b) in enumerate(region_lims)
-    draw_box!(ax, b; color = :cyan, linewidth = 1.5)
-    text!(ax, b[1], b[4]; text = "R$r", color = :cyan, font = :bold, fontsize = 15,
-          align = (:left, :bottom), offset = (2, 2))
+fig = Figure(fontsize = 18, figure_padding = 12)
+ax  = Axis(fig[1, 1]; title = "M2 internal-tide SSH amplitude and mooring locations",
+           width = GW, height = round(Int, GW * (yhi - ylo) / 360),
+           xlabel = "Longitude (°)", ylabel = "Latitude (°)",
+           limits = (-180, 180, ylo, yhi), xticks = -180:60:180, yticks = -60:30:60)
+hm = heatmap!(ax, glon, glat, G; colormap = :magma, colorrange = (0, CMAX),
+              highclip = :white, nan_color = LAND, rasterize = true)
+
+
+for (k, (name, b, s_r)) in enumerate(regions)
+    draw_box!(ax, b, string("R", k), :cyan)
 end
-if iwap_lims !== nothing
-    draw_box!(ax, iwap_lims; color = :lime, linewidth = 1.5)
-    text!(ax, iwap_lims[1], iwap_lims[4]; text = "IWAP", color = :lime, font = :bold, fontsize = 15,
-          align = (:left, :bottom), offset = (2, 2))
-end
-sc_all = scatter!(ax, lon_m_geo[p_all], lat_m[p_all]; color = :white, marker = :circle,
-                  markersize = 9, strokecolor = :black, strokewidth = 1)
-sc_iw  = scatter!(ax, lon_m_geo[p_iwap], lat_m[p_iwap]; color = :lime, marker = :star5,
-                  markersize = 14, strokecolor = :black, strokewidth = 0.8)
+IWAP_BOX === nothing || draw_box!(ax, IWAP_BOX, "IWAP", :lime)
+
+
+st_all  = unique(p -> p.station, all_sites)
+st_iwap = unique(p -> p.station, iwap_sites)
+sa = scatter!(ax, col(st_all, :lon), col(st_all, :lat); color = :white,
+              markersize = 9, strokecolor = :black, strokewidth = 1)
+si = scatter!(ax, col(st_iwap, :lon), col(st_iwap, :lat); color = :lime, marker = :star5,
+              markersize = 14, strokecolor = :black, strokewidth = 0.8)
+
+
 Colorbar(fig[1, 2], hm; label = "Amplitude (cm)")
-Legend(fig[2, 1], [sc_all, sc_iw],
-       ["ALL moorings [(length(pall))]","IWAPmoorings[(length(p_iwap))]"];
+Legend(fig[2, 1], [sa, si],
+       [string("ALL moorings [", length(all_sites), "]"),
+        string("IWAP moorings [", length(iwap_sites), "]")];
        orientation = :horizontal, framevisible = false, tellwidth = false)
 resize_to_layout!(fig)
+save(joinpath(FIGDIR, string("IT_global_moorings_", TAG, ".png")), fig; px_per_unit = 2)
 display(fig)
-f1 = joinpath(FIGDIR, "IT_global_moorings_$(TAG).png")
-save(f1, fig; px_per_unit = 2)
-println("Saved: $f1")
-Fg = nothing; GC.gc()
+G = nothing; GC.gc()
+
+
 
 
 # ----------------------------------------------------------------------------
-# 6) FIGURE 2: all ALL regions in one figure (one per mode)
+# 8) FIGURE 2: one panel per region, one figure per mode
 # ----------------------------------------------------------------------------
 nreg = length(regions)
-ncol = min(3, nreg); nrow = cld(nreg, ncol)
+ncol = min(3, nreg)
+nrow = cld(nreg, ncol)
+
+
 for mode in MODES
-    fig = Figure(size = (620ncol + 160, 560nrow + 160), fontsize = 16)
-    Label(fig[0, 1:ncol], "Mode-$mode semidiurnal energy flux on M2 internal-tide SSH amplitude",
+    fig = Figure(fontsize = 16, figure_padding = 12)
+    Label(fig[0, 1:ncol], string("Mode-", mode, " semidiurnal energy flux on M2 internal-tide SSH amplitude"),
           fontsize = 22, font = :bold)
-    for (r, (title, g)) in enumerate(regions)
-        i, j = fldmod1(r, ncol)
-        flux_panel!(fig[i, j], g, mode, region_lims[r];
-                    title = "((letters[$r]))Rr: title [(length($g))]",r,g)
+    for (k, (name, b, s_r)) in enumerate(regions)
+        row, column = fldmod1(k, ncol)
+        title = string("(", 'a' + k - 1, ") R", k, ": ", name, "  [", length(s_r), " moorings]")
+        flux_map!(fig[row, column], s_r, mode, panel_limits(s_r); title = title)
     end
-    it_colorbar!(fig[1:nrow, ncol+1])
-    flux_legend!(fig[nrow+1, 1:ncol], "mode $mode")
-    colgap!(fig.layout, 20); rowgap!(fig.layout, 12)
+    add_colorbar!(fig[1:nrow, ncol + 1])
+    add_legend!(fig[nrow + 1, 1:ncol])
+    colgap!(fig.layout, 25); rowgap!(fig.layout, 15)
     resize_to_layout!(fig)
-    out = joinpath(FIGDIR, "IT_flux_regions_mode$(mode)_$(TAG).png")
-    save(out, fig; px_per_unit = 2)
-    println("Saved: $out")
+    save(joinpath(FIGDIR, string("IT_flux_regions_mode", mode, "_", TAG, ".png")), fig; px_per_unit = 2)
     display(fig)
 end
 
 
+
+
 # ----------------------------------------------------------------------------
-# 7) FIGURE 3: IWAP, one panel per mode
+# 9) FIGURE 3: IWAP, one panel per mode
 # ----------------------------------------------------------------------------
-if iwap_lims !== nothing
-    nm = length(MODES)
-    fig = Figure(size = (700nm + 160, 900), fontsize = 16)
+if !isempty(iwap_sites)
+    nm   = length(MODES)
+    lims = panel_limits(iwap_sites)
+    fig  = Figure(fontsize = 16, figure_padding = 12)
     Label(fig[0, 1:nm], "IWAP: semidiurnal energy flux on M2 internal-tide SSH amplitude",
           fontsize = 22, font = :bold)
     for (k, mode) in enumerate(MODES)
-        flux_panel!(fig[1, k], p_iwap, mode, iwap_lims;
-                    title = "($(letters[k])) Mode mode [(length(p_iwap)) moorings]")
+        title = string("(", 'a' + k - 1, ") Mode ", mode, "  [", length(iwap_sites), " moorings]")
+        flux_map!(fig[1, k], iwap_sites, mode, lims; title = title)
     end
-    it_colorbar!(fig[1, nm+1])
-    flux_legend!(fig[2, 1:nm], "modes as titled"; iwap = true)
-    colgap!(fig.layout, 20)
+    add_colorbar!(fig[1, nm + 1])
+    add_legend!(fig[2, 1:nm], string(", rotated ", ROT_IWAP, "°"))
+    colgap!(fig.layout, 25)
     resize_to_layout!(fig)
-    out = joinpath(FIGDIR, "IT_flux_IWAP_$(TAG).png")
-    save(out, fig; px_per_unit = 2)
-    println("Saved: $out")
+    save(joinpath(FIGDIR, string("IT_flux_IWAP_", TAG, ".png")), fig; px_per_unit = 2)
+    display(fig)
 else
-    @warn "No IWAP moorings matched -- IWAP figure skipped."
+    println("No IWAP moorings matched -> figure 3 skipped")
 end
 
 
 close(ds_it)
-println("\nDone.")
-
-
+println("Done.")
 
 
