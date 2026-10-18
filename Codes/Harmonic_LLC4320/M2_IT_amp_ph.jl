@@ -372,15 +372,15 @@ function main()
     L = round(Int, LAMBDA_C / 1e3)
     save_map("amp", "$CON SSH amplitude (original)",
              100 .* block_mean(amp, ocean, F_IMG), :magma, (0, AMP_MAX), "Amplitude (cm)")
-    save_map("amp_filt", "CONSSHamplitude,Gaussianfiltered(L km)",
+    save_map("amp_filt", "$CON SSH amplitude,Gaussian filtered($L km)",
              100 .* block_mean(Af, ocean, F_IMG), :magma, (0, AMP_MAX), "Amplitude (cm)")
-    save_map("amp_res", "CONamplituderesidual,A-Afilt(L km)",
+    save_map("amp_res", "$CON amplitude residual,A-Afilt($L km)",
              100 .* block_mean(Ares, ocean, F_IMG), :balance, (-ARES_MAX, ARES_MAX), "Amplitude (cm)")
     save_map("pha", "$CON SSH Greenwich phase (original)",
              phase_block(pha, ocean, F_IMG), :twilight, (0, 360), "Phase (°)")
-    save_map("pha_filt", "CONSSHphase,circularGaussianfiltered(L km)",
+    save_map("pha_filt", "$CON SSHphase,circular Gaussian filtered($L km)",
              phase_block(Pf, ocean, F_IMG), :twilight, (0, 360), "Phase (°)")
-    save_map("pha_res", "CONphaseresidual,wrap(g-gfilt)(L km)",
+    save_map("pha_res", "$CON phase residual,wrap(g-gfilt)($L km)",
              Float32.(wrap180.(phase_block(Pres, ocean, F_IMG))), :balance,
              (-PRES_MAX, PRES_MAX), "Phase (°)")
     save_map("pha_coherence", "$CON phase coherence |⟨e^{−ig}⟩| within $L km kernel",

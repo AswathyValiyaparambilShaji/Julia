@@ -421,12 +421,12 @@ function main()
    for (P, sfx, ttl) in ((Pit_img, "",        ""),
                          (Pit_msk, "_masked", @sprintf(" (only where IT amplitude ≥ %.1f cm)", PHA_MASK_CM)))
        fig = Figure(size = figsize, fontsize = 18)
-       ax = Axis(fig[1, 1]; title = "CONinternal-tideSSHGreenwichphasettl", axkw...)
+       ax = Axis(fig[1, 1]; title = "$CON internal-tide SSH Greenwich phase $ttl", axkw...)
        hm = heatmap!(ax, lon_i, lat_i, P; colormap = :twilight, colorrange = (0, 360),
                      nan_color = LAND_COLOR, rasterize = true)
        moorings!(ax)
        Colorbar(fig[1, 2], hm; label = "Phase (°)", ticks = 0:60:360)
-       f = joinpath(OUTDIR, "(CON)ITphaglobal(sfx)_$(TAG).png"); save(f, fig; px_per_unit = 2)
+       f = joinpath(OUTDIR, "$(CON)_IT_pha_global$(sfx)_$(TAG).png"); save(f, fig; px_per_unit = 2)
        logmsg("  saved ", f)
    end
    # --- end of new section ------------------------------------------------------
