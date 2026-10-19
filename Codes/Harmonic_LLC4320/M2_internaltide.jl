@@ -66,7 +66,7 @@ const F_IMG     = 4         # global maps: average 4x4 points (17280x12960 -> 43
                            #   1 = every grid point (very large PNG, slow)
 const F_CON     = 16        # global co-phase lines: 16x16 block average (smooth lines)
 const DPHI      = 30.0      # co-phase line spacing [deg] (30° ≈ 1.03 h)
-const IT_MAX    = 5.0       # colour limit internal-tide amplitude [cm]
+const IT_MAX    = 4.8       # colour limit internal-tide amplitude [cm]
 const BT_MAX    = 100.0     # colour limit barotropic amplitude [cm]
 
 
@@ -387,7 +387,8 @@ function main()
 
    fig = Figure(size = figsize, fontsize = 18)
    ax = Axis(fig[1, 1]; title = @sprintf("%s internal-tide SSH amplitude ", CON), axkw...)
-   hm = amp_map!(ax, lon_i, lat_i, 100 .* Ait_img, IT_MAX)
+   hm = heatmap!(ax, lon_i, lat_i, 100 .* Ait_img; colormap = :magma, colorrange = (0, IT_MAX),
+                 highclip = cgrad(:magma)[end], nan_color = LAND_COLOR, rasterize = true)
    moorings!(ax)
    Colorbar(fig[1, 2], hm; label = "Amplitude (cm)")
    f = joinpath(OUTDIR, "$(CON)_IT_amp_global_v2_$(TAG).png"); save(f, fig; px_per_unit = 2)
